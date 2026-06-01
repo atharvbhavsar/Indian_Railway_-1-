@@ -4455,10 +4455,15 @@ function AOmModule({ user, onLogout }) {
       <input type="checkbox" id="sdom-sidebar-toggle" className="sdom-sidebar-checkbox" style={{ display: "none" }} />
       <label htmlFor="sdom-sidebar-toggle" className="sdom-sidebar-close-backdrop"></label>
       <header className="topbar">
-        <label htmlFor="sdom-sidebar-toggle" className="sdom-sidebar-toggle-btn"></label>
+        <label htmlFor="sdom-sidebar-toggle" className="sdom-sidebar-toggle-btn" style={{ cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: "6px", background: "none", border: "none", color: "#ffffff", marginRight: "12px" }}>
+          &#9776;
+        </label>
         <div className="brand-group">
-          <div className="brand-mark">IR</div>
-          <h1>Indian Railway Evaluation System</h1>
+          <div className="brand-mark"><img src="/logo.webp" alt="IR Logo" style={{ width: "100%", height: "100%", borderRadius: "inherit", objectFit: "cover" }} /></div>
+          <div>
+            <h1>Indian Railway Evaluation System</h1>
+            <p>AOM Console</p>
+          </div>
         </div>
         <div className="topbar-right">
           <div className="admin-badge">

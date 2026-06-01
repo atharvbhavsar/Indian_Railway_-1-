@@ -106,7 +106,7 @@ function LoginPage({ onLogin }) {
         <div className="login-card">
           <div className="login-header">
             <div className="login-logo">
-              <div className="logo-badge">IR</div>
+              <div className="logo-badge" style={{ padding: "0", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}><img src="/logo.webp" alt="IR Logo" style={{ width: "100%", height: "100%", borderRadius: "inherit", objectFit: "cover" }} /></div>
             </div>
             <h1>Indian Railway</h1>
             <p>Staff Management System</p>

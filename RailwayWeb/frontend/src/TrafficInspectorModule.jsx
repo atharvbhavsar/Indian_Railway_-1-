@@ -5287,11 +5287,14 @@ export default function TrafficInspectorModule({ user, onLogout }) {
       <label htmlFor="sdom-sidebar-toggle" className="sdom-sidebar-close-backdrop"></label>
       {/* Top Navigation Header */}
       <header className="ti2-topbar">
+        <label htmlFor="sdom-sidebar-toggle" className="sdom-sidebar-toggle-btn" style={{ cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: "6px", background: "none", border: "none", color: "#ffffff", marginRight: "12px" }}>
+          &#9776;
+        </label>
         <div className="ti2-topbar-brand" style={{ marginRight: "auto", marginLeft: "16px" }}>
-          <div className="ti2-topbar-logo">IR</div>
+          <div className="ti2-topbar-logo"><img src="/logo.webp" alt="IR Logo" style={{ width: "100%", height: "100%", borderRadius: "inherit", objectFit: "cover" }} /></div>
           <div>
             <h1>Indian Railway Evaluation Command</h1>
-            <p>Operations Workspace: Traffic Inspector Module</p>
+            <p><span className="desktop-only-txt">Operations Workspace: </span>Traffic Inspector<span className="desktop-only-txt"> Module</span></p>
           </div>
         </div>
 

@@ -955,10 +955,1530 @@
 }
 .sdom-fade { animation: sdomFadeIn 0.2s ease both; }
 
-/* ── RESPONSIVE ──────────────────────────────────────── */
-@media (max-width: 1280px) {
-  .sdom-summary-cards      { grid-template-columns: repeat(3, 1fr); }
-  .sdom-overview-cards     { grid-template-columns: repeat(3, 1fr); }
-  .sdom-report-grid        { grid-template-columns: repeat(3, 1fr); }
-  .sdom-pipeline-row       { grid-template-columns: repeat(2, 1fr); }
+/* ── RESPONSIVE OVERRIDES & SAAS DRAWER NAVIGATION ──────────────────── */
+
+/* HIDE toggle checkbox and trigger label on desktop */
+.sdom-sidebar-checkbox {
+  display: none !important;
 }
+.sdom-sidebar-toggle-btn {
+  display: none !important;
+}
+
+/* Base layouts overflow safety */
+.sdom-app-layout, .ti2-layout, .sm2-layout, .pm-layout {
+  max-width: 100vw !important;
+  overflow-x: hidden !important;
+}
+
+/* Table scroll responsiveness */
+.sdom-table-wrap, .ti2-table-wrap, .sm2-table-wrap, .pm-table-wrap {
+  width: 100% !important;
+  overflow-x: auto !important;
+  -webkit-overflow-scrolling: touch !important;
+}
+
+/* Desktop sizing limits */
+.sdom-content-scrollable, .ti2-main, .sm2-main, .pm-main-panel {
+  max-width: 1600px;
+  margin-right: auto;
+  margin-left: auto;
+  width: 100%;
+}
+
+/* Laptops / Intermediate screens (<= 1280px) */
+@media (max-width: 1280px) {
+  .sdom-summary-cards      { grid-template-columns: repeat(3, 1fr) !important; }
+  .sdom-overview-cards     { grid-template-columns: repeat(3, 1fr) !important; }
+  .sdom-report-grid        { grid-template-columns: repeat(3, 1fr) !important; }
+  .sdom-pipeline-row       { grid-template-columns: repeat(2, 1fr) !important; }
+}
+
+/* Tablets & Mobile Screens (<= 900px) */
+@media (max-width: 900px) {
+  /* Show hamburger button inside topbar */
+  .sdom-sidebar-toggle-btn {
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 1.45rem !important;
+    color: #ffffff !important;
+    width: 40px !important;
+    height: 40px !important;
+    border-radius: 8px !important;
+    margin-right: 12px !important;
+    transition: background 0.2s !important;
+    flex-shrink: 0 !important;
+  }
+  .sdom-sidebar-toggle-btn:hover {
+    background: rgba(255, 255, 255, 0.1) !important;
+  }
+
+  /* Slide-out mobile navigation drawer styling */
+  #root .sdom-sidebar-fixed,
+  #root .ti2-sidebar,
+  #root .sm2-sidebar,
+  #root .sm-sidebar,
+  #root .pm-sidebar,
+  #root .mod-sidebar,
+  #root .app-shell .sidebar {
+    position: fixed !important;
+    top: 60px !important;
+    left: -280px !important;
+    width: 265px !important;
+    height: calc(100vh - 60px) !important;
+    z-index: 999 !important;
+    transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    box-shadow: 4px 0 20px rgba(15, 23, 42, 0.25) !important;
+    overflow-y: auto !important;
+    display: flex !important;
+    flex-direction: column !important;
+    padding: 16px 8px !important;
+    gap: 8px !important;
+    background: #0f172a !important; /* Premium dark-slate theme background */
+    border-right: 1px solid rgba(255, 255, 255, 0.08) !important;
+  }
+
+  /* Force sidebar button items to span full width and behave as block flex containers */
+  #root .sdom-sidebar-fixed button,
+  #root .ti2-sidebar button,
+  #root .sm2-sidebar button,
+  #root .sm-sidebar button,
+  #root .pm-sidebar button,
+  #root .mod-sidebar button,
+  #root .app-shell .sidebar button,
+  #root .pm-nav-item,
+  #root .sm-nav-item,
+  #root .sm2-nav-item,
+  #root .ti2-nav-item,
+  #root .mod-nav-item,
+  #root .sdom-nav-btn,
+  #root .sidebar-item {
+    width: 100% !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    padding: 12px 16px !important;
+    gap: 12px !important;
+    border-radius: 8px !important;
+    text-align: left !important;
+    background: transparent !important;
+    border: none !important;
+    color: rgba(255, 255, 255, 0.7) !important;
+    font-size: 0.95rem !important;
+    cursor: pointer !important;
+    transition: all 0.2s !important;
+    border-left: none !important; /* Remove any legacy left borders */
+  }
+
+  #root .sdom-sidebar-fixed button.active,
+  #root .ti2-sidebar button.active,
+  #root .sm2-sidebar button.active,
+  #root .sm-sidebar button.active,
+  #root .pm-sidebar button.active,
+  #root .mod-sidebar button.active,
+  #root .pm-nav-item.active,
+  #root .sm-nav-item.active,
+  #root .sm2-nav-item.active,
+  #root .ti2-nav-item.active,
+  #root .mod-nav-item.active,
+  #root .sdom-nav-btn.active,
+  #root .app-shell .sidebar button.active,
+  #root .sidebar-item.active {
+    background: #2563eb !important; /* Premium Blue Active background */
+    color: #ffffff !important;
+    font-weight: 600 !important;
+    border-left: none !important;
+  }
+
+  #root .sdom-sidebar-fixed button:hover,
+  #root .ti2-sidebar button:hover,
+  #root .sm2-sidebar button:hover,
+  #root .sm-sidebar button:hover,
+  #root .pm-sidebar button:hover,
+  #root .mod-sidebar button:hover,
+  #root .pm-nav-item:hover,
+  #root .sm-nav-item:hover,
+  #root .sm2-nav-item:hover,
+  #root .ti2-nav-item:hover,
+  #root .mod-nav-item:hover,
+  #root .sdom-nav-btn:hover,
+  #root .app-shell .sidebar button:hover,
+  #root .sidebar-item:hover {
+    background: rgba(255, 255, 255, 0.08) !important;
+    color: #ffffff !important;
+  }
+
+  /* CRITICAL: Force all spans (text labels) in the sidebar drawer to show */
+  #root .sdom-sidebar-fixed span,
+  #root .ti2-sidebar span,
+  #root .sm2-sidebar span,
+  #root .sm-sidebar span,
+  #root .pm-sidebar span,
+  #root .mod-sidebar span,
+  #root .pm-nav-item span,
+  #root .sm-nav-item span,
+  #root .sm2-nav-item span,
+  #root .ti2-nav-item span,
+  #root .mod-nav-item span,
+  #root .sdom-nav-btn span,
+  #root .app-shell .sidebar span,
+  #root .sidebar-item span {
+    display: inline-block !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+  }
+
+  /* Slide in drawer when toggle checkbox is checked */
+  #sdom-sidebar-toggle:checked ~ .sdom-body-layout .sdom-sidebar-fixed,
+  #sdom-sidebar-toggle:checked ~ .ti2-shell .ti2-sidebar,
+  #sdom-sidebar-toggle:checked ~ .sm2-shell .sm2-sidebar,
+  #sdom-sidebar-toggle:checked ~ .pm-content-shell .pm-sidebar,
+  #sdom-sidebar-toggle:checked ~ .layout-grid .sidebar,
+  #sdom-sidebar-toggle:checked ~ .mod-content-shell .mod-sidebar {
+    left: 0 !important;
+  }
+
+  /* Translucent backdrop overlay layer */
+  .sdom-sidebar-close-backdrop {
+    position: fixed !important;
+    inset: 0 !important;
+    top: 60px !important;
+    background: rgba(15, 23, 42, 0.5) !important;
+    backdrop-filter: blur(4px) !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+    z-index: 998 !important;
+    transition: opacity 0.3s ease !important;
+    display: block !important;
+  }
+
+  /* Display backdrop when drawer is open */
+  #sdom-sidebar-toggle:checked ~ .sdom-sidebar-close-backdrop {
+    opacity: 1 !important;
+    pointer-events: auto !important;
+  }
+
+  /* Structural adjustment: remove fixed sidebars from page flow */
+  .sdom-body-layout, .ti2-shell, .pm-content-shell, .layout-grid, .mod-content-shell {
+    flex-direction: column !important;
+    position: relative !important;
+  }
+
+  /* Expand main panel to full viewport width */
+  .sdom-content-scrollable,
+  .ti2-main,
+  .sm2-main,
+  .pm-main-panel,
+  .app-shell .main-content,
+  .mod-main-panel {
+    width: 100% !important;
+    padding: 16px 14px !important;
+    overflow-y: auto !important;
+  }
+
+  /* Stacking rules for grid rows */
+  .sdom-row-2, .sdom-row-3 {
+    grid-template-columns: 1fr !important;
+    gap: 16px !important;
+  }
+
+  /* Brand alignment adjustments in topbar */
+  .sdom-topbar-brand, .ti2-topbar-brand, .sm2-topbar-brand, .pm-topbar-brand, .brand-group, .mod-topbar-brand {
+    gap: 8px !important;
+    overflow: hidden !important;
+    flex: 1 !important;
+  }
+  .sdom-topbar-brand h1, .ti2-topbar-brand h1, .sm2-topbar-brand h1, .pm-topbar-brand h1, .brand-group h1, .mod-topbar-brand h1 {
+    font-size: 0.85rem !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    max-width: 150px !important;
+  }
+  .sdom-topbar-brand p, .ti2-topbar-brand p, .sm2-topbar-brand p, .pm-topbar-brand p, .brand-group p, .mod-topbar-brand p {
+    font-size: 0.65rem !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    max-width: 150px !important;
+  }
+
+  /* Profile views stacking */
+  .sdom-ti-info-card, .pm-user-strip, .ti2-user-strip, .sm2-user-strip, .mod-user-strip {
+    gap: 8px !important;
+    flex-shrink: 0 !important;
+  }
+}
+
+/* Mobile & Small Screens (<= 768px) */
+@media (max-width: 768px) {
+  /* Dynamic Grid Cards stack */
+  .sdom-summary-cards, .sdom-overview-cards, .sdom-report-grid, .sdom-pipeline-row, .ss-sum-cards, .tm-sum-cards, .ti2-sum-cards, .mod-sum-cards, .sm2-myassess-summary, .ti2-myassess-summary {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+
+  /* Filter bars stacking */
+  .sdom-filter-bar, .ti2-filter-bar, .pm-filter-bar, .sm2-filter-bar {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 12px !important;
+    padding: 14px 16px !important;
+  }
+  .sdom-filter-field, .ti2-filter-field, .pm-filter-field, .sm2-filter-field {
+    width: 100% !important;
+    min-width: 100% !important;
+  }
+
+  /* Modals dynamic padding & overflow safety */
+  .sdom-modal, .pm-emergency-modal, .pm-emergency-modal-overlay {
+    width: 95% !important;
+    max-width: 95% !important;
+    padding: 18px 20px !important;
+    max-height: 90vh !important;
+    overflow-y: auto !important;
+  }
+  .sm2-fullscreen-modal {
+    padding: 12px !important;
+  }
+  
+  /* Emergency alert ribbon stacking */
+  .pm-emergency-siren-banner {
+    flex-direction: column !important;
+    padding: 12px !important;
+    gap: 10px !important;
+    text-align: center !important;
+  }
+  .siren-controls {
+    width: 100% !important;
+    justify-content: center !important;
+  }
+
+  /* Fullscreen deep-dive analytics modal layout scaling */
+  .sm2-fullscreen-header {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 12px !important;
+  }
+  .sm2-fullscreen-close-btn {
+    width: 100% !important;
+    justify-content: center !important;
+  }
+
+  /* TOPBAR COMPACT LAYOUT FOR MOBILE DEVICES */
+  /* Hide the subtitle in topbars to save vertical and horizontal space */
+  .sdom-topbar-brand p, 
+  .ti2-topbar-brand p, 
+  .sm2-topbar-brand p, 
+  .pm-topbar-brand p,
+  .brand-group p,
+  .mod-topbar-brand p {
+    display: none !important;
+  }
+
+  /* FORCE Topbar Flex Layout for Mobile to prevent cutoffs and alignment issues */
+  #root .pm-topbar,
+  #root .ti2-topbar,
+  #root .sm2-topbar,
+  #root .mod-topbar,
+  #root .sdom-topbar-fixed,
+  #root .topbar {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    padding: 8px 12px !important;
+    width: 100vw !important;
+    max-width: 100vw !important;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
+  }
+
+  /* Limit the title width and truncate with ellipsis to prevent page expansion */
+  .sdom-topbar-brand h1, 
+  .ti2-topbar-brand h1, 
+  .sm2-topbar-brand h1, 
+  .pm-topbar-brand h1,
+  .brand-group h1,
+  .mod-topbar-brand h1 {
+    font-size: 0.82rem !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    max-width: 110px !important;
+  }
+
+  /* Style and condense the brand text block on small screens so it shows the active role */
+  @media (max-width: 600px) {
+    #root .sdom-sidebar-toggle-btn {
+      margin-right: 4px !important;
+      padding: 4px !important;
+    }
+
+    #root .sdom-topbar-brand, 
+    #root .ti2-topbar-brand, 
+    #root .sm2-topbar-brand, 
+    #root .pm-topbar-brand,
+    #root .brand-group,
+    #root .mod-topbar-brand {
+      display: flex !important;
+      align-items: center !important;
+      gap: 6px !important;
+      margin-right: auto !important;
+      margin-left: 2px !important;
+      flex: 1 1 auto !important;
+      min-width: 0 !important;
+    }
+
+    /* Style the IR logo bubble on mobile next to the text */
+    #root .sdom-topbar-logo,
+    #root .ti2-topbar-logo,
+    #root .pm-topbar-logo,
+    #root .sm2-topbar-logo,
+    #root .brand-mark,
+    #root .brand-group .logo,
+    #root .mod-topbar-logo {
+      display: flex !important;
+      width: 24px !important;
+      height: 24px !important;
+      font-size: 10px !important;
+      font-weight: 900 !important;
+      border-radius: 50% !important;
+      background: #1e3a5f !important;
+      color: #ffffff !important;
+      border: 1.5px solid #2563eb !important;
+      align-items: center !important;
+      justify-content: center !important;
+      flex-shrink: 0 !important;
+      margin-right: 2px !important;
+    }
+
+    /* Hide the long command title */
+    #root .sdom-topbar-brand h1, 
+    #root .ti2-topbar-brand h1, 
+    #root .sm2-topbar-brand h1, 
+    #root .pm-topbar-brand h1,
+    #root .brand-group h1,
+    #root .mod-topbar-brand h1,
+    #root .sdom-topbar-brand .sdom-topbar-title {
+      display: none !important;
+    }
+
+    /* Highlight the active module/role in the middle space */
+    #root .sdom-topbar-brand p, 
+    #root .ti2-topbar-brand p, 
+    #root .sm2-topbar-brand p, 
+    #root .pm-topbar-brand p,
+    #root .brand-group p,
+    #root .mod-topbar-brand p,
+    #root .sdom-topbar-brand .sdom-topbar-sub {
+      display: block !important;
+      font-size: 11px !important;
+      color: #93c5fd !important;
+      font-weight: 800 !important;
+      margin: 0 !important;
+      text-transform: uppercase !important;
+      letter-spacing: 0.5px !important;
+      white-space: nowrap !important;
+      overflow: visible !important;
+      text-overflow: unset !important;
+      max-width: none !important;
+    }
+
+    /* Hide desktop-only descriptive prefixes to save horizontal mobile space */
+    .desktop-only-txt {
+      display: none !important;
+    }
+
+    /* Tighten user strip and logout button on very narrow mobile screens */
+    #root .pm-user-strip,
+    #root .ti2-user-strip,
+    #root .sm2-user-strip,
+    #root .mod-user-strip,
+    #root .sdom-topbar-user,
+    #root .admin-badge {
+      gap: 6px !important;
+    }
+
+    .sdom-logout-btn,
+    .ti2-logout-btn,
+    .sm2-logout-btn,
+    .pm-logout-btn,
+    .mod-logout-btn,
+    .logout-btn {
+      font-size: 10px !important;
+      padding: 4px 8px !important;
+      height: 28px !important;
+    }
+  }
+  
+  /* Hide name/ID text nodes to leave only icons and buttons */
+  #root .pm-user-strip > div:not(.pm-user-avatar):not(.pm-notification-bell-container),
+  #root .ti2-user-strip > div:not(.ti2-user-avatar),
+  #root .sm2-user-strip > div:not(.sm2-user-avatar),
+  #root .mod-user-strip > div:not(.mod-user-avatar),
+  #root .sdom-topbar-user > div:not(.sdom-topbar-avatar),
+  #root .admin-badge > div:not(.avatar) {
+    display: none !important;
+  }
+
+  /* Absolutely force user strip alignment to the far right with tight packing */
+  #root .pm-user-strip,
+  #root .ti2-user-strip,
+  #root .sm2-user-strip,
+  #root .mod-user-strip,
+  #root .sdom-topbar-user,
+  #root .admin-badge {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: flex-end !important;
+    width: auto !important;
+    max-width: calc(100vw - 60px) !important;
+    flex: 0 1 auto !important;
+    gap: 12px !important;
+    margin-left: auto !important;
+    padding-right: 0 !important;
+  }
+  
+  /* Make the Logout button highly visible on small screens */
+  .sdom-logout-btn,
+  .ti2-logout-btn,
+  .sm2-logout-btn,
+  .pm-logout-btn,
+  .mod-logout-btn,
+  .logout-btn {
+    font-size: 11px !important;
+    padding: 6px 10px !important;
+    width: auto !important;
+    height: 32px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 6px !important;
+    background: #ef4444 !important;
+    border: none !important;
+    color: #ffffff !important;
+    font-weight: 600 !important;
+    transition: background 0.2s !important;
+    cursor: pointer !important;
+    gap: 4px !important;
+  }
+  .sdom-logout-btn:hover,
+  .ti2-logout-btn:hover,
+  .sm2-logout-btn:hover,
+  .pm-logout-btn:hover,
+  .mod-logout-btn:hover,
+  .logout-btn:hover {
+    background: #dc2626 !important;
+  }
+  .sdom-logout-btn svg,
+  .ti2-logout-btn svg,
+  .sm2-logout-btn svg,
+  .pm-logout-btn svg,
+  .mod-logout-btn svg,
+  .logout-btn svg {
+    margin: 0 !important;
+    width: 14px !important;
+    height: 14px !important;
+  }
+
+  /* Universal Profile Header Mobile Stack */
+  #root .sdom-station-header {
+    flex-direction: column !important;
+    padding: 16px !important;
+    gap: 16px !important;
+    align-items: stretch !important;
+    text-align: center !important;
+  }
+  #root .sdom-station-header-meta {
+    align-items: center !important;
+    display: flex !important;
+    flex-direction: column !important;
+  }
+  #root .sdom-station-header-meta div {
+    text-align: center !important;
+  }
+  #root .sdom-station-header-meta .sdom-badge {
+    justify-content: center !important;
+  }
+  #root .sdom-station-header-stats {
+    flex-direction: column !important;
+    gap: 12px !important;
+    width: 100% !important;
+    align-items: stretch !important;
+    background: rgba(255, 255, 255, 0.05) !important;
+    padding: 12px !important;
+    border-radius: 8px !important;
+  }
+  #root .sdom-station-header-stats > div[style*="width: 1"],
+  #root .sdom-station-header-stats > div[style*="width:1"] {
+    display: none !important; /* Hide fixed-width divider lines */
+  }
+  #root .sdom-station-header-stat {
+    display: flex !important;
+    flex-direction: row !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    width: 100% !important;
+    padding: 4px 8px !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+  }
+  #root .sdom-station-header-stat:last-child {
+    border-bottom: none !important;
+  }
+  #root .sdom-station-header-stat .val {
+    font-size: 1.1rem !important;
+    margin-bottom: 0 !important;
+    font-weight: 700 !important;
+  }
+  #root .sdom-station-header-stat .lbl {
+    font-size: 0.75rem !important;
+    color: rgba(255, 255, 255, 0.7) !important;
+    order: -1 !important;
+  }
+
+  /* Force all inline grids with 2 columns to stack as 1 column on smaller devices! */
+  #root .sdom-chart-card div[style*="grid-template-columns"] {
+    grid-template-columns: 1fr !important;
+  }
+  #root .sdom-chart-card div[style*="grid-template-columns"] > div[style*="grid-column: span 2"],
+  #root .sdom-chart-card div[style*="grid-template-columns"] > div[style*="grid-column:span 2"] {
+    grid-column: span 1 !important;
+  }
+
+  /* Universal MCQ Exam Screen Responsive reflow */
+  #root div[style*="grid-template-columns"][style*="340px"],
+  #root div[style*="grid-template-columns"][style*="280px"] {
+    grid-template-columns: 1fr !important;
+    display: flex !important;
+    flex-direction: column !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+  #root div[style*="grid-template-columns"] > div[style*="border-left"] {
+    border-left: none !important;
+    border-top: 1.5px solid #e2e8f0 !important;
+    width: 100% !important;
+    height: auto !important;
+    padding: 24px 16px !important;
+  }
+  #root h2[style*="font-size: 22"],
+  #root h2[style*="font-size: 22px"] {
+    font-size: 1.25rem !important;
+    margin-top: 16px !important;
+    margin-bottom: 16px !important;
+  }
+  #root label[style*="padding: 18px 24px"],
+  #root label[style*="padding:18px 24px"] {
+    padding: 12px 16px !important;
+    gap: 12px !important;
+  }
+  #root div[style*="padding: 32px 40px"],
+  #root div[style*="padding:32px 40px"] {
+    padding: 16px 12px !important;
+  }
+  #root div[style*="padding: 36"],
+  #root div[style*="padding:36px"] {
+    padding: 18px !important;
+  }
+  
+  /* Universal form layouts stacked on mobile */
+  .sm2-assess-form,
+  .ti2-assess-form,
+  .mod-form-grid,
+  .mod-fields,
+  .ss-form-grid,
+  .ss-fields,
+  .ss-profile-fields,
+  .tm-form-grid,
+  .tm-fields,
+  .sdom-form-grid,
+  .ti2-profile-fields,
+  .mod-highlights,
+  .sm2-mcq-meta-grid {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+
+  /* Custom table reflow for My Assessment records */
+  #root .sm2-myassess-head {
+    display: none !important;
+  }
+  #root .sm2-myassess-row {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    padding: 16px !important; 
+    gap: 8px !important;
+    border-radius: 12px !important;
+    border: 1px solid #e2e8f0 !important;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02) !important;
+  }
+  #root .sm2-myassess-row > span {
+    display: flex !important;
+    justify-content: space-between !important;
+    width: 100% !important;
+    font-size: 13px !important;
+    padding: 4px 0 !important;
+    border-bottom: 1px dashed #f1f5f9 !important;
+    text-align: right !important;
+  }
+  #root .sm2-myassess-row > span:last-child {
+    border-bottom: none !important;
+    padding-top: 6px !important;
+  }
+  #root .sm2-myassess-row > span::before {
+    font-weight: 700 !important;
+    color: #64748b !important;
+    float: left !important;
+    text-align: left !important;
+  }
+  #root .sm2-myassess-row > span:nth-child(1)::before { content: "Period: "; }
+  #root .sm2-myassess-row > span:nth-child(2)::before { content: "Date: "; }
+  #root .sm2-myassess-row > span:nth-child(3)::before { content: "Score Scale: "; }
+  #root .sm2-myassess-row > span:nth-child(4)::before { content: "Category: "; }
+  #root .sm2-myassess-row > span:nth-child(5)::before { content: "Assessed By: "; }
+  #root .sm2-myassess-row > span:nth-child(6)::before { content: "Status: "; }
+
+  /* Section Breakdown layout stacked on mobile */
+  #root .pm-sc-section-row {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 6px !important;
+  }
+  #root .pm-sc-section-name {
+    width: 100% !important;
+    display: block !important;
+  }
+  #root .pm-sc-section-marks {
+    width: auto !important;
+    text-align: left !important;
+    align-self: flex-end !important;
+  }
+
+  /* Force topbars of all modules to remain fixed, horizontal 60px row */
+  #root .pm-topbar,
+  #root .ti2-topbar,
+  #root .sm2-topbar,
+  #root .mod-topbar,
+  #root .topbar,
+  #root .app-shell header,
+  #root header.pm-topbar,
+  #root header.ti2-topbar,
+  #root header.sm2-topbar,
+  #root header.mod-topbar {
+    display: flex !important;
+    flex-direction: row !important;
+    height: 60px !important;
+    padding: 0 16px !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    z-index: 1000 !important;
+    background: #0B1F3A !important;
+  }
+
+  #root .pm-user-strip,
+  #root .ti2-user-strip,
+  #root .sm2-user-strip,
+  #root .mod-user-strip,
+  #root .sdom-topbar-user {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    gap: 8px !important;
+    margin-left: auto !important;
+  }
+}
+
+/* Small Handsets (<= 580px) */
+@media (max-width: 580px) {
+  /* Touch-friendly and stacked Yes/No checklist buttons on mobile */
+  .ti2-yn-row, 
+  .pm-yn-row, 
+  .sm2-yn-row,
+  .ss-yn-row,
+  .tm-yn-row,
+  .mod-yn-row,
+  .yn-row {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 10px !important;
+    padding: 12px 14px !important;
+  }
+  
+  .ti2-yn-btns, 
+  .pm-yn-btns, 
+  .sm2-yn-btns,
+  .ss-yn-btns,
+  .tm-yn-btns,
+  .mod-yn-btns,
+  .yn-btns {
+    width: 100% !important;
+    display: flex !important;
+    gap: 8px !important;
+  }
+
+  .ti2-yn-btns button, 
+  .pm-yn-btns button, 
+  .sm2-yn-btns button,
+  .ss-yn-btns button,
+  .tm-yn-btns button,
+  .mod-yn-btns button,
+  .yn-btns button {
+    flex: 1 !important;
+    width: 50% !important;
+    height: 40px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    font-size: 13.5px !important;
+    font-weight: 700 !important;
+    border-radius: 8px !important;
+  }
+
+  /* Form actions stacking */
+  .sdom-modal-actions {
+    display: flex !important;
+    flex-direction: column !important;
+    width: 100% !important;
+    gap: 10px !important;
+  }
+  .sdom-modal-actions button {
+    width: 100% !important;
+    justify-content: center !important;
+    height: 42px !important;
+  }
+}
+
+/* =============================================================
+   UNIVERSAL MOBILE SCROLL OVERRIDES & SCREEN LAYOUT RESETS
+   Enforces natural page scroll, kills scroll traps, and stacks panels.
+   ============================================================= */
+@media (max-width: 900px) {
+  /* Enforce main body window scrollability */
+  html, body {
+    height: auto !important;
+    min-height: 100vh !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    position: relative !important;
+    scroll-behavior: smooth !important;
+  }
+  
+  #root {
+    height: auto !important;
+    min-height: 100vh !important;
+    overflow: visible !important;
+  }
+
+  /* Unlock all rigid height and overflow hidden constraints in outer layouts */
+  #root .sdom-app-layout,
+  #root .sdom-body-layout,
+  #root .pm-layout,
+  #root .pm-content-shell,
+  #root .ti2-shell,
+  #root .sm2-shell,
+  #root .mod-shell,
+  #root .app-shell,
+  #root .layout-grid,
+  #root .ti2-layout {
+    height: auto !important;
+    min-height: calc(100vh - 60px) !important;
+    overflow: visible !important;
+    display: flex !important;
+    flex-direction: column !important;
+  }
+
+  /* Release inner panels from fixed heights and nested scroll locks */
+  #root .sdom-content-scrollable,
+  #root .pm-main-panel,
+  #root .ti2-main,
+  #root .sm2-main,
+  #root .mod-main,
+  #root .main-content,
+  #root .ti2-content,
+  #root .sm2-content,
+  #root .pm-content,
+  #root .ti2-page-wrap,
+  #root .reports-page,
+  #root .reports-container,
+  #root .settings-container {
+    height: auto !important;
+    min-height: auto !important;
+    overflow: visible !important;
+    padding: 76px 12px 24px !important; /* Clear spacer to prevent header content clipping */
+    flex: none !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  /* Universal Chart Card Fluid Scaling & Touch Spacing */
+  .sdom-chart-card,
+  .pm-chart-card,
+  .ti2-chart-card,
+  .sm2-chart-card,
+  .chart-card {
+    width: 100% !important;
+    height: auto !important;
+    padding: 16px !important;
+  }
+  
+  .sdom-chart-card > div[style*="height"],
+  .pm-chart-card > div[style*="height"],
+  .ti2-chart-card > div[style*="height"],
+  .sm2-chart-card > div[style*="height"],
+  .sm2-fs-chart-wrapper {
+    height: 260px !important; /* Fluid touch height scale */
+    width: 100% !important;
+  }
+
+  /* Stacking rules for layout detail sections and sub-grids */
+  .settings-grid, 
+  .sdom-modal-fields, 
+  .modal-fields {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+  
+  /* Compact layout for emergency alert siren ribbons */
+  .pm-emergency-siren-banner {
+    position: fixed !important;
+    top: 60px !important;
+    left: 0 !important;
+    right: 0 !important;
+    z-index: 999 !important;
+  }
+
+  /* Modal Overlay Centering Overflow fixes for mobile devices */
+  #root .sdom-modal-overlay,
+  #root .tim-modal-overlay,
+  #root .sm-modal-overlay,
+  #root .pm-emergency-modal-overlay {
+    display: block !important;
+    overflow-y: auto !important;
+    padding: 24px 12px !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+
+  #root .sdom-modal,
+  #root .tim-modal-card,
+  #root .sm-modal-card,
+  #root .pm-emergency-modal {
+    margin: 10px auto !important;
+    width: 100% !important;
+    max-width: 550px !important;
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+    position: relative !important;
+    transform: none !important;
+    inset: auto !important;
+  }
+
+  /* Force all inline styled 2-column or 3-column grids to stack vertically */
+  #root div[style*="grid-template-columns"],
+  #root div[style*="gridTemplateColumns"] {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+
+  /* Unlocking the layout scroll trap on mobile viewports */
+  #root .pm-layout,
+  #root .ti2-layout,
+  #root .sdom-app-layout,
+  #root .aom-dashboard {
+    height: auto !important;
+    min-height: 100vh !important;
+    overflow: visible !important;
+    overflow-y: visible !important;
+  }
+
+  /* --- CBT COMPETENCY EXAM SAAS CARD OVERRIDES --- */
+  
+  /* The main exam wrapper container - No longer full screen, now sits inside content */
+  #root div[style*="999999"] {
+    position: relative !important;
+    top: auto !important;
+    left: auto !important;
+    right: auto !important;
+    bottom: auto !important;
+    height: auto !important;
+    min-height: calc(100vh - 60px) !important;
+    width: 100% !important;
+    max-width: 100vw !important;
+    display: flex !important;
+    flex-direction: column !important;
+    z-index: 10 !important;
+    background: #f9fafb !important;
+    padding-bottom: 24px !important;
+  }
+
+  /* Do NOT hide the main application topbar during exams anymore */
+  body:has(div[style*="999999"]) .pm-topbar,
+  body:has(div[style*="999999"]) .ti2-topbar,
+  body:has(div[style*="999999"]) .sm2-topbar,
+  body:has(div[style*="999999"]) .sdom-topbar-fixed,
+  body:has(div[style*="999999"]) .topbar,
+  body:has(div[style*="999999"]) header:not(div[style*="999999"] > header) {
+    display: flex !important;
+  }
+
+  /* Card 1: Exam Header Card */
+  #root div[style*="999999"] > header {
+    background: #ffffff !important;
+    color: #0f172a !important;
+    border: 1px solid #f1f5f9 !important;
+    border-radius: 12px !important;
+    margin: 16px 16px 8px 16px !important;
+    padding: 16px !important;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.02) !important;
+    display: flex !important;
+    flex-direction: row !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    height: auto !important;
+    min-height: auto !important;
+  }
+
+  /* Header icon and title wrapper */
+  #root div[style*="999999"] > header > div:first-child {
+    display: flex !important;
+    align-items: center !important;
+    gap: 12px !important;
+  }
+
+  /* Clipboard icon container */
+  #root div[style*="999999"] > header > div:first-child > svg {
+    background: #eff6ff !important;
+    color: #3b82f6 !important;
+    padding: 8px !important;
+    border-radius: 8px !important;
+    width: 24px !important;
+    height: 24px !important;
+  }
+
+  /* Header h1 (Title) */
+  #root div[style*="999999"] > header h1 {
+    font-size: 13.5px !important;
+    font-weight: 800 !important;
+    color: #0f172a !important;
+    margin: 0 !important;
+    letter-spacing: 0px !important;
+    text-transform: uppercase !important;
+  }
+
+  /* Header description */
+  #root div[style*="999999"] > header p {
+    font-size: 11px !important;
+    color: #64748b !important;
+    margin-top: 4px !important;
+    font-weight: 500 !important;
+  }
+
+  /* Hide the time elapsed container on mobile to match image */
+  #root div[style*="999999"] > header > div:last-child > div {
+    display: none !important;
+  }
+
+  /* Exit Exam Button */
+  #root div[style*="999999"] > header button {
+    background: transparent !important;
+    color: #ef4444 !important;
+    border: 1.5px solid #fca5a5 !important;
+    padding: 8px 16px !important;
+    border-radius: 8px !important;
+    font-size: 13px !important;
+    font-weight: 700 !important;
+    box-shadow: none !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    cursor: pointer !important;
+    transition: all 0.2s ease !important;
+  }
+  
+  #root div[style*="999999"] > header button:hover {
+    background: #fef2f2 !important;
+    border-color: #ef4444 !important;
+  }
+  
+  #root div[style*="999999"] > header button::before {
+    display: none !important;
+  }
+
+  /* Card 2: User & Progress Strip */
+  #root div[style*="999999"] > div:nth-of-type(1) {
+    background: #ffffff !important;
+    border: 1px solid #f1f5f9 !important;
+    border-radius: 12px !important;
+    margin: 8px 16px !important;
+    padding: 16px !important;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.02) !important;
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    height: auto !important;
+    border-bottom: 1px solid #f1f5f9 !important;
+  }
+
+  /* User Info (Left side) */
+  #root div[style*="999999"] > div:nth-of-type(1) > div:first-child {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    width: 50% !important;
+    border-right: 1px solid #f1f5f9 !important;
+    gap: 4px !important;
+    font-size: 11px !important;
+    color: #64748b !important;
+  }
+
+  #root div[style*="999999"] > div:nth-of-type(1) > div:first-child strong {
+    font-size: 14px !important;
+    color: #0f172a !important;
+    font-weight: 800 !important;
+  }
+
+  /* Progress Info (Right side) */
+  #root div[style*="999999"] > div:nth-of-type(1) > div:last-child {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    width: 50% !important;
+    padding-left: 16px !important;
+    gap: 4px !important;
+    font-size: 11px !important;
+    color: #64748b !important;
+  }
+
+  #root div[style*="999999"] > div:nth-of-type(1) > div:last-child strong {
+    font-size: 15px !important;
+    color: #0f172a !important;
+    font-weight: 800 !important;
+  }
+
+  /* Main Split Layout Grid */
+  #root div[style*="999999"] > div:nth-of-type(2) {
+    display: flex !important;
+    flex-direction: column !important;
+    width: 100% !important;
+    padding: 0 16px !important;
+    box-sizing: border-box !important;
+  }
+
+  /* Left Column wrapper (Question) */
+  #root div[style*="999999"] > div:nth-of-type(2) > div:nth-of-type(1) {
+    padding: 0 !important;
+    width: 100% !important;
+  }
+
+  /* Card 3: Question Card */
+  #root div[style*="999999"] > div:nth-of-type(2) > div:nth-of-type(1) > div:nth-of-type(1) {
+    background: #ffffff !important;
+    border: 1px solid #f1f5f9 !important;
+    border-radius: 12px !important;
+    padding: 24px 20px !important;
+    margin-top: 8px !important;
+    margin-bottom: 16px !important;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.02) !important;
+    position: relative !important;
+  }
+
+  /* Question Badge */
+  #root div[style*="999999"] > div:nth-of-type(2) > div:nth-of-type(1) > div:nth-of-type(1)::before {
+    content: "QUESTION " attr(data-qnum); /* If we don't have attr, we'll style h2 */
+    display: inline-block;
+    background: #eff6ff !important;
+    color: #2563eb !important;
+    padding: 6px 12px !important;
+    border-radius: 20px !important;
+    font-size: 11px !important;
+    font-weight: 800 !important;
+    margin-bottom: 16px !important;
+  }
+
+  /* Question Text */
+  #root div[style*="999999"] > div:nth-of-type(2) > div:nth-of-type(1) > div:nth-of-type(1) h2 {
+    font-size: 16px !important;
+    color: #0f172a !important;
+    font-weight: 700 !important;
+    line-height: 1.5 !important;
+    margin-top: 0 !important;
+    margin-bottom: 24px !important;
+  }
+
+  /* Options Container */
+  #root div[style*="999999"] > div:nth-of-type(2) > div:nth-of-type(1) > div:nth-of-type(1) label {
+    display: flex !important;
+    align-items: center !important;
+    padding: 14px 16px !important;
+    border-radius: 8px !important;
+    margin-bottom: 12px !important;
+    transition: all 0.2s !important;
+    gap: 16px !important;
+  }
+
+  /* Option A, B, C, D styling */
+  #root div[style*="999999"] > div:nth-of-type(2) > div:nth-of-type(1) > div:nth-of-type(1) label span:first-of-type {
+    color: #2563eb !important;
+    font-weight: 800 !important;
+    font-size: 14px !important;
+  }
+
+  /* Option Text */
+  #root div[style*="999999"] > div:nth-of-type(2) > div:nth-of-type(1) > div:nth-of-type(1) label span:last-of-type {
+    color: #334155 !important;
+    font-size: 14px !important;
+    font-weight: 500 !important;
+  }
+
+  /* Card 4: Navigation Buttons */
+  #root div[style*="999999"] > div:nth-of-type(2) > div:nth-of-type(1) > div:nth-of-type(2) {
+    display: flex !important;
+    flex-direction: row !important;
+    gap: 12px !important;
+    padding: 0 !important;
+    margin-bottom: 16px !important;
+  }
+
+  /* Hide middle warning text between previous/next buttons */
+  #root div[style*="999999"] > div:nth-of-type(2) > div:nth-of-type(1) > div:nth-of-type(2) > div {
+    display: none !important;
+  }
+
+  /* Previous Button */
+  #root div[style*="999999"] > div:nth-of-type(2) > div:nth-of-type(1) > div:nth-of-type(2) button:first-child {
+    flex: 1 !important;
+    background: #ffffff !important;
+    color: #2563eb !important;
+    border: 1px solid #2563eb !important;
+    padding: 12px !important;
+    border-radius: 8px !important;
+    font-weight: 700 !important;
+  }
+
+  /* Next Button */
+  #root div[style*="999999"] > div:nth-of-type(2) > div:nth-of-type(1) > div:nth-of-type(2) button:last-child {
+    flex: 1 !important;
+    background: #2563eb !important;
+    color: #ffffff !important;
+    border: none !important;
+    padding: 12px !important;
+    border-radius: 8px !important;
+    font-weight: 700 !important;
+  }
+
+  /* Card 5: Palette Pane (Right column on desktop, bottom on mobile) */
+  #root div[style*="999999"] > div:nth-of-type(2) > div:nth-of-type(2) {
+    background: #ffffff !important;
+    border: 1px solid #f1f5f9 !important;
+    border-radius: 12px !important;
+    padding: 20px !important;
+    margin-bottom: 16px !important;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.02) !important;
+  }
+
+  /* Make the grid have 10 columns for the palette numbers horizontally */
+  #root div[style*="999999"] > div:nth-of-type(2) > div:nth-of-type(2) > div[style*="gridTemplateColumns"],
+  #root div[style*="999999"] > div:nth-of-type(2) > div:nth-of-type(2) > div[style*="grid-template-columns"],
+  #root div[style*="999999"] > div:nth-of-type(2) > div:nth-of-type(2) > div:nth-child(3) {
+    grid-template-columns: repeat(10, 1fr) !important;
+    display: grid !important;
+    gap: 6px !important;
+    max-height: none !important;
+    overflow-y: visible !important;
+    width: 100% !important;
+  }
+
+  #root div[style*="999999"] > div:nth-of-type(2) > div:nth-of-type(2) button {
+    height: 32px !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    padding: 0 !important;
+    font-size: 11px !important;
+    border-radius: 6px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+
+  /* Hide the remaining questions warnings globally in the CBT page */
+  #root div[style*="999999"] p {
+    display: none !important;
+  }
+  /* But make sure the header description stays visible */
+  #root div[style*="999999"] > header p {
+    display: block !important;
+  }
+
+  /* Submit Button Card (Bottom) */
+  /* Target ONLY the Submit button at the very bottom of the right pane */
+  #root div[style*="999999"] .submit-btn-wrapper button,
+  #root div[style*="999999"] > button,
+  #root div[style*="999999"] > div:nth-of-type(2) > div:nth-of-type(2) > div:last-child button {
+    background: #2563eb !important;
+    color: #ffffff !important;
+    border: none !important;
+    border-radius: 8px !important;
+    padding: 14px !important;
+    font-size: 14px !important;
+    font-weight: 700 !important;
+    width: 100% !important;
+    margin-bottom: 24px !important;
+  }
+
+  /* 4. Topbar User Strip Alignment & Logout Visibility on Mobile */
+  #root .pm-user-strip,
+  #root .ti2-user-strip,
+  #root .sm2-user-strip,
+  #root .mod-user-strip,
+  #root .sdom-topbar-user,
+  #root .sdom-topbar-right,
+  #root .topbar-right,
+  #root .admin-badge {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: flex-end !important;
+    width: auto !important;
+    max-width: calc(100vw - 60px) !important;
+    flex: 0 1 auto !important;
+    gap: 12px !important;
+    margin-left: auto !important;
+    padding-right: 0 !important;
+  }
+
+  #root .topbar-right {
+    width: auto !important;
+    margin-left: auto !important;
+    justify-content: flex-end !important;
+  }
+
+  /* Mobile notification bell dropdown alignment & sizing */
+  .pm-bell-dropdown,
+  .ti2-user-strip div[style*="320px"][style*="absolute"],
+  .pm-user-strip div[style*="320px"][style*="absolute"],
+  .sm2-user-strip div[style*="320px"][style*="absolute"],
+  .mod-user-strip div[style*="320px"][style*="absolute"],
+  #root div[style*="999999"] div[style*="320px"][style*="absolute"],
+  .ti2-topbar div[style*="320px"][style*="absolute"],
+  .pm-topbar div[style*="320px"][style*="absolute"],
+  .sm-topbar div[style*="320px"][style*="absolute"] {
+    position: fixed !important;
+    top: 56px !important;
+    right: 12px !important;
+    left: 12px !important;
+    width: auto !important;
+    max-width: none !important;
+    z-index: 9999999 !important;
+    box-shadow: 0 10px 25px rgba(15, 23, 42, 0.2) !important;
+    border-radius: 12px !important;
+  }
+
+  /* Make the Logout button highly visible on small screens */
+  .sdom-logout-btn,
+  .ti2-logout-btn,
+  .sm2-logout-btn,
+  .pm-logout-btn,
+  .mod-logout-btn,
+  .logout-btn {
+    font-size: 11px !important;
+    padding: 6px 10px !important;
+    width: auto !important;
+    height: 32px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 6px !important;
+    background: #ef4444 !important;
+    border: none !important;
+    color: #ffffff !important;
+    font-weight: 600 !important;
+    transition: background 0.2s !important;
+    cursor: pointer !important;
+    gap: 4px !important;
+  }
+  .sdom-logout-btn:hover,
+  .ti2-logout-btn:hover,
+  .sm2-logout-btn:hover,
+  .pm-logout-btn:hover,
+  .mod-logout-btn:hover,
+  .logout-btn:hover {
+    background: #dc2626 !important;
+  }
+  .sdom-logout-btn svg,
+  .ti2-logout-btn svg,
+  .sm2-logout-btn svg,
+  .pm-logout-btn svg,
+  .mod-logout-btn svg,
+  .logout-btn svg {
+    margin: 0 !important;
+    width: 14px !important;
+    height: 14px !important;
+  }
+}
+
+/* Tablets and Handsets (<= 768px) */
+@media (max-width: 768px) {
+  /* Horizontal Table Swipe Container Pattern to prevent breaking layout grid width */
+  .sdom-table-wrap, 
+  .ti2-table-wrap, 
+  .sm2-table-wrap, 
+  .pm-table-wrap, 
+  .table-wrap {
+    overflow-x: auto !important;
+    width: 100% !important;
+    -webkit-overflow-scrolling: touch !important;
+    margin-bottom: 16px !important;
+    border-radius: 8px !important;
+    border: 1px solid #e2e8f0 !important;
+    background: #ffffff !important;
+  }
+  
+  table.sdom-table, 
+  table.ti2-table, 
+  table.sm2-table, 
+  table.pm-table, 
+  table {
+    min-width: 600px !important; /* Keep columns legible and horizontally scrollable inside parent wrap */
+  }
+
+  /* Universal mobile buttons layout scaling inside headers and detail views */
+  .pm-main-header-band,
+  .ti2-card-hdr,
+  .sm2-fullscreen-header,
+  .sdom-modal-actions {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 12px !important;
+  }
+  .pm-header-kpis,
+  .pm-status-banner {
+    flex-direction: column !important;
+    gap: 8px !important;
+    width: 100% !important;
+  }
+  .pm-hkpi {
+    width: 100% !important;
+    padding: 8px 12px !important;
+  }
+
+  /* AOM Section Breakdown stacking in approval sheets */
+  #root .ti2-review-sec-row {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 8px !important;
+    border-bottom: 1px dashed #e2e8f0 !important;
+    padding-bottom: 8px !important;
+  }
+  #root .ti2-review-sec-name {
+    width: 100% !important;
+    display: block !important;
+  }
+  #root .ti2-review-score-static,
+  #root .ti2-review-score-input {
+    align-self: flex-end !important;
+  }
+
+  /* 4. Topbar User Strip Alignment & Logout Visibility on Mobile */
+  #root .pm-user-strip,
+  #root .ti2-user-strip,
+  #root .sm2-user-strip,
+  #root .mod-user-strip,
+  #root .sdom-topbar-user {
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    margin-left: auto !important;
+    flex-shrink: 0 !important;
+  }
+
+  /* 5. Pointsman MCQ Exam Header Overrides for Mobile screens */
+  #root div[style*="zIndex: 999999"] > header[style*="height:70px"],
+  #root div[style*="zIndex: 999999"] > header[style*="height: 70px"] {
+    height: auto !important;
+    padding: 12px 16px !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 12px !important;
+  }
+  
+  #root div[style*="zIndex: 999999"] > header h1 {
+    font-size: 14px !important;
+    text-align: center !important;
+  }
+  
+  #root div[style*="zIndex: 999999"] > header p {
+    text-align: center !important;
+    font-size: 10px !important;
+  }
+  
+  #root div[style*="zIndex: 999999"] > header div[style*="gap:16"],
+  #root div[style*="zIndex: 999999"] > header div[style*="gap: 16"] {
+    justify-content: space-between !important;
+    width: 100% !important;
+    gap: 8px !important;
+  }
+
+  /* Candidate Info & Progress Bar Overrides */
+  #root div[style*="height:50px"][style*="flexShrink:0"],
+  #root div[style*="height: 50px"][style*="flexShrink: 0"] {
+    height: auto !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 10px !important;
+    padding: 12px 16px !important;
+    text-align: center !important;
+  }
+  
+  #root div[style*="height:50px"] div[style*="display:flex"],
+  #root div[style*="height: 50px"] div[style*="display: flex"] {
+    flex-direction: column !important;
+    gap: 6px !important;
+    align-items: center !important;
+  }
+
+  /* Option labels and padding resets */
+  #root div[style*="padding: 32px 40px"] > div[style*="padding: 36"],
+  #root div[style*="padding:32px 40px"] > div[style*="padding:36px"] {
+    padding: 16px !important;
+    margin-bottom: 16px !important;
+  }
+}
+
+/* Global Unified Image Logo Container and Image Border Radius styling */
+.pm-topbar-logo,
+.ti2-topbar-logo,
+.sm2-topbar-logo,
+.sdom-topbar-logo,
+.brand-mark,
+.sdom-logo,
+.logo-badge {
+  overflow: hidden !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.pm-topbar-logo img,
+.ti2-topbar-logo img,
+.sm2-topbar-logo img,
+.sdom-topbar-logo img,
+.brand-mark img,
+.sdom-logo img,
+.logo-badge img {
+  width: 100% !important;
+  height: 100% !important;
+  border-radius: inherit !important;
+  object-fit: contain !important;
+}
+
+

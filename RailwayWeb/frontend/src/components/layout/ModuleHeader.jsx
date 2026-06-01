@@ -10,7 +10,7 @@ export function ModuleHeader({ title }) {
   return (
     <header className="sdom-header">
       <div className="sdom-brand">
-        <div className="sdom-logo">IR</div>
+        <div className="sdom-logo"><img src="/logo.webp" alt="IR Logo" style={{ width: "100%", height: "100%", borderRadius: "inherit", objectFit: "cover" }} /></div>
         <div>
           <h2>Indian Railway Evaluation System</h2>
           <p>{title}</p>

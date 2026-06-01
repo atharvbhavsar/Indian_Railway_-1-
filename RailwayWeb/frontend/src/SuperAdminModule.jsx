@@ -304,13 +304,18 @@ export default function SuperAdminModule({ user, onLogout }) {
   /* ── RENDER ── */
   return (
     <div className="sdom-app-layout">
+      <input type="checkbox" id="sdom-sidebar-toggle" className="sdom-sidebar-checkbox" style={{ display: "none" }} />
+      <label htmlFor="sdom-sidebar-toggle" className="sdom-sidebar-close-backdrop"></label>
       {/* Topbar */}
       <header className="sdom-topbar-fixed">
+        <label htmlFor="sdom-sidebar-toggle" className="sdom-sidebar-toggle-btn" style={{ cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: "6px", background: "none", border: "none", color: "#ffffff", marginRight: "12px" }}>
+          &#9776;
+        </label>
         <div className="sdom-topbar-brand">
-          <div className="sdom-topbar-logo">IR</div>
+          <div className="sdom-topbar-logo"><img src="/logo.webp" alt="IR Logo" style={{ width: "100%", height: "100%", borderRadius: "inherit", objectFit: "cover" }} /></div>
           <div>
             <div className="sdom-topbar-title">Indian Railway Evaluation System</div>
-            <div className="sdom-topbar-sub">Nagpur Division — Sr. DOM Command Center</div>
+            <div className="sdom-topbar-sub"><span className="desktop-only-txt">Nagpur Division — </span>Sr. DOM Command Center</div>
           </div>
         </div>
         <div className="sdom-topbar-right">

@@ -342,12 +342,17 @@ function StationMasterModule({ user, onLogout }) {
   /* ─── Shell ─── */
   return (
     <div className="sm2-layout">
+      <input type="checkbox" id="sdom-sidebar-toggle" className="sdom-sidebar-checkbox" style={{ display: "none" }} />
+      <label htmlFor="sdom-sidebar-toggle" className="sdom-sidebar-close-backdrop"></label>
       <header className="sm2-topbar">
+        <label htmlFor="sdom-sidebar-toggle" className="sdom-sidebar-toggle-btn" style={{ cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: "6px", background: "none", border: "none", color: "#ffffff", marginRight: "12px" }}>
+          &#9776;
+        </label>
         <div className="sm2-topbar-brand">
-          <div className="sm2-topbar-logo" style={{ background: "#1E3A5F", color: "#ffffff", fontWeight: "800", fontSize: "0.95rem" }}>IR</div>
+          <div className="sm2-topbar-logo" style={{ background: "#1E3A5F", color: "#ffffff", fontWeight: "800", fontSize: "0.95rem", padding: "0" }}><img src="/logo.webp" alt="IR Logo" style={{ width: "100%", height: "100%", borderRadius: "inherit", objectFit: "cover" }} /></div>
           <div>
             <h1>Indian Railway Evaluation System</h1>
-            <p>Station Master Module</p>
+            <p>Station Master<span className="desktop-only-txt"> Module</span></p>
           </div>
         </div>
         <div className="sm2-user-strip">
