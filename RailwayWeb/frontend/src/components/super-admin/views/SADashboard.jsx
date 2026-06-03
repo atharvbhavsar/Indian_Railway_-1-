@@ -68,9 +68,9 @@ export function SADashboard({ staff, stations, handleChartClick, handlePieClick 
     const overdue = staff.filter(s => s.status === "Overdue" || s.risk === "High").length;
 
     return [
-      { month: "Nov", approved: Math.round(approved * 0.7), pending: Math.round(pending * 0.7), rejected: Math.round(rejected * 0.7), overdue: Math.round(overdue * 0.7) },
-      { month: "Dec", approved: Math.round(approved * 0.8), pending: Math.round(pending * 0.8), rejected: Math.round(rejected * 0.8), overdue: Math.round(overdue * 0.8) },
-      { month: "Jan", approved: Math.round(approved * 0.9), pending: Math.round(pending * 0.9), rejected: Math.round(rejected * 0.9), overdue: Math.round(overdue * 0.9) },
+      { month: "Nov", approved: approved, pending: pending, rejected: rejected, overdue: overdue },
+      { month: "Dec", approved: approved, pending: pending, rejected: rejected, overdue: overdue },
+      { month: "Jan", approved: approved, pending: pending, rejected: rejected, overdue: overdue },
       { month: "Feb", approved: approved, pending: pending, rejected: rejected, overdue: overdue },
     ];
   }, [staff]);
@@ -90,9 +90,9 @@ export function SADashboard({ staff, stations, handleChartClick, handlePieClick 
     const avgSafety = Math.round(staff.reduce((acc, curr) => acc + (curr.score || 85), 0) / staff.length);
 
     return [
-      { month: "Dec'25", score: Math.max(50, avgScore - 8), safety: Math.max(50, avgSafety - 8) },
-      { month: "Jan'26", score: Math.max(50, avgScore - 5), safety: Math.max(50, avgSafety - 5) },
-      { month: "Feb'26", score: Math.max(50, avgScore - 2), safety: Math.max(50, avgSafety - 2) },
+      { month: "Dec'25", score: avgScore, safety: avgSafety },
+      { month: "Jan'26", score: avgScore, safety: avgSafety },
+      { month: "Feb'26", score: avgScore, safety: avgSafety },
       { month: "Mar'26", score: avgScore, safety: avgSafety },
     ];
   }, [staff]);
@@ -107,12 +107,12 @@ export function SADashboard({ staff, stations, handleChartClick, handlePieClick 
   };
 
   const summaryCards = [
-    { key:"stations",  label:"Stations",                count: counts.stations,  sub:"Total in Nagpur Division",   icon:<Building2 size={18}/>,  color:"#1E3A5F" },
-    { key:"pointsmen", label:"Pointsmen",               count: counts.pointsmen, sub:"Operational pointsmen",       icon:<Users size={18}/>,      color:"#1E3A5F" },
-    { key:"sm",        label:"Station Masters",         count: counts.sm,        sub:"Across all stations",         icon:<UserRound size={18}/>,  color:"#1E3A5F" },
-    { key:"ss",        label:"Station Superintendents", count: counts.ss,        sub:"Division supervisors",        icon:<UserCheck size={18}/>,  color:"#1E3A5F" },
-    { key:"tm",        label:"Train Managers",          count: counts.tm,        sub:"Active train managers",       icon:<TrainFront size={18}/>, color:"#1E3A5F" },
-    { key:"ti",        label:"Traffic Inspectors",      count: counts.ti,        sub:"Jurisdiction coverage",       icon:<ShieldCheck size={18}/>,color:"#1E3A5F" },
+    { id:"stations",  label:"Stations",                count: counts.stations,  sub:"Total in Nagpur Division",   icon:<Building2 size={18}/>,  color:"#1E3A5F" },
+    { id:"pointsmen", label:"Pointsmen",               count: counts.pointsmen, sub:"Operational pointsmen",       icon:<Users size={18}/>,      color:"#1E3A5F" },
+    { id:"sm",        label:"Station Masters",         count: counts.sm,        sub:"Across all stations",         icon:<UserRound size={18}/>,  color:"#1E3A5F" },
+    { id:"ss",        label:"Station Superintendents", count: counts.ss,        sub:"Division supervisors",        icon:<UserCheck size={18}/>,  color:"#1E3A5F" },
+    { id:"tm",        label:"Train Managers",          count: counts.tm,        sub:"Active train managers",       icon:<TrainFront size={18}/>, color:"#1E3A5F" },
+    { id:"ti",        label:"Traffic Inspectors",      count: counts.ti,        sub:"Jurisdiction coverage",       icon:<ShieldCheck size={18}/>,color:"#1E3A5F" },
   ];
 
   const roleBar = [
@@ -130,12 +130,18 @@ export function SADashboard({ staff, stations, handleChartClick, handlePieClick 
   const top10    = [...stations].sort((a,b) => b.score - a.score).slice(0,10);
   const bottom10 = [...stations].sort((a,b) => a.score - b.score).slice(0,10);
 
-  const pipeline = [
-    { label:"Approved", count:4520, dot:"#1E3A5F" },
-    { label:"Pending",  count:246,  dot:"#4A90D9" },
-    { label:"Rejected", count:87,   dot:"#B83A3A" },
-    { label:"Overdue",  count:33,   dot:"#5A6B7C" },
-  ];
+  const pipeline = useMemo(() => {
+    const approved = staff.filter(s => s.status === "Approved").length;
+    const pending = staff.filter(s => s.status === "Pending").length;
+    const rejected = staff.filter(s => s.status === "Rejected").length;
+    const overdue = staff.filter(s => s.status === "Overdue" || s.risk === "High").length;
+    return [
+      { label:"Approved", count: approved, dot:"#1E3A5F" },
+      { label:"Pending",  count: pending,  dot:"#4A90D9" },
+      { label:"Rejected", count: rejected,   dot:"#B83A3A" },
+      { label:"Overdue",  count: overdue,   dot:"#5A6B7C" },
+    ];
+  }, [staff]);
 
   return (
     <div className="sdom-fade">
@@ -145,7 +151,7 @@ export function SADashboard({ staff, stations, handleChartClick, handlePieClick 
 
       {/* ── Summary Cards ── */}
       <div className="sdom-summary-cards">
-        {summaryCards.map(c => <SummaryCard key={c.key} {...c} />)}
+        {summaryCards.map(c => <SummaryCard key={c.id} {...c} />)}
       </div>
 
       {/* ── Station-wise Evaluation Progress & Average Score at the Top ── */}

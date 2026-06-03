@@ -16,8 +16,10 @@ export function SARoleDirectory({
 }) {
   const [roleF, setRoleF] = useState({ name:"", station:"All", ti:"All", cat:"All", risk:"All" });
 
+  const targetRoleName = ROLE_MAP[roleKey] || roleKey;
+
   const filtered = staff.filter(s =>
-    s.role === roleKey &&
+    (s.role === targetRoleName || s.role === roleKey) &&
     (roleF.station === "All" || s.station === roleF.station) &&
     (roleF.ti      === "All" || s.ti      === roleF.ti)      &&
     (roleF.cat     === "All" || s.cat     === roleF.cat)     &&
@@ -87,7 +89,7 @@ export function SARoleDirectory({
                 <tr key={s.id}>
                   <td style={{fontWeight:700}}>{s.name}</td>
                   <td style={{color:"#64748b",fontSize:"0.85rem"}}>{s.id}</td>
-                  <td>{s.station}</td>
+                  <td>{s.role === 'ti' || s.role === 'Traffic Inspector' ? (s.jurisdiction || 'Various') : s.station}</td>
                   <td>{s.ti}</td>
                   <td>{catBadge(s.cat)}</td>
                   <td>{riskBadge(s.risk)}</td>

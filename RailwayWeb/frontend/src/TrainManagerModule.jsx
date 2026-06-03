@@ -45,7 +45,7 @@ import {
   Legend
 } from "recharts";
 import "./sdom.css";
-
+import { dbService } from "./supabaseClient";
 
 /* â”€â”€â”€ Navigation â”€â”€â”€ */
 const navItems = [
@@ -80,8 +80,8 @@ import { useEmergencyAlarm } from "./hooks/useEmergencyAlarm";
 
 /* â”€â”€â”€ Main component â”€â”€â”€ */
 function TrainManagerModule({ user, onLogout }) {
-  const fullName = user?.name && user.name !== "Train Manager User" ? user.name : trainManagerProfile.name;
-  const employeeId = user?.hrmsId || trainManagerProfile.hrmsId;
+  const fullName = user?.name || "Train Manager";
+  const employeeId = user?.hrmsId || "TM_1001";
 
   const { startAlarmSound, stopAlarmSound } = useEmergencyAlarm();
 
@@ -89,9 +89,43 @@ function TrainManagerModule({ user, onLogout }) {
   const [screenMode, setScreenMode] = useState("default");
   
   const [history, setHistory] = useState(() => {
-    const saved = localStorage.getItem(`tm_history_${employeeId}`);
-    return saved ? JSON.parse(saved) : initialHistory;
+    const saved = sessionStorage.getItem(`tm_history_${employeeId}`);
+    return saved ? JSON.parse(saved) : [];
   });
+
+  useEffect(() => {
+    async function loadHistory() {
+      if (employeeId) {
+        try {
+          const data = await dbService.getTestHistory(employeeId);
+          if (data && data.length > 0) {
+            const mapped = data.map(attempt => ({
+              id: attempt.attempt_id,
+              date: attempt.submitted_at ? attempt.submitted_at.slice(0, 10) : new Date().toISOString().slice(0, 10),
+              assessmentPeriod: attempt.ASSESSMENT?.assessment_type || "Periodic Exam",
+              name: "CBT Exam",
+              assessedBy: "Online Exam",
+              totalScore: attempt.obtained_marks || attempt.percentage || 0,
+              sections: [
+                { title: "Competency Score", marks: attempt.obtained_marks || attempt.percentage || 0, outOf: 100 }
+              ],
+              responses: [],
+              approvalStatus: "Completed",
+              isOnlineExam: true
+            }));
+            setHistory(mapped);
+            sessionStorage.setItem(`tm_history_${employeeId}`, JSON.stringify(mapped));
+          } else {
+            setHistory([]);
+          }
+        } catch (err) {
+          console.error("Error loading test history:", err);
+          setHistory([]);
+        }
+      }
+    }
+    loadHistory();
+  }, [employeeId]);
   
   const [statusText, setStatusText] = useState("");
 
@@ -281,7 +315,7 @@ function TrainManagerModule({ user, onLogout }) {
     <TMProfile
       fullName={fullName}
       employeeId={employeeId}
-      trainManagerProfile={trainManagerProfile}
+      user={user}
       latestCategory={latestCategory}
       latestScore={latestScore}
       history={history}
@@ -295,7 +329,7 @@ function TrainManagerModule({ user, onLogout }) {
     <TMMyAssessment
       employeeId={employeeId}
       fullName={fullName}
-      trainManagerProfile={trainManagerProfile}
+      user={user}
       history={history}
       setHistory={setHistory}
       logActivity={logActivity}
@@ -444,10 +478,12 @@ function TrainManagerModule({ user, onLogout }) {
                 <Gauge size={14} />
                 <span>Avg {averageScore}</span>
               </div>
-              <div className="pm-hkpi" style={{ color: getCategoryColor(latestCategory) }}>
-                <ShieldCheck size={14} />
-                <span>Cat. {latestCategory}</span>
-              </div>
+              {latestCategory !== "Untested" && (
+                <div className="pm-hkpi" style={{ color: getCategoryColor(latestCategory) }}>
+                  <ShieldCheck size={14} />
+                  <span>Cat. {latestCategory}</span>
+                </div>
+              )}
             </div>
           </div>
 

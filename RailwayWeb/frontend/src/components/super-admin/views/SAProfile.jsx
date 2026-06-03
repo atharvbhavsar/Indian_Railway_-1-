@@ -1,15 +1,27 @@
-import React from "react";
-import { ResponsiveContainer, LineChart, CartesianGrid, XAxis, YAxis, Tooltip as RTooltip, Line } from "recharts";
+import React, { useMemo } from "react";
+import { ResponsiveContainer, BarChart, CartesianGrid, XAxis, YAxis, Tooltip as RTooltip, Bar, Cell } from "recharts";
 
-export function SAProfile({ user }) {
-  const divisionPerformanceData = [
-    { month: "Dec'25", score: 74 },
-    { month: "Jan'26", score: 76 },
-    { month: "Feb'26", score: 78 },
-    { month: "Mar'26", score: 80 },
-    { month: "Apr'26", score: 82 },
-    { month: "May'26", score: 84 }
-  ];
+export function SAProfile({ user, staff = [] }) {
+  const { avgScore, realChartData } = useMemo(() => {
+    const validStaff = staff.filter(s => typeof s.score === 'number');
+    const avg = validStaff.length ? Math.round(validStaff.reduce((acc, s) => acc + s.score, 0) / validStaff.length) : 0;
+    
+    const dist = { "0-25": 0, "26-50": 0, "51-79": 0, "80-100": 0 };
+    validStaff.forEach(s => {
+      if (s.score <= 25) dist["0-25"]++;
+      else if (s.score <= 50) dist["26-50"]++;
+      else if (s.score <= 79) dist["51-79"]++;
+      else dist["80-100"]++;
+    });
+    
+    const chartData = [
+      { range: "0-25", count: dist["0-25"], fill: "#ef4444" },
+      { range: "26-50", count: dist["26-50"], fill: "#f59e0b" },
+      { range: "51-79", count: dist["51-79"], fill: "#3b82f6" },
+      { range: "80-100", count: dist["80-100"], fill: "#10b981" }
+    ];
+    return { avgScore: avg, realChartData: chartData };
+  }, [staff]);
 
   return (
     <div className="sdom-fade">
@@ -20,22 +32,21 @@ export function SAProfile({ user }) {
           <div style={{ fontSize: "1.8rem", fontWeight: 800, marginBottom: 4 }}>{user?.name || "Super Admin User"}</div>
           <div style={{ fontSize: "0.9rem", color: "rgba(255,255,255,0.7)" }}>Senior Divisional Operations Manager (Sr. DOM) &bull; Nagpur Division &bull; Central Railway</div>
           <div style={{ marginTop: 12, display: "flex", gap: 10 }}>
-            <span className="sdom-badge sdom-badge-success">Category A</span>
             <span className="sdom-badge sdom-badge-success">Zonal HQ</span>
             <span className="sdom-badge sdom-badge-success">Active</span>
           </div>
         </div>
         <div className="sdom-station-header-stats">
           <div className="sdom-station-header-stat">
-            <span className="val">84%</span>
+            <span className="val">{avgScore}%</span>
             <span className="lbl">Division Avg</span>
           </div>
-          <div style={{ width: 1, height: 60, background: "rgba(255,255,255,0.15)" }}/>
+          <div style={{ width: 1, height: 60, background: "rgba(255,255,255,0.15)" }} />
           <div className="sdom-station-header-stat">
             <span className="val">+91 98220 99001</span>
             <span className="lbl">Contact</span>
           </div>
-          <div style={{ width: 1, height: 60, background: "rgba(255,255,255,0.15)" }}/>
+          <div style={{ width: 1, height: 60, background: "rgba(255,255,255,0.15)" }} />
           <div className="sdom-station-header-stat">
             <span className="val">2026-05-27</span>
             <span className="lbl">Last Audit</span>
@@ -47,14 +58,14 @@ export function SAProfile({ user }) {
       <div className="sdom-row-2" style={{ marginBottom: "24px" }}>
         <div className="sdom-chart-card">
           <div className="sdom-chart-title" style={{ marginBottom: "16px" }}>Personal & Professional Details</div>
-          
+
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '15px', paddingBottom: '20px' }}>
             {[
               ["Employee ID / HRMS ID", user?.hrmsId || "SA_1001"],
-              ["Designation", "Senior Divisional Operations Manager (Sr. DOM)"],
-              ["Mobile Number", "+91 98220 99001"],
-              ["Email ID", "srdom.ngp@rail.in"],
-              ["Account Status", "Active"],
+              ["Designation", user?.role === "Super Admin" ? "Senior Divisional Operations Manager (Sr. DOM)" : "Operations Officer"],
+              ["Mobile Number", user?.mobile || "+91 98220 99001"],
+              ["Email ID", user?.email || "srdom.ngp@rail.in"],
+              ["Account Status", user?.status || "Active"],
               ["Current Zone", "Central Railway"],
               ["Current Division", "Nagpur"],
               ["Current Placement", "Nagpur Division HQ"],
@@ -73,27 +84,31 @@ export function SAProfile({ user }) {
               Operational & Safety Dates
             </h4>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '15px', fontSize: '13px' }}>
-              <div><strong>Last Division Audit Done:</strong><div style={{fontWeight: 700, color: "#065f46", marginTop: 4}}>2026-05-20</div></div>
-              <div><strong>Next Audit Due:</strong><div style={{fontWeight: 700, color: "#991b1b", marginTop: 4}}>2026-06-20</div></div>
-              <div><strong>Executive Safety Training:</strong><div style={{fontWeight: 700, color: "#0d2c4d", marginTop: 4}}>2025-10-12</div></div>
-              <div><strong>Safety Summit Attended:</strong><div style={{fontWeight: 700, color: "#0d2c4d", marginTop: 4}}>2026-03-15</div></div>
-              <div style={{ gridColumn: "span 2" }}><strong>Zonal Operations Review:</strong><div style={{fontWeight: 700, color: "#d97706", marginTop: 4}}>2026-04-18</div></div>
+              <div><strong>Last Division Audit Done:</strong><div style={{ fontWeight: 700, color: "#065f46", marginTop: 4 }}>2026-05-20</div></div>
+              <div><strong>Next Audit Due:</strong><div style={{ fontWeight: 700, color: "#991b1b", marginTop: 4 }}>2026-06-20</div></div>
+              <div><strong>Executive Safety Training:</strong><div style={{ fontWeight: 700, color: "#0d2c4d", marginTop: 4 }}>2025-10-12</div></div>
+              <div><strong>Safety Summit Attended:</strong><div style={{ fontWeight: 700, color: "#0d2c4d", marginTop: 4 }}>2026-03-15</div></div>
+              <div style={{ gridColumn: "span 2" }}><strong>Zonal Operations Review:</strong><div style={{ fontWeight: 700, color: "#d97706", marginTop: 4 }}>2026-04-18</div></div>
             </div>
           </div>
         </div>
 
         <div className="sdom-chart-card">
-          <div className="sdom-chart-title">Division Performance Trend</div>
-          <div className="sdom-chart-subtitle">Nagpur Division Average Score progression</div>
+          <div className="sdom-chart-title">Real-Time Division Score Distribution</div>
+          <div className="sdom-chart-subtitle">Current staff performance breakdown across Nagpur Division</div>
           <div style={{ height: 300 }}>
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={divisionPerformanceData}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false}/>
-                <XAxis dataKey="month" fontSize={11}/>
-                <YAxis domain={[40, 100]} fontSize={11}/>
-                <RTooltip/>
-                <Line type="monotone" dataKey="score" stroke="#2563eb" strokeWidth={3} dot={{ r: 5 }}/>
-              </LineChart>
+              <BarChart data={realChartData} margin={{ top: 20, right: 30, left: 0, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                <XAxis dataKey="range" fontSize={11} />
+                <YAxis allowDecimals={false} fontSize={11} />
+                <RTooltip cursor={{fill: 'transparent'}}/>
+                <Bar dataKey="count" radius={[4, 4, 0, 0]}>
+                  {realChartData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.fill} />
+                  ))}
+                </Bar>
+              </BarChart>
             </ResponsiveContainer>
           </div>
         </div>

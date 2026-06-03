@@ -1,10 +1,37 @@
-import React from "react";
+import React, { useState } from "react";
 import { UserPlus } from "lucide-react";
 import { ROLE_MAP } from "../../utils/saConstants";
 
-export function SAStaffModal({ modal, setModal, stations, saveModal }) {
+export function SAStaffModal({ modal, setModal, stations, staff, saveModal }) {
+  const [isTiDropdownOpen, setIsTiDropdownOpen] = useState(false);
   if (!modal) return null;
   const isShift = modal.mode === "shift";
+
+  const assignedStations = staff?.filter(s => {
+    if (modal.role === "sm" || modal.role === "Station Master") {
+      return s.role === "sm" || s.role === "Station Master";
+    }
+    if (modal.role === "ss" || modal.role === "Station Superintendent") {
+      return s.role === "ss" || s.role === "Station Superintendent";
+    }
+    return false;
+  }).map(s => s.station) || [];
+  const isStationDisabled = (stName) => assignedStations.includes(stName) && (modal.mode === 'add' || modal.data.station !== stName);
+
+  const assignedTiStations = staff?.filter(s => (s.role === 'ti' || s.role === 'Traffic Inspector') && (modal.mode === 'add' || s.id !== modal.data.id)).reduce((acc, s) => {
+    if (s.jurisdiction) {
+       acc.push(...s.jurisdiction.split(",").map(x => x.trim()).filter(Boolean));
+    }
+    return acc;
+  }, []);
+
+  const selectedTiStations = modal.data.linkedStations ? modal.data.linkedStations.split(",").map(s => s.trim()).filter(Boolean) : [];
+  const toggleTiStation = (stName) => {
+    let newArr = [...selectedTiStations];
+    if (newArr.includes(stName)) newArr = newArr.filter(n => n !== stName);
+    else newArr.push(stName);
+    setModal(p => ({ ...p, data: { ...p.data, linkedStations: newArr.join(", "), jurisdiction: newArr.join(", ") } }));
+  };
 
   return (
     <div className="sdom-modal-overlay" onClick={e => e.target === e.currentTarget && setModal(null)}>
@@ -52,8 +79,14 @@ export function SAStaffModal({ modal, setModal, stations, saveModal }) {
                 </div>
                 <div className="sdom-modal-field">
                   <label>Email ID *</label>
-                  <input value={modal.data.email || ""} onChange={e => setModal(p => ({ ...p, data: { ...p.data, email: e.target.value } }))} placeholder="Enter email address" />
+                  <input type="email" value={modal.data.email || ""} onChange={e => setModal(p => ({ ...p, data: { ...p.data, email: e.target.value } }))} placeholder="Enter email address" />
                 </div>
+                {modal.mode === "add" && (
+                  <div className="sdom-modal-field">
+                    <label>Account Password *</label>
+                    <input type="password" value={modal.data.password || ""} onChange={e => setModal(p => ({ ...p, data: { ...p.data, password: e.target.value } }))} placeholder="Enter initial password" />
+                  </div>
+                )}
               </div>
             </div>
 
@@ -82,13 +115,15 @@ export function SAStaffModal({ modal, setModal, stations, saveModal }) {
                     {["Central Railway", "Western Railway", "Northern Railway", "Southern Railway", "Eastern Railway"].map(z => <option key={z} value={z}>{z}</option>)}
                   </select>
                 </div>
-                <div className="sdom-modal-field">
-                  <label>Station Name *</label>
-                  <select value={modal.data.station || ""} onChange={e => setModal(p => ({ ...p, data: { ...p.data, station: e.target.value, smStation: e.target.value } }))}>
-                    <option value="">Select Station</option>
-                    {stations.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
-                  </select>
-                </div>
+                {modal.role !== "ti" && (
+                  <div className="sdom-modal-field">
+                    <label>Station Name *</label>
+                    <select value={modal.data.station || ""} onChange={e => setModal(p => ({ ...p, data: { ...p.data, station: e.target.value, smStation: e.target.value } }))}>
+                      <option value="">Select Station</option>
+                      {stations.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
+                    </select>
+                  </div>
+                )}
                 <div className="sdom-modal-field">
                   <label>Category *</label>
                   <select value={modal.data.cat || "A"} onChange={e => setModal(p => ({ ...p, data: { ...p.data, cat: e.target.value } }))}>
@@ -106,7 +141,12 @@ export function SAStaffModal({ modal, setModal, stations, saveModal }) {
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
                   <div className="sdom-modal-field">
                     <label>Reporting Station Master *</label>
-                    <input value={modal.data.reportingSm || ""} onChange={e => setModal(p => ({ ...p, data: { ...p.data, reportingSm: e.target.value } }))} placeholder="Station Master Name" />
+                    <select value={modal.data.reportingSm || ""} onChange={e => setModal(p => ({ ...p, data: { ...p.data, reportingSm: e.target.value } }))}>
+                      <option value="">Select Station Master</option>
+                      {staff?.filter(s => s.role === 'sm' || s.role === 'Station Master').map(sm => (
+                        <option key={sm.id} value={sm.name}>{sm.name} ({sm.id})</option>
+                      ))}
+                    </select>
                   </div>
                   <div className="sdom-modal-field">
                     <label>Work Location Setup *</label>
@@ -132,7 +172,16 @@ export function SAStaffModal({ modal, setModal, stations, saveModal }) {
                     <label>Operational Station *</label>
                     <select value={modal.data.smStation || ""} onChange={e => setModal(p => ({ ...p, data: { ...p.data, smStation: e.target.value, station: e.target.value } }))}>
                       <option value="">Select Operational Station</option>
-                      {stations.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
+                      {stations.map(s => (
+                        <option 
+                          key={s.id} 
+                          value={s.name} 
+                          disabled={isStationDisabled(s.name)}
+                          style={isStationDisabled(s.name) ? { color: '#94a3b8', fontStyle: 'italic', backgroundColor: '#f1f5f9' } : {}}
+                        >
+                          {s.name} {isStationDisabled(s.name) ? "(Assigned)" : ""}
+                        </option>
+                      ))}
                     </select>
                   </div>
                 </div>
@@ -148,9 +197,35 @@ export function SAStaffModal({ modal, setModal, stations, saveModal }) {
                     <label>Jurisdiction Division *</label>
                     <input value={modal.data.jurisdiction || ""} onChange={e => setModal(p => ({ ...p, data: { ...p.data, jurisdiction: e.target.value } }))} placeholder="Enter Jurisdiction" />
                   </div>
-                  <div className="sdom-modal-field">
+                  <div className="sdom-modal-field" style={{ position: "relative" }}>
                     <label>Linked Stations under supervision *</label>
-                    <input value={modal.data.linkedStations || ""} onChange={e => setModal(p => ({ ...p, data: { ...p.data, linkedStations: e.target.value } }))} placeholder="E.g. Nagpur Main, Wardha Jn" />
+                    <div 
+                      onClick={() => setIsTiDropdownOpen(!isTiDropdownOpen)}
+                      style={{ padding: "8px 12px", border: "1px solid #cbd5e1", borderRadius: "6px", background: "#ffffff", cursor: "pointer", fontSize: "14px", display: "flex", justifyContent: "space-between", alignItems: "center" }}
+                    >
+                      <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                        {selectedTiStations.length > 0 ? `${selectedTiStations.length} Station(s) Selected` : "Select Stations"}
+                      </span>
+                      <span style={{ fontSize: "10px", transform: isTiDropdownOpen ? "rotate(180deg)" : "none", transition: "transform 0.2s" }}>▼</span>
+                    </div>
+                    {isTiDropdownOpen && (
+                      <div style={{ position: "absolute", top: "calc(100% + 4px)", left: 0, right: 0, zIndex: 100, maxHeight: "200px", overflowY: "auto", border: "1px solid #cbd5e1", borderRadius: "6px", padding: "8px", background: "#ffffff", boxShadow: "0 10px 15px -3px rgba(0,0,0,0.1)" }}>
+                        {stations.map(s => {
+                          const isOccupied = assignedTiStations.includes(s.name);
+                          return (
+                          <label key={s.id} style={{ display: "flex", alignItems: "center", gap: "8px", padding: "6px", cursor: isOccupied ? "not-allowed" : "pointer", fontSize: "13px", borderRadius: "4px", transition: "background 0.2s", opacity: isOccupied ? 0.5 : 1 }} onMouseEnter={e => !isOccupied && (e.currentTarget.style.background="#f1f5f9")} onMouseLeave={e => !isOccupied && (e.currentTarget.style.background="transparent")}>
+                            <input 
+                              type="checkbox" 
+                              checked={selectedTiStations.includes(s.name)}
+                              onChange={() => !isOccupied && toggleTiStation(s.name)}
+                              disabled={isOccupied}
+                              style={{ width: "14px", height: "14px", cursor: isOccupied ? "not-allowed" : "pointer" }}
+                            />
+                            {s.name} {isOccupied && <span style={{fontSize: "10px", color: "#dc2626"}}>(Assigned)</span>}
+                          </label>
+                        )})}
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>

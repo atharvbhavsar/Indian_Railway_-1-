@@ -140,17 +140,22 @@ export function StationMasterHistoryPage(props) {
       );
     }
 
+    const avgScore = pointsmen.length ? Math.round(pointsmen.reduce((s, p) => s + (p.lastScore || 0), 0) / pointsmen.length) : 0;
+    const safetyPct = pointsmen.length ? Math.round(pointsmen.reduce((s, p) => s + (p.safetyScore || 0), 0) / pointsmen.length) : 0;
+    const highRisk = pointsmen.filter(p => riskLevel(p) === "High").length;
+    const pending = pointsmen.filter(p => p.approvalStatus === "Pending").length;
+
     const divSummary = [
-      { label: "Average Division Score",  val: 87    },
-      { label: "Safety Compliance %",     val: "91%" },
-      { label: "High-Risk Staff",         val: 18    },
-      { label: "Pending Approvals",       val: 246   },
-      { label: "Total Reports Generated", val: 6245  },
+      { label: "Average Station Score",  val: avgScore > 0 ? avgScore : "—" },
+      { label: "Safety Compliance %",     val: safetyPct > 0 ? `${safetyPct}%` : "—" },
+      { label: "High-Risk Staff",         val: highRisk },
+      { label: "Pending Approvals",       val: pending },
+      { label: "Total Reports Generated", val: pointsmen.length },
     ];
 
     const ROLE_OPTS    = ["All","Pointsman"];
-    const STATION_OPTS = ["All", smProfile.stationName];
-    const TI_OPTS      = ["All", "TI PAR", "TI AMLA", "TI NGP"];
+    const STATION_OPTS = ["All", smProfile?.station || smProfile?.stationName || "Nagpur Junction"];
+    const TI_OPTS      = ["All", "Nagpur Division"];
 
     const getCat = s => s >= 80 ? "A" : s >= 50 ? "B" : s >= 26 ? "C" : "D";
 

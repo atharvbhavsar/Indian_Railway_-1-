@@ -8,7 +8,8 @@ import {
   MapPin, Phone, Calendar, Award, Globe, Tag, GitBranch, Cpu, Layers, Zap, Mail, AlignJustify, Gauge, UserCircle2 
 } from 'lucide-react';
 import { Bar, BarChart, Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis, LineChart, Line, CartesianGrid, LabelList } from 'recharts';
-
+import { saDataService } from '../services/saDataService';
+import { supabase, isSupabaseConfigured } from '../supabaseClient';
 export function useAomState(user, onLogout) {
   const [activePage, setActivePage] = useState("Dashboard");
   const [pmModal, setPmModal] = useState(null);
@@ -60,73 +61,45 @@ export function useAomState(user, onLogout) {
     });
   };
 
-  const savePmModal = () => {
+  const savePmModal = async () => {
     if (!pmModal.data.name || !pmModal.data.hrmsId) {
       alert("Name and HRMS ID are required.");
       return;
     }
-    if (pmModal.mode === "shift") {
-      const newRole = pmModal.role || "pointsmen";
-      if (newRole !== "pointsmen") {
-        setAomPointsmen(p => p.filter(x => x.hrmsId !== pmModal.data.hrmsId));
-        const commonObj = {
-          employeeId: pmModal.data.hrmsId,
-          hrmsId: pmModal.data.hrmsId,
-          name: pmModal.data.name,
-          station: pmModal.data.stationName || "Nagpur Junction",
-          stationName: pmModal.data.stationName || "Nagpur Junction",
-          division: pmModal.data.division || "Nagpur",
-          zone: pmModal.data.zone || "Central Railway",
-          cat: pmModal.data.cat || "A",
-          risk: pmModal.data.risk || "Low",
-          score: pmModal.data.lastScore || 80,
-          contact: pmModal.data.contact || "",
-          email: pmModal.data.email || "",
-          lastDate: pmModal.data.doj || new Date().toISOString().split('T')[0],
-          status: "Approved",
-          reportingAom: "P. K. Verma (Sr. DOM)"
-        };
-        if (newRole === "ss") {
-          setAomSuperintendents(prev => [...prev, { ...commonObj, role: "ss", designation: "Station Superintendent" }]);
-        } else if (newRole === "tm") {
-          setAomTrainManagers(prev => [...prev, { ...commonObj, role: "tm", designation: "Train Manager" }]);
-        } else if (newRole === "ti") {
-          setTrafficInspectors(prev => [...prev, { ...commonObj, role: "ti", designation: "Traffic Inspector" }]);
-        } else if (newRole === "sm") {
-          setStations(prev => prev.map(s => {
-            if (s.stationName === pmModal.data.stationName) {
-              return { ...s, stationMasterName: pmModal.data.name, contactNumber: pmModal.data.contact };
-            }
-            return s;
-          }));
-          setAomStationMasters(prev => [...prev, {
-            ...commonObj,
-            role: "sm",
-            designation: "Station Master",
-            id: pmModal.data.hrmsId,
-            hrmsId: pmModal.data.hrmsId,
-            stationName: pmModal.data.stationName || "Nagpur Junction",
-            stationCode: pmModal.data.stationCode || "NGP",
-            division: pmModal.data.division || "Nagpur",
-            zone: pmModal.data.zone || "Central Railway"
-          }]);
-        }
-        alert(`${pmModal.data.name} shifted to ${newRole.toUpperCase()} successfully.`);
-        setPmModal(null);
-        return;
-      }
+    try {
+      const data = pmModal.data;
+      const modalData = {
+        id: data.hrmsId || data.employeeId || data.id,
+        name: data.name,
+        contact: data.contact || data.phone || data.contactNumber,
+        email: data.email || data.emailId,
+        role: pmModal.mode === "shift" ? pmModal.role : "Pointsman",
+        station: data.stationName || data.station || data.smStation,
+        division: data.division || data.smDivision || data.tiArea,
+        lastDate: data.doj || data.lastDate,
+        score: data.lastScore || data.score,
+        cat: data.cat || data.category,
+        reportingSm: data.reportingSm,
+        workLocation: data.workLocation,
+        shift: data.shift,
+        jurisdiction: data.jurisdiction
+      };
+      await saDataService.saveUser(modalData, pmModal.mode);
+      setPmModal(null);
+      await fetchLiveDatabaseData();
+    } catch (err) {
+      alert("Error saving: " + err.message);
     }
-    if (pmModal.mode === "add") {
-      setAomPointsmen(p => [pmModal.data, ...p]);
-    } else {
-      setAomPointsmen(p => p.map(x => x.hrmsId === pmModal.data.hrmsId ? pmModal.data : x));
-    }
-    setPmModal(null);
   };
 
-  const removePm = (hrmsId) => {
-    if (window.confirm("Remove this pointsman?")) {
-      setAomPointsmen(p => p.filter(x => x.hrmsId !== hrmsId));
+  const removePm = async (id) => {
+    if (window.confirm("Remove this Pointsman?")) {
+      try {
+        await saDataService.removeUser(id);
+        await fetchLiveDatabaseData();
+      } catch (err) {
+        alert("Error removing: " + err.message);
+      }
     }
   };
 
@@ -176,79 +149,45 @@ export function useAomState(user, onLogout) {
     });
   };
 
-  const saveSmModal = () => {
+  const saveSmModal = async () => {
     if (!smModal.data.name || !smModal.data.hrmsId) {
       alert("Name and HRMS ID are required.");
       return;
     }
-    if (smModal.mode === "shift") {
-      const newRole = smModal.role || "sm";
-      if (newRole !== "sm") {
-        setAomStationMasters(p => p.filter(x => (x.hrmsId || x.id) !== smModal.data.hrmsId));
-        const commonObj = {
-          employeeId: smModal.data.hrmsId,
-          hrmsId: smModal.data.hrmsId,
-          name: smModal.data.name,
-          station: smModal.data.stationName || "Nagpur Junction",
-          stationName: smModal.data.stationName || "Nagpur Junction",
-          division: smModal.data.division || "Nagpur",
-          zone: smModal.data.zone || "Central Railway",
-          cat: smModal.data.cat || "A",
-          risk: smModal.data.risk || "Low",
-          score: smModal.data.lastScore || 80,
-          contact: smModal.data.contact || "",
-          email: smModal.data.email || "",
-          lastDate: smModal.data.doj || new Date().toISOString().split('T')[0],
-          status: "Approved",
-          reportingAom: "P. K. Verma (Sr. DOM)"
-        };
-        if (newRole === "ss") {
-          setAomSuperintendents(prev => [...prev, { ...commonObj, role: "ss", designation: "Station Superintendent" }]);
-        } else if (newRole === "tm") {
-          setAomTrainManagers(prev => [...prev, { ...commonObj, role: "tm", designation: "Train Manager" }]);
-        } else if (newRole === "ti") {
-          setTrafficInspectors(prev => [...prev, { ...commonObj, role: "ti", designation: "Traffic Inspector" }]);
-        } else if (newRole === "pointsmen") {
-          setAomPointsmen(prev => [...prev, {
-            ...commonObj,
-            hrmsId: smModal.data.hrmsId,
-            id: Date.now(),
-            lastScore: smModal.data.lastScore || 80,
-            safetyScore: 85,
-            totalAssessments: 2,
-            pmeStatus: "Fit",
-            refStatus: "Cleared",
-            disciplinary: "None",
-            incidents: 0,
-            approvalStatus: "Approved",
-            monitoringStatus: "Active",
-            stationCode: smModal.data.stationCode || "NGP",
-            stationName: smModal.data.stationName || "Nagpur Junction"
-          }]);
-        }
-        alert(`${smModal.data.name} shifted to ${newRole.toUpperCase()} successfully.`);
-        setSmModal(null);
-        return;
-      }
+    try {
+      const data = smModal.data;
+      const modalData = {
+        id: data.hrmsId || data.employeeId || data.id,
+        name: data.name,
+        contact: data.contact || data.phone || data.contactNumber,
+        email: data.email || data.emailId,
+        role: smModal.mode === "shift" ? smModal.role : "Station Master",
+        station: data.stationName || data.station || data.smStation || "Nagpur Junction",
+        division: data.division || data.smDivision || data.tiArea || "Nagpur",
+        lastDate: data.doj || data.lastDate,
+        score: data.lastScore || data.score,
+        cat: data.cat || data.category,
+        reportingSm: data.reportingSm,
+        workLocation: data.workLocation,
+        shift: data.shift,
+        jurisdiction: data.jurisdiction
+      };
+      await saDataService.saveUser(modalData, smModal.mode);
+      setSmModal(null);
+      await fetchLiveDatabaseData();
+    } catch (err) {
+      alert("Error saving: " + err.message);
     }
-    const processedData = {
-      ...smModal.data,
-      stationName: smModal.data.smStation || smModal.data.stationName || "Nagpur Junction",
-      stationCode: smModal.data.smStation === "Pune Junction" ? "PUNE" : smModal.data.smStation === "New Delhi" ? "NDLS" : "NGP",
-      division: smModal.data.smDivision || smModal.data.division || "Nagpur",
-      zone: smModal.data.smZone || smModal.data.zone || "Central Railway"
-    };
-    if (smModal.mode === "add") {
-      setAomStationMasters(p => [processedData, ...p]);
-    } else {
-      setAomStationMasters(p => p.map(x => (x.hrmsId || x.id) === processedData.hrmsId ? processedData : x));
-    }
-    setSmModal(null);
   };
 
-  const removeSm = (hrmsId) => {
+  const removeSm = async (id) => {
     if (window.confirm("Remove this Station Master?")) {
-      setAomStationMasters(p => p.filter(x => (x.hrmsId || x.id) !== hrmsId));
+      try {
+        await saDataService.removeUser(id);
+        await fetchLiveDatabaseData();
+      } catch (err) {
+        alert("Error removing: " + err.message);
+      }
     }
   };
 
@@ -291,40 +230,46 @@ export function useAomState(user, onLogout) {
     });
   };
 
-  const removeTi = (employeeId) => {
+  const removeTi = async (id) => {
     if (window.confirm("Remove this Traffic Inspector?")) {
-      setTrafficInspectors(prev => prev.filter(t => t.employeeId !== employeeId));
+      try {
+        await saDataService.removeUser(id);
+        await fetchLiveDatabaseData();
+      } catch (err) {
+        alert("Error removing: " + err.message);
+      }
     }
   };
 
-  const saveTiModal = () => {
+  const saveTiModal = async () => {
     if (!tiModal.data.name || !tiModal.data.employeeId) {
       alert("Name and Employee ID are required.");
       return;
     }
-    const processed = {
-      id: tiModal.data.id || Date.now(),
-      name: tiModal.data.name,
-      employeeId: tiModal.data.employeeId,
-      stationName: tiModal.data.stationName,
-      tiArea: tiModal.data.tiArea,
-      division: tiModal.data.tiArea,
-      category: tiModal.data.category,
-      riskLevel: tiModal.data.riskLevel,
-      lastScore: parseInt(tiModal.data.lastScore) || 80,
-      assessmentStatus: tiModal.data.assessmentStatus,
-      phone: tiModal.data.phone,
-      email: tiModal.data.email
-    };
-
-    setTrafficInspectors(prev => {
-      if (tiModal.mode === "add") {
-        return [processed, ...prev];
-      } else {
-        return prev.map(t => (t.id === processed.id || t.employeeId === processed.employeeId) ? processed : t);
-      }
-    });
-    setTiModal(null);
+    try {
+      const data = tiModal.data;
+      const modalData = {
+        id: data.hrmsId || data.employeeId || data.id,
+        name: data.name,
+        contact: data.contact || data.phone || data.contactNumber,
+        email: data.email || data.emailId,
+        role: "Traffic Inspector",
+        station: data.stationName || data.station || data.smStation,
+        division: data.division || data.smDivision || data.tiArea,
+        lastDate: data.doj || data.lastDate,
+        score: data.lastScore || data.score,
+        cat: data.cat || data.category,
+        reportingSm: data.reportingSm,
+        workLocation: data.workLocation,
+        shift: data.shift,
+        jurisdiction: data.jurisdiction
+      };
+      await saDataService.saveUser(modalData, tiModal.mode);
+      setTiModal(null);
+      await fetchLiveDatabaseData();
+    } catch (err) {
+      alert("Error saving: " + err.message);
+    }
   };
 
   const openSsAdd = () => {
@@ -366,81 +311,45 @@ export function useAomState(user, onLogout) {
     });
   };
 
-  const saveSsModal = () => {
+  const saveSsModal = async () => {
     if (!ssModal.data.name || !ssModal.data.employeeId) {
       alert("Name and HRMS ID are required.");
       return;
     }
-    if (ssModal.mode === "shift") {
-      const newRole = ssModal.role || "ss";
-      if (newRole !== "ss") {
-        setAomSuperintendents(p => p.filter(x => x.employeeId !== ssModal.data.employeeId));
-        const commonObj = {
-          employeeId: ssModal.data.employeeId,
-          hrmsId: ssModal.data.employeeId,
-          name: ssModal.data.name,
-          station: ssModal.data.station || ssModal.data.smStation || "Nagpur Junction",
-          stationName: ssModal.data.station || ssModal.data.smStation || "Nagpur Junction",
-          division: ssModal.data.division || "Nagpur",
-          zone: ssModal.data.zone || "Central Railway",
-          cat: ssModal.data.cat || "A",
-          risk: ssModal.data.risk || "Low",
-          score: ssModal.data.score || 80,
-          contact: ssModal.data.contact || "",
-          email: ssModal.data.email || "",
-          lastDate: ssModal.data.lastDate || new Date().toISOString().split('T')[0],
-          status: "Approved",
-          reportingAom: "P. K. Verma (Sr. DOM)"
-        };
-        if (newRole === "sm") {
-          setAomStationMasters(prev => [{ ...commonObj, designation: "Station Master", role: "sm" }, ...prev]);
-        } else if (newRole === "tm") {
-          setAomTrainManagers(prev => [{ ...commonObj, designation: "Train Manager", role: "tm" }, ...prev]);
-        } else if (newRole === "ti") {
-          setTrafficInspectors(prev => [{ ...commonObj, designation: "Traffic Inspector", role: "ti" }, ...prev]);
-        } else if (newRole === "pointsmen") {
-          setAomPointsmen(prev => [{
-            ...commonObj,
-            hrmsId: ssModal.data.employeeId,
-            id: Date.now(),
-            lastScore: ssModal.data.score || 80,
-            safetyScore: 85,
-            totalAssessments: 2,
-            pmeStatus: "Fit",
-            refStatus: "Cleared",
-            disciplinary: "None",
-            incidents: 0,
-            approvalStatus: "Approved",
-            monitoringStatus: "Active",
-            stationCode: ssModal.data.stationCode || "NGP",
-            stationName: ssModal.data.station || "Nagpur Junction"
-          }, ...prev]);
-        }
-        alert(`${ssModal.data.name} shifted to ${newRole.toUpperCase()} successfully.`);
-        setSsModal(null);
-        return;
-      }
+    try {
+      const data = ssModal.data;
+      const modalData = {
+        id: data.hrmsId || data.employeeId || data.id,
+        name: data.name,
+        contact: data.contact || data.phone || data.contactNumber,
+        email: data.email || data.emailId,
+        role: ssModal.mode === "shift" ? ssModal.role : "Station Superintendent",
+        station: data.stationName || data.station || data.smStation,
+        division: data.division || data.smDivision || data.tiArea,
+        lastDate: data.doj || data.lastDate,
+        score: data.lastScore || data.score,
+        cat: data.cat || data.category,
+        reportingSm: data.reportingSm,
+        workLocation: data.workLocation,
+        shift: data.shift,
+        jurisdiction: data.jurisdiction
+      };
+      await saDataService.saveUser(modalData, ssModal.mode);
+      setSsModal(null);
+      await fetchLiveDatabaseData();
+    } catch (err) {
+      alert("Error saving: " + err.message);
     }
-    const processedData = {
-      ...ssModal.data,
-      station: ssModal.data.smStation || ssModal.data.station || "Nagpur Junction",
-      division: ssModal.data.smDivision || ssModal.data.division || "Nagpur",
-      zone: ssModal.data.smZone || ssModal.data.zone || "Central Railway",
-      cat: ssModal.data.category || ssModal.data.cat || "A",
-      risk: ssModal.data.riskLevel || ssModal.data.risk || "Low",
-      score: ssModal.data.lastScore || ssModal.data.score || 80
-    };
-    if (ssModal.mode === "add") {
-      setAomSuperintendents(p => [processedData, ...p]);
-    } else {
-      setAomSuperintendents(p => p.map(x => x.employeeId === processedData.employeeId ? processedData : x));
-    }
-    setSsModal(null);
   };
 
-  const removeSs = (employeeId) => {
+  const removeSs = async (id) => {
     if (window.confirm("Remove this Station Superintendent?")) {
-      setAomSuperintendents(p => p.filter(x => x.employeeId !== employeeId));
+      try {
+        await saDataService.removeUser(id);
+        await fetchLiveDatabaseData();
+      } catch (err) {
+        alert("Error removing: " + err.message);
+      }
     }
   };
 
@@ -486,81 +395,45 @@ export function useAomState(user, onLogout) {
     });
   };
 
-  const saveTmModal = () => {
+  const saveTmModal = async () => {
     if (!tmModal.data.name || !tmModal.data.employeeId) {
       alert("Name and HRMS ID are required.");
       return;
     }
-    if (tmModal.mode === "shift") {
-      const newRole = tmModal.role || "tm";
-      if (newRole !== "tm") {
-        setAomTrainManagers(p => p.filter(x => x.employeeId !== tmModal.data.employeeId));
-        const commonObj = {
-          employeeId: tmModal.data.employeeId,
-          hrmsId: tmModal.data.employeeId,
-          name: tmModal.data.name,
-          station: tmModal.data.station || tmModal.data.smStation || "Nagpur Junction",
-          stationName: tmModal.data.station || tmModal.data.smStation || "Nagpur Junction",
-          division: tmModal.data.division || "Nagpur",
-          zone: tmModal.data.zone || "Central Railway",
-          cat: tmModal.data.cat || "A",
-          risk: tmModal.data.risk || "Low",
-          score: tmModal.data.score || 80,
-          contact: tmModal.data.contact || "",
-          email: tmModal.data.email || "",
-          lastDate: tmModal.data.lastDate || new Date().toISOString().split('T')[0],
-          status: "Approved",
-          reportingAom: "P. K. Verma (Sr. DOM)"
-        };
-        if (newRole === "sm") {
-          setAomStationMasters(prev => [{ ...commonObj, designation: "Station Master", role: "sm" }, ...prev]);
-        } else if (newRole === "ss") {
-          setAomSuperintendents(prev => [{ ...commonObj, designation: "Station Superintendent", role: "ss" }, ...prev]);
-        } else if (newRole === "ti") {
-          setTrafficInspectors(prev => [{ ...commonObj, designation: "Traffic Inspector", role: "ti" }, ...prev]);
-        } else if (newRole === "pointsmen") {
-          setAomPointsmen(prev => [{
-            ...commonObj,
-            hrmsId: tmModal.data.employeeId,
-            id: Date.now(),
-            lastScore: tmModal.data.score || 80,
-            safetyScore: 85,
-            totalAssessments: 2,
-            pmeStatus: "Fit",
-            refStatus: "Cleared",
-            disciplinary: "None",
-            incidents: 0,
-            approvalStatus: "Approved",
-            monitoringStatus: "Active",
-            stationCode: tmModal.data.stationCode || "NGP",
-            stationName: tmModal.data.station || "Nagpur Junction"
-          }, ...prev]);
-        }
-        alert(`${tmModal.data.name} shifted to ${newRole.toUpperCase()} successfully.`);
-        setTmModal(null);
-        return;
-      }
+    try {
+      const data = tmModal.data;
+      const modalData = {
+        id: data.hrmsId || data.employeeId || data.id,
+        name: data.name,
+        contact: data.contact || data.phone || data.contactNumber,
+        email: data.email || data.emailId,
+        role: tmModal.mode === "shift" ? tmModal.role : "Train Manager",
+        station: data.stationName || data.station || data.smStation,
+        division: data.division || data.smDivision || data.tiArea,
+        lastDate: data.doj || data.lastDate,
+        score: data.lastScore || data.score,
+        cat: data.cat || data.category,
+        reportingSm: data.reportingSm,
+        workLocation: data.workLocation,
+        shift: data.shift,
+        jurisdiction: data.jurisdiction
+      };
+      await saDataService.saveUser(modalData, tmModal.mode);
+      setTmModal(null);
+      await fetchLiveDatabaseData();
+    } catch (err) {
+      alert("Error saving: " + err.message);
     }
-    const processedData = {
-      ...tmModal.data,
-      station: tmModal.data.smStation || tmModal.data.station || "Nagpur Junction",
-      division: tmModal.data.smDivision || tmModal.data.division || "Nagpur",
-      zone: tmModal.data.smZone || tmModal.data.zone || "Central Railway",
-      cat: tmModal.data.category || tmModal.data.cat || "A",
-      risk: tmModal.data.riskLevel || tmModal.data.risk || "Low",
-      score: tmModal.data.lastScore || tmModal.data.score || 80
-    };
-    if (tmModal.mode === "add") {
-      setAomTrainManagers(p => [processedData, ...p]);
-    } else {
-      setAomTrainManagers(p => p.map(x => x.employeeId === processedData.employeeId ? processedData : x));
-    }
-    setTmModal(null);
   };
 
-  const removeTm = (employeeId) => {
+  const removeTm = async (id) => {
     if (window.confirm("Remove this Train Manager?")) {
-      setAomTrainManagers(p => p.filter(x => x.employeeId !== employeeId));
+      try {
+        await saDataService.removeUser(id);
+        await fetchLiveDatabaseData();
+      } catch (err) {
+        alert("Error removing: " + err.message);
+      }
     }
   };
   const [showAddUserForm, setShowAddUserForm] = useState(false);
@@ -577,18 +450,13 @@ export function useAomState(user, onLogout) {
   const [aomShowAudit, setAomShowAudit]               = useState({});
   const [aomRejectMode, setAomRejectMode]             = useState({});
   const [aomApprovalNotice, setAomApprovalNotice]     = useState("");
-  const [aomSMList, setAomSMList]                     = useState(() => {
-    try { const s = localStorage.getItem("ti_sm_list"); return s ? JSON.parse(s) : []; } catch { return []; }
-  });
-  const [aomTMList, setAomTMList]                     = useState(() => {
-    try { const s = localStorage.getItem("ti_tm_list"); return s ? JSON.parse(s) : []; } catch { return []; }
-  });
+  const [aomSMList, setAomSMList]                     = useState([]);
+  const [aomTMList, setAomTMList]                     = useState([]);
 
-  // Refresh SM/TM lists from localStorage whenever Approvals page is active
+  // Refresh SM/TM lists from database whenever Approvals page is active
   useEffect(() => {
     if (activePage === "Approvals") {
-      try { const s = localStorage.getItem("ti_sm_list"); if (s) setAomSMList(JSON.parse(s)); } catch {}
-      try { const s = localStorage.getItem("ti_tm_list"); if (s) setAomTMList(JSON.parse(s)); } catch {}
+      fetchLiveDatabaseData();
     }
   }, [activePage]);
 
@@ -692,37 +560,72 @@ export function useAomState(user, onLogout) {
     });
   };
 
-  const aomFinalize = (id, mode, rejectNote = "") => {
-    const setter = aomApprovalTab === "SM" ? setAomSMList : setAomTMList;
-    const listKey = aomApprovalTab === "SM" ? "ti_sm_list" : "ti_tm_list";
-    setter(prev => {
-      const updated = prev.map(item => {
-        if (item.id !== id) return item;
-        const secs  = aomEditSections[id] || [];
+  const aomFinalize = async (id, mode, rejectNote = "") => {
+    try {
+      const newStatus = mode === "reject" ? "Rejected" : "Approved";
+      
+      const { error: updateError } = await supabase
+        .from("ASSESSMENT")
+        .update({ status: newStatus })
+        .eq("assessment_id", id);
+      if (updateError) throw updateError;
+
+      const { data: approvalData } = await supabase
+        .from("APPROVAL")
+        .select("approval_id")
+        .eq("assessment_id", id)
+        .maybeSingle();
+
+      if (approvalData) {
+        await supabase.from("REVIEW").insert([{
+          approval_id: approvalData.approval_id,
+          reviewed_by: user.userId,
+          review_level: "AOM",
+          remarks: mode === "reject" ? rejectNote : (aomAomRemarks[id] || "Approved by AOM")
+        }]);
+      } else {
+        await supabase.from("APPROVAL").insert([{
+          assessment_id: id,
+          approved_by: user.userId,
+          approval_level: "Traffic Inspector",
+          remarks: mode === "reject" ? rejectNote : (aomAomRemarks[id] || "Approved by AOM")
+        }]);
+      }
+
+      if (mode !== "reject") {
+        const currentList = aomApprovalTab === "SM" ? aomSMList : aomTMList;
+        const targetAssess = currentList.find(x => x.id === id);
+        const secs = aomEditSections[id] || [];
         const total = secs.reduce((s, x) => s + x.score, 0);
-        const audit = [...(item.auditTrail || []), {
-          action: mode === "reject" ? "Rejected" : (mode === "modify" ? "Modified & Approved" : "Approved without modification"),
-          by: `AOM ${user?.name || ""}`,
-          date: new Date().toISOString().slice(0, 10),
-          remark: mode === "reject" ? rejectNote : (aomAomRemarks[id] || "")
-        }];
-        return {
-          ...item,
-          status: mode === "reject" ? "Rejected" : "Approved",
-          score: mode === "reject" ? item.score : total,
-          category: mode === "reject" ? item.category : aomGetCat(total),
-          aomRemarks: aomAomRemarks[id] || rejectNote,
-          auditTrail: audit,
-          sections: secs
-        };
-      });
-      localStorage.setItem(listKey, JSON.stringify(updated));
-      return updated;
-    });
-    setAomSelectedId(null);
-    setAomApprovalNotice(mode === "reject" ? "Assessment rejected." : "Assessment approved successfully.");
-    setTimeout(() => setAomApprovalNotice(""), 4000);
-    setAomReviewTab(mode === "reject" ? "Rejected" : "Approved");
+
+        await supabase.from("TEST_ATTEMPT").update({
+          obtained_marks: total,
+          percentage: total,
+          category: aomGetCat(total)
+        }).eq("assessment_id", id);
+
+        if (targetAssess?.hrmsId) {
+          const emp = users.find(u => u.hrmsId === targetAssess.hrmsId);
+          if (emp?.user_id) {
+            await supabase.from("EMPLOYEE_PROFILE").update({
+              current_score: total,
+              category: aomGetCat(total)
+            }).eq("user_id", emp.user_id);
+          }
+        }
+      }
+
+      await fetchLiveDatabaseData();
+
+      setAomSelectedId(null);
+      setAomApprovalNotice(mode === "reject" ? "Assessment rejected." : "Assessment approved successfully.");
+      setTimeout(() => setAomApprovalNotice(""), 4000);
+      setAomReviewTab(mode === "reject" ? "Rejected" : "Approved");
+    } catch (err) {
+      console.error("Error finalizing assessment by AOM:", err);
+      setAomApprovalNotice("Failed to finalize assessment in database.");
+      setTimeout(() => setAomApprovalNotice(""), 4000);
+    }
   };
 
   const aomAllStations = [...new Set(aomCurrentList.map(x => x.station))];
@@ -807,7 +710,7 @@ export function useAomState(user, onLogout) {
   const [appliedFilters, setAppliedFilters] = useState(initialFilterData);
   const [tableSearch, setTableSearch] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-  const [stations, setStations] = useState(initialStations);
+  const [stations, setStations] = useState([]);
   const [stationFormData, setStationFormData] = useState(initialStationFormData);
   const [stationFormErrors, setStationFormErrors] = useState({});
   const [pendingStationFilters, setPendingStationFilters] = useState(initialStationFilterData);
@@ -877,32 +780,8 @@ export function useAomState(user, onLogout) {
     setZoomPopupPage(1);
   };
 
-  const aomPointsmenSeed = [
-    { id: 1, hrmsId: "PM_1001", name: "Ravi Kumar", gender: "Male", age: 38, doj: "2012-04-10", basePay: "₹28,500", lastScore: 92, safetyScore: 95, totalAssessments: 12, pmeStatus: "Fit", refStatus: "Cleared", disciplinary: "None", incidents: 0, approvalStatus: "Approved", monitoringStatus: "Active", stationCode: "NGP", stationName: "Nagpur Junction" },
-    { id: 2, hrmsId: "PM_1102", name: "Sanjay Patil", gender: "Male", age: 34, doj: "2015-08-22", basePay: "₹26,200", lastScore: 78, safetyScore: 80, totalAssessments: 9, pmeStatus: "Fit", refStatus: "Cleared", disciplinary: "None", incidents: 0, approvalStatus: "Pending", monitoringStatus: "On Duty", stationCode: "NGP", stationName: "Nagpur Junction" },
-    { id: 3, hrmsId: "PM_1103", name: "Deepak Nair", gender: "Male", age: 41, doj: "2009-11-05", basePay: "₹31,000", lastScore: 48, safetyScore: 62, totalAssessments: 15, pmeStatus: "Fit", refStatus: "Pending", disciplinary: "Warning", incidents: 1, approvalStatus: "Approved", monitoringStatus: "Off Duty", stationCode: "PUNE", stationName: "Pune Junction" },
-    { id: 4, hrmsId: "PM_1104", name: "Ajay Sharma", gender: "Male", age: 29, doj: "2019-02-18", basePay: "₹23,400", lastScore: 84, safetyScore: 88, totalAssessments: 6, pmeStatus: "Fit", refStatus: "Cleared", disciplinary: "None", incidents: 0, approvalStatus: "Pending", monitoringStatus: "Active", stationCode: "PUNE", stationName: "Pune Junction" },
-    { id: 5, hrmsId: "PM_1105", name: "Kunal Verma", gender: "Male", age: 36, doj: "2013-07-30", basePay: "₹27,800", lastScore: 35, safetyScore: 55, totalAssessments: 11, pmeStatus: "Unfit", refStatus: "Pending", disciplinary: "Warning", incidents: 2, approvalStatus: "Rejected", monitoringStatus: "Absent", stationCode: "NGP", stationName: "Nagpur Junction" },
-    { id: 6, hrmsId: "PM_1106", name: "Priya Menon", gender: "Female", age: 31, doj: "2018-03-14", basePay: "₹25,100", lastScore: 67, safetyScore: 74, totalAssessments: 7, pmeStatus: "Fit", refStatus: "Cleared", disciplinary: "None", incidents: 0, approvalStatus: "Approved", monitoringStatus: "On Duty", stationCode: "NDLS", stationName: "New Delhi" },
-    { id: 7, hrmsId: "PM_1107", name: "Ramesh Yadav", gender: "Male", age: 45, doj: "2005-09-01", basePay: "₹34,600", lastScore: 82, safetyScore: 90, totalAssessments: 18, pmeStatus: "Fit", refStatus: "Cleared", disciplinary: "None", incidents: 0, approvalStatus: "Approved", monitoringStatus: "Off Duty", stationCode: "NDLS", stationName: "New Delhi" },
-    { id: 8, hrmsId: "PM_1108", name: "Sneha Iyer", gender: "Female", age: 28, doj: "2020-01-20", basePay: "₹22,000", lastScore: 19, safetyScore: 40, totalAssessments: 3, pmeStatus: "Unfit", refStatus: "Pending", disciplinary: "Serious", incidents: 3, approvalStatus: "Rejected", monitoringStatus: "Absent", stationCode: "NDLS", stationName: "New Delhi" }
-  ];
-
-  const [aomPointsmen, setAomPointsmen] = useState(aomPointsmenSeed);
-
-  const [aomStationMasters, setAomStationMasters] = useState(() => {
-    const saved = localStorage.getItem("aom_station_masters");
-    if (saved) return JSON.parse(saved);
-    return [
-      { id: "SM_1001", hrmsId: "SM_1001", name: "A. Patil", gender: "Male", age: 42, doj: "2010-05-15", basePay: "₹56,000", designation: "Station Master", role: "sm", stationName: "Nagpur Junction", stationCode: "NGP", division: "Nagpur", zone: "Central Railway", category: "A", contactNumber: "9890011122", emailId: "ngp.station@rail.in", lastAssessDate: "2026-03-20", score: 85, pmeStatus: "Fit", refStatus: "Cleared" },
-      { id: "SM_1002", hrmsId: "SM_1002", name: "R. Jadhav", gender: "Male", age: 39, doj: "2012-08-22", basePay: "₹54,000", designation: "Station Master", role: "sm", stationName: "Pune Junction", stationCode: "PUNE", division: "Pune", zone: "Central Railway", category: "A", contactNumber: "9880012233", emailId: "pune.station@rail.in", lastAssessDate: "2026-02-14", score: 72, pmeStatus: "Fit", refStatus: "Cleared" },
-      { id: "SM_1003", hrmsId: "SM_1003", name: "M. Sharma", gender: "Male", age: 45, doj: "2008-03-10", basePay: "₹62,000", designation: "Station Master", role: "sm", stationName: "New Delhi", stationCode: "NDLS", division: "Delhi", zone: "Northern Railway", category: "A", contactNumber: "9876543210", emailId: "ndls.station@rail.in", lastAssessDate: "2026-03-12", score: 84, pmeStatus: "Fit", refStatus: "Cleared" }
-    ];
-  });
-
-  useEffect(() => {
-    localStorage.setItem("aom_station_masters", JSON.stringify(aomStationMasters));
-  }, [aomStationMasters]);
+  const [aomPointsmen, setAomPointsmen] = useState([]);
+  const [aomStationMasters, setAomStationMasters] = useState([]);
 
   const [smModal, setSmModal] = useState(null);
   const [ssModal, setSsModal] = useState(null);
@@ -1010,7 +889,7 @@ export function useAomState(user, onLogout) {
   const [stationDetailId, setStationDetailId] = useState(null);
   const [isStationEditMode, setIsStationEditMode] = useState(false);
   const [tiSearch, setTiSearch] = useState("");
-  const [trafficInspectors, setTrafficInspectors] = useState(initialTrafficInspectors);
+  const [trafficInspectors, setTrafficInspectors] = useState([]);
   const [tiFormData, setTiFormData] = useState(initialTiFormData);
   const [tiFormErrors, setTiFormErrors] = useState({});
   const [tiAddMode, setTiAddMode] = useState("form");
@@ -1022,9 +901,9 @@ export function useAomState(user, onLogout) {
   const [tiShiftDrafts, setTiShiftDrafts] = useState({});
   const [smShiftDrafts, setSmShiftDrafts] = useState({});
   const [selectedTIForStationMasters, setSelectedTIForStationMasters] = useState(null);
-  const [pendingAssessments, setPendingAssessments] = useState(initialPendingAssessments);
-  const [approvedAssessments, setApprovedAssessments] = useState(initialApprovedAssessments);
-  const [reportRows, setReportRows] = useState(initialReportRows);
+  const [pendingAssessments, setPendingAssessments] = useState([]);
+  const [approvedAssessments, setApprovedAssessments] = useState([]);
+  const [reportRows, setReportRows] = useState([]);
   const [reportSearchQuery, setReportSearchQuery] = useState("");
   const [reportDesignation, setReportDesignation] = useState("All Designations");
   const [repF, setRepF] = useState({ search: "", role: "All", station: "All", cat: "All", risk: "All", ti: "All" });
@@ -1097,31 +976,8 @@ export function useAomState(user, onLogout) {
   const [tiAssessmentFormOpen, setTiAssessmentFormOpen] = useState(null); // hrmsId of TI being assessed
   const [tiAssessmentAnswers, setTiAssessmentAnswers] = useState({});
 
-  const [aomSuperintendents, setAomSuperintendents] = useState(() => {
-    const saved = localStorage.getItem("aom_superintendents");
-    if (saved) return JSON.parse(saved);
-    return [
-      { id: 1, employeeId: "SS_001", name: "R. Desai", role: "ss", designation: "Station Superintendent", station: "Nagpur Junction", division: "Nagpur", zone: "Central Railway", cat: "A", risk: "Low", score: 92, contact: "9999911111", email: "rdesai@rail.in", lastDate: "2026-04-18", status: "Approved" },
-      { id: 2, employeeId: "SS_002", name: "M. Kulkarni", role: "ss", designation: "Station Superintendent", station: "Parbhani Junction", division: "Nagpur", zone: "Central Railway", cat: "A", risk: "Low", score: 87, contact: "9999922222", email: "mkulkarni@rail.in", lastDate: "2026-04-10", status: "Approved" }
-    ];
-  });
-
-  useEffect(() => {
-    localStorage.setItem("aom_superintendents", JSON.stringify(aomSuperintendents));
-  }, [aomSuperintendents]);
-
-  const [aomTrainManagers, setAomTrainManagers] = useState(() => {
-    const saved = localStorage.getItem("aom_train_managers");
-    if (saved) return JSON.parse(saved);
-    return [
-      { id: 1, employeeId: "TM_3001", name: "V. Sharma", role: "tm", designation: "Train Manager", station: "Nagpur Junction", division: "Nagpur", zone: "Central Railway", cat: "A", risk: "Low", score: 89, contact: "9999988888", email: "vsharma@rail.in", lastDate: "2026-04-14", status: "Approved", workLocation: "Nagpur Depot", reportingSm: "NGP-BSL Section", shift: "Goods Train Beat" },
-      { id: 2, employeeId: "TM_3002", name: "P. Jadhav", role: "tm", designation: "Train Manager", station: "Amla Junction", division: "Nagpur", zone: "Central Railway", cat: "C", risk: "High", score: 52, contact: "9999999999", email: "pjadhav@rail.in", lastDate: "2026-03-10", status: "Rejected", workLocation: "Nagpur Depot", reportingSm: "NGP-BSL Section", shift: "Goods Train Beat" }
-    ];
-  });
-
-  useEffect(() => {
-    localStorage.setItem("aom_train_managers", JSON.stringify(aomTrainManagers));
-  }, [aomTrainManagers]);
+  const [aomSuperintendents, setAomSuperintendents] = useState([]);
+  const [aomTrainManagers, setAomTrainManagers] = useState([]);
 
   const allEmployees = useMemo(() => {
     return [
@@ -1409,7 +1265,7 @@ export function useAomState(user, onLogout) {
     window.alert(`${title}\n${detailLine}\nStatus: ${statusLabel}`);
   };
 
-  const handleApproveAssessment = (id) => {
+  const handleApproveAssessment = async (id) => {
     const target = pendingAssessments.find((item) => item.id === id);
     if (!target) {
       return;
@@ -1417,40 +1273,61 @@ export function useAomState(user, onLogout) {
 
     const { score: computedScore, grade } = computeScoreAndGrade(target);
 
-    setPendingAssessments((prev) => prev.filter((item) => item.id !== id));
-    setApprovedAssessments((prev) => [
-      {
-        id: target.id,
-        title: target.title,
-        detail: `Approved by: AOM/G - on ${todayIso()}`,
-        score: `Score: ${computedScore}/100 - Grade: ${grade}`
-      },
-      ...prev
-    ]);
-    setReportRows((prev) =>
-      prev.map((row) =>
-        row.id === id
-          ? {
-              ...row,
-              assessmentStatus: "Approved",
-              score: String(computedScore),
-              grade,
-              lastAssessed: todayIso()
-            }
-          : row
-      )
-    );
-    setAssessmentActionNotice(`${target.title} approved successfully.`);
-    setOpenAssessmentId((prev) => (prev === id ? null : prev));
+    try {
+      const { error: updateError } = await supabase
+        .from("ASSESSMENT")
+        .update({ status: "Approved" })
+        .eq("assessment_id", id);
+      if (updateError) throw updateError;
+
+      await supabase.from("APPROVAL").insert([{
+        assessment_id: id,
+        approved_by: user.userId,
+        approval_level: "AOM",
+        remarks: "Approved by AOM via console"
+      }]);
+
+      await supabase.from("TEST_ATTEMPT").update({
+        obtained_marks: computedScore,
+        percentage: computedScore,
+        category: grade
+      }).eq("assessment_id", id);
+
+      const hrmsId = target.title.split(" - ")[1] || "";
+      const targetEmp = users.find(u => u.hrmsId === hrmsId);
+      if (targetEmp?.user_id) {
+        await supabase.from("EMPLOYEE_PROFILE").update({
+          current_score: computedScore,
+          category: grade
+        }).eq("user_id", targetEmp.user_id);
+      }
+
+      setAssessmentActionNotice(`${target.title} approved successfully.`);
+      setOpenAssessmentId((prev) => (prev === id ? null : prev));
+      await fetchLiveDatabaseData();
+    } catch (err) {
+      console.error("Error approving assessment:", err);
+      setAssessmentActionNotice("Failed to approve assessment in database.");
+    }
   };
 
-  const handleRejectAssessment = (id) => {
+  const handleRejectAssessment = async (id) => {
     const target = pendingAssessments.find((item) => item.id === id);
-    setPendingAssessments((prev) => prev.filter((item) => item.id !== id));
-    if (target) {
+    if (!target) return;
+    try {
+      const { error: updateError } = await supabase
+        .from("ASSESSMENT")
+        .update({ status: "Rejected" })
+        .eq("assessment_id", id);
+      if (updateError) throw updateError;
+
       setAssessmentActionNotice(`${target.title} rejected.`);
+      setOpenAssessmentId((prev) => (prev === id ? null : prev));
+      await fetchLiveDatabaseData();
+    } catch (err) {
+      console.error("Error rejecting assessment:", err);
+      setAssessmentActionNotice("Failed to reject assessment in database.");
     }
-    setOpenAssessmentId((prev) => (prev === id ? null : prev));
   };
 
   const handleStartAssessment = (id) => {
@@ -1991,7 +1868,7 @@ export function useAomState(user, onLogout) {
     return errors;
   };
 
-  const handleAddStationSubmit = (e) => {
+  const handleAddStationSubmit = async (e) => {
     e.preventDefault();
     const errors = validateStationForm("create");
 
@@ -2000,21 +1877,29 @@ export function useAomState(user, onLogout) {
       return;
     }
 
-    setStations((prev) => [
-      ...prev,
-      {
-        ...stationFormData,
-        id: Date.now(),
-        stationCode: stationFormData.stationCode.trim().toUpperCase(),
+    try {
+      const payload = {
+        station_name: stationFormData.stationName,
+        station_code: stationFormData.stationCode.trim().toUpperCase(),
+        division: stationFormData.division || "Nagpur",
+        zone: stationFormData.zone || "Central Railway",
+        category: stationFormData.category || "A",
         platforms: Number(stationFormData.platforms),
         tracks: Number(stationFormData.tracks),
-        createdBy: user.hrmsId
-      }
-    ]);
+        station_type: stationFormData.stationType || "Junction",
+        status: "Active",
+        location: stationFormData.address || ""
+      };
 
-    setStationFormData(initialStationFormData);
-    setStationFormErrors({});
-    setActivePage("Station Management");
+      await saDataService.saveStation(payload, "add");
+      setStationFormData(initialStationFormData);
+      setStationFormErrors({});
+      await fetchLiveDatabaseData();
+      setActivePage("Station Management");
+    } catch (err) {
+      console.error("Error saving station in AOM:", err);
+      alert("Failed to save station: " + err.message);
+    }
   };
 
   const handleResetStationForm = () => {
@@ -6091,7 +5976,7 @@ export function useAomState(user, onLogout) {
     return <span className={`sdom-badge ${map[s] || "sdom-badge-neutral"}`}>{s}</span>;
   }
 
-  const handleAddStation = () => {
+  const handleAddStation = async () => {
     if (!newStName || !newStCode) return;
     const newSt = {
       id: "ST_" + Date.now(),
@@ -6099,13 +5984,9 @@ export function useAomState(user, onLogout) {
       stationCode: newStCode.toUpperCase(),
       division: newStDivision,
       zone: newStZone,
-      completed: 250,
-      pending: 10,
-      avgScore: 82,
       category: newStCategory,
       riskLevel: "Low",
       assessmentStatus: "Approved",
-      lastUpdatedDate: new Date().toISOString().split('T')[0],
       stationClass: newStClass,
       stationType: newStType,
       signalingType: newStSignaling,
@@ -6119,8 +6000,13 @@ export function useAomState(user, onLogout) {
       lineConfig: newStLineConfig,
       electrified: newStElectrified
     };
-    DASHBOARD_96_STATIONS.push(newSt);
-    setShowAddStation(false);
+    try {
+      await saDataService.saveStation(newSt, "add");
+      setShowAddStation(false);
+      await fetchLiveDatabaseData();
+    } catch (err) {
+      alert("Error saving station: " + err.message);
+    }
   };
 
   function renderStaffDetail(s) {
@@ -6514,6 +6400,205 @@ export function useAomState(user, onLogout) {
     );
   };
 
+  const fetchLiveDatabaseData = async () => {
+    if (!isSupabaseConfigured) return;
+    try {
+      const u = await saDataService.fetchUsers();
+      const st = await saDataService.fetchStations(u);
+      
+      setStations(st);
+      
+      const mapped = u.map(x => ({
+        ...x,
+        hrmsId: x.id,
+        employeeId: x.id,
+        name: x.name,
+        lastScore: x.score,
+        safetyScore: x.safetyScore || 85,
+        doj: x.lastDate,
+        stationName: x.station,
+        stationCode: st.find(s => s.name === x.station)?.code || "NGP",
+        approvalStatus: x.status,
+        monitoringStatus: "Active",
+        contactNumber: x.contact,
+        contact: x.contact,
+        emailId: x.email,
+        email: x.email,
+        designation: ROLE_MAP[x.role] || x.role,
+        role: x.role,
+        division: x.division,
+        zone: x.zone,
+        cat: x.cat,
+        risk: x.risk,
+        riskLevel: x.risk,
+        workLocation: x.workLocation,
+        reportingSm: x.reportingSm,
+        shift: x.shift
+      }));
+
+      setAomPointsmen(mapped.filter(x => x.role === "pointsmen"));
+      setAomStationMasters(mapped.filter(x => x.role === "sm"));
+      setAomSuperintendents(mapped.filter(x => x.role === "ss"));
+      setAomTrainManagers(mapped.filter(x => x.role === "tm"));
+      setTrafficInspectors(mapped.filter(x => x.role === "ti"));
+      setUsers(mapped);
+
+      // Fetch assessments
+      const { data: assessList, error: assessError } = await supabase
+        .from("ASSESSMENT")
+        .select(`
+          *,
+          employee:USERS!employee_id (
+            user_id,
+            hrms_id,
+            full_name,
+            email,
+            mobile_no,
+            ROLE (role_name),
+            EMPLOYEE_PROFILE (
+              joining_date,
+              current_score,
+              safety_score,
+              category,
+              monitoring_status,
+              shift,
+              work_location,
+              STATION (station_name, station_code, DIVISION (division_name))
+            )
+          ),
+          conducted_by_user:USERS!conducted_by (
+            full_name
+          ),
+          TEST_ATTEMPT (*),
+          APPROVAL (*, USERS!approved_by(full_name))
+        `)
+        .order("created_at", { ascending: false });
+
+      if (!assessError && assessList) {
+        // Map SM assessments
+        const sms = (assessList || []).filter(a => a.assessment_type === "Station Master Assessment");
+        const smMapped = sms.map(a => {
+          const score = a.TEST_ATTEMPT?.[0]?.obtained_marks || 0;
+          const cat = a.TEST_ATTEMPT?.[0]?.category || "A";
+          const subDate = a.assessment_date ? new Date(a.assessment_date).toISOString().slice(0, 10) : "";
+          return {
+            id: a.assessment_id,
+            name: a.employee?.full_name || "",
+            hrmsId: a.employee?.hrms_id || "",
+            station: a.employee?.EMPLOYEE_PROFILE?.STATION?.station_name || "—",
+            submissionDate: subDate,
+            status: a.status === 'Pending' ? 'Submitted' : a.status,
+            score: score,
+            category: cat,
+            pmeStatus: "Fit",
+            refStatus: "Cleared",
+            sections: [
+              { title: "Station Management", score: Math.round(score * 0.25), max: 25 },
+              { title: "Safety & Compliance", score: Math.round(score * 0.20), max: 20 },
+              { title: "Staff Supervision", score: Math.round(score * 0.15), max: 15 },
+              { title: "Documentation & Reporting", score: Math.round(score * 0.15), max: 15 },
+              { title: "Emergency Handling", score: Math.round(score * 0.25), max: 25 },
+              { title: "Written Exam (Knowledge)", score: Math.round(score * 0.20), max: 25 }
+            ],
+            auditTrail: a.APPROVAL ? [{ action: "Approved", by: a.APPROVAL.USERS?.full_name || "AOM", date: new Date(a.APPROVAL.approval_date).toISOString().slice(0,10), remark: a.APPROVAL.remarks }] : []
+          };
+        });
+        setAomSMList(smMapped);
+
+        // Map TM assessments
+        const tms = (assessList || []).filter(a => a.assessment_type === "Train Manager Assessment");
+        const tmMapped = tms.map(a => {
+          const score = a.TEST_ATTEMPT?.[0]?.obtained_marks || 0;
+          const cat = a.TEST_ATTEMPT?.[0]?.category || "A";
+          const subDate = a.assessment_date ? new Date(a.assessment_date).toISOString().slice(0, 10) : "";
+          return {
+            id: a.assessment_id,
+            name: a.employee?.full_name || "",
+            hrmsId: a.employee?.hrms_id || "",
+            station: a.employee?.EMPLOYEE_PROFILE?.STATION?.station_name || "—",
+            submissionDate: subDate,
+            status: a.status === 'Pending' ? 'Submitted' : a.status,
+            score: score,
+            category: cat,
+            pmeStatus: "Fit",
+            refStatus: "Cleared",
+            sections: [
+              { title: "Train Safety & Brake Inspection", score: Math.round(score * 0.25), max: 25 },
+              { title: "Signaling & Whistle Compliance", score: Math.round(score * 0.20), max: 20 },
+              { title: "Shunting & Coupling Ops", score: Math.round(score * 0.15), max: 15 },
+              { title: "Train Log & Guard Certificates", score: Math.round(score * 0.15), max: 15 },
+              { title: "Emergency Train Protection", score: Math.round(score * 0.25), max: 25 },
+              { title: "Written Exam (Knowledge)", score: Math.round(score * 0.20), max: 25 }
+            ],
+            auditTrail: a.APPROVAL ? [{ action: "Approved", by: a.APPROVAL.USERS?.full_name || "AOM", date: new Date(a.APPROVAL.approval_date).toISOString().slice(0,10), remark: a.APPROVAL.remarks }] : []
+          };
+        });
+        setAomTMList(tmMapped);
+
+        // Map pending assessments for AOM Console (status is 'Pending')
+        const pendingMapped = (assessList || []).filter(a => a.status === "Pending").map(a => {
+          const roleName = a.employee?.ROLE?.role_name === 'sm' ? 'Station Master' :
+                           a.employee?.ROLE?.role_name === 'tm' ? 'Train Manager' :
+                           a.employee?.ROLE?.role_name === 'ss' ? 'Station Superintendent' :
+                           a.employee?.ROLE?.role_name === 'pointsmen' ? 'Pointsman' : 'Traffic Inspector';
+          const divName = a.employee?.EMPLOYEE_PROFILE?.STATION?.DIVISION?.division_name || "Nagpur";
+          return {
+            id: a.assessment_id,
+            title: `${roleName} - ${a.employee?.hrms_id || a.employee_id}`,
+            statusLabel: "Pending Approval",
+            assessedByLine: `Assessed by: ${a.conducted_by_user?.full_name || "TI"} - on ${a.assessment_date ? new Date(a.assessment_date).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10)}`,
+            employeeLine: `Employee: ${a.employee?.full_name || ""} | Division: ${divName}`,
+            actionType: "approval"
+          };
+        });
+        setPendingAssessments(pendingMapped);
+
+        // Map approved assessments for AOM Console (status is 'Approved')
+        const approvedMapped = (assessList || []).filter(a => a.status === "Approved").map(a => {
+          const roleName = a.employee?.ROLE?.role_name === 'sm' ? 'Station Master' :
+                           a.employee?.ROLE?.role_name === 'tm' ? 'Train Manager' :
+                           a.employee?.ROLE?.role_name === 'ss' ? 'Station Superintendent' :
+                           a.employee?.ROLE?.role_name === 'pointsmen' ? 'Pointsman' : 'Traffic Inspector';
+          const score = a.TEST_ATTEMPT?.[0]?.obtained_marks || 0;
+          const cat = a.TEST_ATTEMPT?.[0]?.category || "A";
+          return {
+            id: a.assessment_id,
+            title: `${roleName} - ${a.employee?.hrms_id || a.employee_id}`,
+            detail: `Approved by: AOM - on ${a.assessment_date ? new Date(a.assessment_date).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10)}`,
+            score: `Score: ${score}/100 - Grade: ${cat}`
+          };
+        });
+        setApprovedAssessments(approvedMapped);
+
+        // Map reportRows from assessList
+        const reportsMapped = (assessList || []).map(a => {
+          const roleName = a.employee?.ROLE?.role_name === 'sm' ? 'Station Master' :
+                           a.employee?.ROLE?.role_name === 'tm' ? 'Train Manager' :
+                           a.employee?.ROLE?.role_name === 'ss' ? 'Station Superintendent' :
+                           a.employee?.ROLE?.role_name === 'pointsmen' ? 'Pointsman' : 'Traffic Inspector';
+          const score = a.TEST_ATTEMPT?.[0]?.obtained_marks || 0;
+          const cat = a.TEST_ATTEMPT?.[0]?.category || "A";
+          return {
+            id: a.assessment_id,
+            hrmsId: a.employee?.hrms_id || "",
+            name: a.employee?.full_name || "",
+            designation: roleName,
+            assessmentStatus: a.status === 'Pending' ? 'Pending Approval' : a.status,
+            score: String(score),
+            grade: cat,
+            lastAssessed: a.assessment_date ? new Date(a.assessment_date).toISOString().slice(0, 10) : ""
+          };
+        });
+        setReportRows(reportsMapped);
+      }
+    } catch (err) {
+      console.error("Failed to load AOM live data:", err);
+    }
+  };
+
+  useEffect(() => {
+    fetchLiveDatabaseData();
+  }, []);
 
   return {
     activePage,
@@ -6696,7 +6781,6 @@ export function useAomState(user, onLogout) {
     setPointsmanStatusFilter,
     handleChartClick,
     handlePieClick,
-    aomPointsmenSeed,
     aomPointsmen,
     setAomPointsmen,
     aomStationMasters,

@@ -4,11 +4,11 @@ import { ResponsiveContainer, LineChart, CartesianGrid, XAxis, YAxis, Tooltip as
 import { ROLE_MAP } from "../../../utils/saConstants";
 import { catBadge, riskBadge, statusBadge } from "../../../utils/saUtils";
 
-export function SAStaffDetail({ 
-  staffMember: s, 
-  view, 
-  setView, 
-  closeView 
+export function SAStaffDetail({
+  staffMember: s,
+  view,
+  setView,
+  closeView
 }) {
   const monthlyTrendList = [
     { month: "Dec'25" },
@@ -16,27 +16,27 @@ export function SAStaffDetail({
     { month: "Feb'26" },
     { month: "Mar'26" },
   ];
-  const scoreData = monthlyTrendList.map((m,i) => ({ month: m.month, score: Math.max(50, s.score - 10 + i*2) }));
+  const scoreData = monthlyTrendList.map((m, i) => ({ month: m.month, score: Math.max(50, s.score - 10 + i * 2) }));
 
   return (
     <div className="sdom-fade">
-      <div style={{marginBottom:24}}>
+      <div style={{ marginBottom: 24 }}>
         <button className="sdom-back-btn" onClick={() => {
           if (view?.returnTo === "stationDetail") {
             setView({ type: "stationDetail", data: view.stationData });
           } else {
             closeView();
           }
-        }}><ArrowLeft size={16}/> Back to List</button>
+        }}><ArrowLeft size={16} /> Back to List</button>
       </div>
 
       {/* Hero header */}
-      <div className="sdom-station-header" style={{marginBottom:24}}>
+      <div className="sdom-station-header" style={{ marginBottom: 24 }}>
         <div className="sdom-station-header-meta">
-          <div style={{fontSize:"0.8rem",color:"rgba(255,255,255,0.6)",marginBottom:6,textTransform:"uppercase",letterSpacing:"0.06em"}}>Staff Profile</div>
-          <div style={{fontSize:"1.8rem",fontWeight:800,marginBottom:4}}>{s.name}</div>
-          <div style={{fontSize:"0.9rem",color:"rgba(255,255,255,0.7)"}}>{ROLE_MAP[s.role] || s.role} &bull; {s.station} &bull; {s.zone || "Central Railway"}</div>
-          <div style={{marginTop:12,display:"flex",gap:10}}>
+          <div style={{ fontSize: "0.8rem", color: "rgba(255,255,255,0.6)", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.06em" }}>Staff Profile</div>
+          <div style={{ fontSize: "1.8rem", fontWeight: 800, marginBottom: 4 }}>{s.name}</div>
+          <div style={{ fontSize: "0.9rem", color: "rgba(255,255,255,0.7)" }}>{ROLE_MAP[s.role] || s.role} &bull; {s.role === 'ti' || s.role === 'Traffic Inspector' ? `${s.division || "Various"} Division` : s.station} &bull; {s.zone || "Central Railway"}</div>
+          <div style={{ marginTop: 12, display: "flex", gap: 10 }}>
             {catBadge(s.cat)}
             {riskBadge(s.risk)}
             {statusBadge(s.status)}
@@ -47,12 +47,12 @@ export function SAStaffDetail({
             <span className="val">{s.score}</span>
             <span className="lbl">Latest Score</span>
           </div>
-          <div style={{width:1,height:60,background:"rgba(255,255,255,0.15)"}}/>
+          <div style={{ width: 1, height: 60, background: "rgba(255,255,255,0.15)" }} />
           <div className="sdom-station-header-stat">
             <span className="val">{s.contact || "—"}</span>
             <span className="lbl">Contact</span>
           </div>
-          <div style={{width:1,height:60,background:"rgba(255,255,255,0.15)"}}/>
+          <div style={{ width: 1, height: 60, background: "rgba(255,255,255,0.15)" }} />
           <div className="sdom-station-header-stat">
             <span className="val">{s.lastDate || "—"}</span>
             <span className="lbl">Last Assessment</span>
@@ -64,7 +64,7 @@ export function SAStaffDetail({
       <div className="sdom-row-2">
         <div className="sdom-chart-card">
           <div className="sdom-chart-title" style={{ marginBottom: "16px" }}>Personal & Professional Details</div>
-          
+
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '15px', paddingBottom: '20px' }}>
             {[
               ["Employee ID / HRMS ID", s.id],
@@ -74,7 +74,7 @@ export function SAStaffDetail({
               ["Account Status", s.status || "Active"],
               ["Current Zone", s.zone || "Central Railway"],
               ["Current Division", s.division || "Nagpur"],
-              ["Current Station Placement", s.station],
+              ["Current Station Placement", s.role === 'ti' || s.role === 'Traffic Inspector' ? (s.jurisdiction || 'Various') : s.station],
               ["Reporting Officer", s.reportingAom || "P. K. Verma (Sr. DOM)"]
             ].map(([lbl, val]) => (
               <div key={lbl} style={{ background: "#f8fafc", borderRadius: 8, padding: "12px 16px", border: "1px solid #e2e8f0" }}>
@@ -89,36 +89,36 @@ export function SAStaffDetail({
             <h4 style={{ margin: '0 0 12px', fontSize: '14px', color: '#0f172a', fontWeight: '800', borderBottom: '1px solid #cbd5e1', paddingBottom: '6px' }}>
               Operational Profile Specifications
             </h4>
-            
+
             {s.role === "pointsmen" && (
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', fontSize: '13px' }}>
-                <div><strong>Reporting Station Master:</strong><div style={{fontWeight: 700, color: "#1e3a5f", marginTop: 4}}>{s.reportingSm || "S. Deshmukh (SM)"}</div></div>
-                <div><strong>Assigned Shift:</strong><div style={{fontWeight: 700, color: "#1e3a5f", marginTop: 4}}>{s.shift || "Morning Shift (06:00 - 14:00)"}</div></div>
-                <div><strong>Work Location Setup:</strong><div style={{fontWeight: 700, color: "#1e3a5f", marginTop: 4}}>{s.workLocation || "Yard Area"}</div></div>
+                <div><strong>Reporting Station Master:</strong><div style={{ fontWeight: 700, color: "#1e3a5f", marginTop: 4 }}>{s.reportingSm || "S. Deshmukh (SM)"}</div></div>
+                <div><strong>Assigned Shift:</strong><div style={{ fontWeight: 700, color: "#1e3a5f", marginTop: 4 }}>{s.shift || "Morning Shift (06:00 - 14:00)"}</div></div>
+                <div><strong>Work Location Setup:</strong><div style={{ fontWeight: 700, color: "#1e3a5f", marginTop: 4 }}>{s.workLocation || "Yard Area"}</div></div>
               </div>
             )}
 
             {(s.role === "sm" || s.role === "ss") && (
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', fontSize: '13px' }}>
-                <div><strong>Operational Station:</strong><div style={{fontWeight: 700, color: "#065f46", marginTop: 4}}>{s.smStation || s.station || "N/A"}</div></div>
-                <div><strong>Operational Division:</strong><div style={{fontWeight: 700, color: "#065f46", marginTop: 4}}>{s.smDivision || s.division || "Nagpur"}</div></div>
-                <div><strong>Operational Zone:</strong><div style={{fontWeight: 700, color: "#065f46", marginTop: 4}}>{s.smZone || s.zone || "Central Railway"}</div></div>
+                <div><strong>Operational Station:</strong><div style={{ fontWeight: 700, color: "#065f46", marginTop: 4 }}>{s.smStation || s.station || "N/A"}</div></div>
+                <div><strong>Operational Division:</strong><div style={{ fontWeight: 700, color: "#065f46", marginTop: 4 }}>{s.smDivision || s.division || "Nagpur"}</div></div>
+                <div><strong>Operational Zone:</strong><div style={{ fontWeight: 700, color: "#065f46", marginTop: 4 }}>{s.smZone || s.zone || "Central Railway"}</div></div>
               </div>
             )}
 
             {s.role === "ti" && (
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', fontSize: '13px' }}>
-                <div><strong>Jurisdiction Division:</strong><div style={{fontWeight: 700, color: "#92400e", marginTop: 4}}>{s.jurisdiction || "Nagpur Division"}</div></div>
-                <div><strong>Reporting AOM Officer:</strong><div style={{fontWeight: 700, color: "#92400e", marginTop: 4}}>{s.reportingAom || "P. K. Verma (Sr. DOM)"}</div></div>
-                <div style={{ gridColumn: 'span 3', marginTop: '6px' }}><strong>Linked Stations under supervision:</strong><div style={{fontWeight: 700, color: "#92400e", marginTop: 4}}>{s.linkedStations || "Nagpur Main, Wardha Jn, Sewagram"}</div></div>
+                <div><strong>Jurisdiction Division:</strong><div style={{ fontWeight: 700, color: "#92400e", marginTop: 4 }}>{s.division || "Nagpur Division"}</div></div>
+                <div><strong>Reporting AOM Officer:</strong><div style={{ fontWeight: 700, color: "#92400e", marginTop: 4 }}>{s.reportingAom || "P. K. Verma (Sr. DOM)"}</div></div>
+                <div style={{ gridColumn: 'span 3', marginTop: '6px' }}><strong>Linked Stations under supervision:</strong><div style={{ fontWeight: 700, color: "#92400e", marginTop: 4 }}>{s.jurisdiction || "None"}</div></div>
               </div>
             )}
 
             {s.role === "tm" && (
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', fontSize: '13px' }}>
-                <div><strong>Crew Depot:</strong><div style={{fontWeight: 700, color: "#6b21a8", marginTop: 4}}>{s.workLocation || "Nagpur Depot"}</div></div>
-                <div><strong>Assigned Section Beats:</strong><div style={{fontWeight: 700, color: "#6b21a8", marginTop: 4}}>{s.reportingSm || "NGP-BSL Section"}</div></div>
-                <div><strong>Assigned Shift Beat Type:</strong><div style={{fontWeight: 700, color: "#6b21a8", marginTop: 4}}>{s.shift || "Goods Train Beat"}</div></div>
+                <div><strong>Crew Depot:</strong><div style={{ fontWeight: 700, color: "#6b21a8", marginTop: 4 }}>{s.workLocation || "Nagpur Depot"}</div></div>
+                <div><strong>Assigned Section Beats:</strong><div style={{ fontWeight: 700, color: "#6b21a8", marginTop: 4 }}>{s.reportingSm || "NGP-BSL Section"}</div></div>
+                <div><strong>Assigned Shift Beat Type:</strong><div style={{ fontWeight: 700, color: "#6b21a8", marginTop: 4 }}>{s.shift || "Goods Train Beat"}</div></div>
               </div>
             )}
 
@@ -131,14 +131,14 @@ export function SAStaffDetail({
         <div className="sdom-chart-card">
           <div className="sdom-chart-title">Score Trend</div>
           <div className="sdom-chart-subtitle">Assessment score progression</div>
-          <div style={{height:300}}>
+          <div style={{ height: 300 }}>
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={scoreData}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false}/>
-                <XAxis dataKey="month" fontSize={11}/>
-                <YAxis domain={[40,100]} fontSize={11}/>
-                <RTooltip/>
-                <Line type="monotone" dataKey="score" stroke="#2563eb" strokeWidth={3} dot={{r:5}}/>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                <XAxis dataKey="month" fontSize={11} />
+                <YAxis domain={[40, 100]} fontSize={11} />
+                <RTooltip />
+                <Line type="monotone" dataKey="score" stroke="#2563eb" strokeWidth={3} dot={{ r: 5 }} />
               </LineChart>
             </ResponsiveContainer>
           </div>

@@ -5,7 +5,7 @@ import { catBadge, riskBadge, statusBadge } from "../../../utils/saUtils";
 
 export function SAReportsAnalytics({ staff, STATION_OPTS }) {
   const [repF, setRepF] = useState({ role:"All", station:"All", cat:"All", risk:"All", ti:"All" });
-  const [repApplied, setRepApplied] = useState(false);
+  const [repApplied, setRepApplied] = useState(true);
   const [selectedReportUserId, setSelectedReportUserId] = useState(null);
 
   const repFiltered = useMemo(() => {

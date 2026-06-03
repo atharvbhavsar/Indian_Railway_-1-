@@ -49,8 +49,9 @@ import {
   Cell,
   Legend
 } from "recharts";
-import { INIT_STATIONS, INIT_USERS, TEST_NAME, testQuestions, initialHistory } from './data/mockSSData';
+import { TEST_NAME, testQuestions } from './data/mockSSData';
 import { getCat, getUserRisk, getCategory, getCategoryColor, getCategoryBg, formatQuarterPeriod } from './utils/ssUtils';
+import { dbService } from "./supabaseClient";
 import "./sdom.css";
 import SSDashboard from './pages/superintendent/SSDashboard';
 import SSProfile from './pages/superintendent/SSProfile';
@@ -59,6 +60,7 @@ import SSRoleView from './pages/superintendent/SSRoleView';
 import SSStaffDetail from './pages/superintendent/SSStaffDetail';
 import SSModals from './pages/superintendent/SSModals';
 import SSMyAssessment from './pages/superintendent/SSMyAssessment';
+import { saDataService } from './services/saDataService';
 
 
 
@@ -124,14 +126,7 @@ const ROLE_MAP = {
   "Traffic Inspector": "Traffic Inspector"
 };
 
-const MONTHLY_TREND = [
-  { month: "Dec'25", score: 81, safety: 80 },
-  { month: "Jan'26", score: 83, safety: 82 },
-  { month: "Feb'26", score: 85, safety: 85 },
-  { month: "Mar'26", score: 87, safety: 88 },
-  { month: "Apr'26", score: 89, safety: 91 },
-  { month: "May'26", score: 91, safety: 94 }
-];
+const MONTHLY_TREND = [];
 
 
 
@@ -254,21 +249,44 @@ function StationSuperintendentModule({ user, onLogout }) {
 
   // CRUD & Staff Directory States
   const [view, setView] = useState(null);
-  const [users, setUsers] = useState(() => {
-    const saved = localStorage.getItem("ti_users");
-    return saved ? JSON.parse(saved) : INIT_USERS;
-  });
-  useEffect(() => {
-    localStorage.setItem("ti_users", JSON.stringify(users));
-  }, [users]);
+  const [users, setUsers] = useState([]);
+  const [stations, setStations] = useState([]);
 
-  const [stations, setStations] = useState(() => {
-    const saved = localStorage.getItem("ti_stations");
-    return saved ? JSON.parse(saved) : INIT_STATIONS;
-  });
+  const fetchLiveDatabaseData = async () => {
+    try {
+      const u = await saDataService.fetchUsers();
+      const st = await saDataService.fetchStations(u);
+      setStations(st);
+      const mapped = u.map(x => {
+        let fullRole = "Pointsman";
+        if (x.role === "sm") fullRole = "Station Master";
+        else if (x.role === "ss") fullRole = "Station Superintendent";
+        else if (x.role === "tm") fullRole = "Train Manager";
+        else if (x.role === "ti") fullRole = "Traffic Inspector";
+
+        return {
+          ...x,
+          role: fullRole,
+          hrmsId: x.id,
+          cat: x.category || "Untested",
+          risk: x.riskLevel || "Low",
+          score: parseInt(x.score) || 0,
+          safetyScore: parseInt(x.safetyScore) || 0,
+          totalAssessments: x.totalAssessments || 0,
+          approvalStatus: x.approvalStatus || "Approved",
+          stationName: x.station || "—",
+          doj: x.joiningDate || "—"
+        };
+      });
+      setUsers(mapped);
+    } catch (err) {
+      console.error("Error fetching live db data:", err);
+    }
+  };
+
   useEffect(() => {
-    localStorage.setItem("ti_stations", JSON.stringify(stations));
-  }, [stations]);
+    fetchLiveDatabaseData();
+  }, []);
 
   const myStations = useMemo(() => stations, [stations]);
 
@@ -297,7 +315,7 @@ function StationSuperintendentModule({ user, onLogout }) {
   const [historyPage, setHistoryPage] = useState(1);
   const [history, setHistory] = useState(() => {
     try {
-      const saved = localStorage.getItem(`ss_history_${employeeId}`);
+      const saved = sessionStorage.getItem(`ss_history_${employeeId}`);
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed)) return parsed;
@@ -305,21 +323,55 @@ function StationSuperintendentModule({ user, onLogout }) {
     } catch (e) {
       console.error("Error reading SS history:", e);
     }
-    return initialHistory;
+    return [];
   });
+
+  useEffect(() => {
+    async function loadHistory() {
+      if (employeeId) {
+        try {
+          const data = await dbService.getTestHistory(employeeId);
+          if (data && data.length > 0) {
+            const mapped = data.map(attempt => ({
+              id: attempt.attempt_id,
+              date: attempt.submitted_at ? attempt.submitted_at.slice(0, 10) : new Date().toISOString().slice(0, 10),
+              assessmentPeriod: attempt.ASSESSMENT?.assessment_type || "Periodic Exam",
+              name: "CBT Exam",
+              assessedBy: "Online Exam",
+              totalScore: attempt.obtained_marks || attempt.percentage || 0,
+              sections: [
+                { title: "Competency Score", marks: attempt.obtained_marks || attempt.percentage || 0, outOf: 100 }
+              ],
+              responses: [],
+              approvalStatus: "Completed",
+              isOnlineExam: true
+            }));
+            setHistory(mapped);
+            sessionStorage.setItem(`ss_history_${employeeId}`, JSON.stringify(mapped));
+          } else {
+            setHistory([]);
+          }
+        } catch (err) {
+          console.error("Error loading SS test history:", err);
+          setHistory([]);
+        }
+      }
+    }
+    loadHistory();
+  }, [employeeId]);
 
   const [selectedRecord, setSelectedRecord] = useState(null);
 
   // My Assessment state (mirrors SM module)
   const [myAssessSelected, setMyAssessSelected] = useState(null);
   const [ssMcqTest, setSsMcqTest] = useState(() => {
-    const saved = localStorage.getItem(`ss_mcq_test_${employeeId}`);
+    const saved = sessionStorage.getItem(`ss_mcq_test_${employeeId}`);
     return saved ? JSON.parse(saved) : null;
   });
   const [testAssigned, setTestAssigned] = useState(() => {
-    const saved = localStorage.getItem(`ss_test_assigned_${employeeId}`);
+    const saved = sessionStorage.getItem(`ss_test_assigned_${employeeId}`);
     if (saved === null) {
-      localStorage.setItem(`ss_test_assigned_${employeeId}`, "Assigned");
+      sessionStorage.setItem(`ss_test_assigned_${employeeId}`, "Assigned");
       return "Assigned";
     }
     return saved;
@@ -328,9 +380,9 @@ function StationSuperintendentModule({ user, onLogout }) {
   const [ssTestResponses, setSsTestResponses] = useState(() => Array(25).fill(null));
   
   const [currentTest, setCurrentTest] = useState(() => {
-    const saved = localStorage.getItem(`ss_current_test_${employeeId}`);
+    const saved = sessionStorage.getItem(`ss_current_test_${employeeId}`);
     if (saved) return JSON.parse(saved);
-    const mcqResult = localStorage.getItem(`ss_mcq_test_${employeeId}`);
+    const mcqResult = sessionStorage.getItem(`ss_mcq_test_${employeeId}`);
     if (mcqResult && JSON.parse(mcqResult).completed) {
       return null;
     }
@@ -551,7 +603,7 @@ function StationSuperintendentModule({ user, onLogout }) {
     setShowAddUserModal(true);
   };
 
-  const handleAddUserSubmit = (e) => {
+  const handleAddUserSubmit = async (e) => {
     e.preventDefault();
     if (!newUserData.name.trim() || !newUserData.id.trim() || !newUserData.station || !newUserData.contact.trim() || !newUserData.joiningDate) {
       triggerNotification("danger", "Please fill out all required fields.");
@@ -560,82 +612,94 @@ function StationSuperintendentModule({ user, onLogout }) {
     
     let finalId = newUserData.id.trim();
     if (newUserData.role === "Station Master") {
-      if (!finalId.startsWith("SM_")) {
-        finalId = "SM_" + finalId.replace(/^SM_|^PM_|^SS_|^TM_/i, "");
-      }
+      if (!finalId.startsWith("SM_")) finalId = "SM_" + finalId.replace(/^SM_|^PM_|^SS_|^TM_/i, "");
     } else if (newUserData.role === "Pointsman") {
-      if (!finalId.startsWith("PM_")) {
-        finalId = "PM_" + finalId.replace(/^SM_|^PM_|^SS_|^TM_/i, "");
-      }
+      if (!finalId.startsWith("PM_")) finalId = "PM_" + finalId.replace(/^SM_|^PM_|^SS_|^TM_/i, "");
     } else if (newUserData.role === "Station Superintendent") {
-      if (!finalId.startsWith("SS_")) {
-        finalId = "SS_" + finalId.replace(/^SM_|^PM_|^SS_|^TM_/i, "");
-      }
+      if (!finalId.startsWith("SS_")) finalId = "SS_" + finalId.replace(/^SM_|^PM_|^SS_|^TM_/i, "");
     } else if (newUserData.role === "Train Manager") {
-      if (!finalId.startsWith("TM_")) {
-        finalId = "TM_" + finalId.replace(/^SM_|^PM_|^SS_|^TM_/i, "");
-      }
+      if (!finalId.startsWith("TM_")) finalId = "TM_" + finalId.replace(/^SM_|^PM_|^SS_|^TM_/i, "");
     }
 
-    if (users.some(u => u.id === finalId)) {
+    if (users.some(u => u.hrmsId === finalId)) {
       triggerNotification("danger", `User with Employee ID ${finalId} already exists!`);
       return;
     }
 
-    const newUser = {
-      id: finalId,
-      name: newUserData.name.trim(),
-      role: newUserData.role,
-      designation: newUserData.designation || newUserData.role,
-      station: newUserData.station,
-      cat: "A",
-      lastAssessDate: new Date().toISOString().slice(0, 10),
-      score: 80,
-      pmeStatus: newUserData.pmeStatus,
-      refStatus: newUserData.refStatus,
-      contact: newUserData.contact.trim(),
-      joiningDate: newUserData.joiningDate,
-      reportingSm: newUserData.role === "Pointsman" || newUserData.role === "Train Manager" ? newUserData.reportingSm : "",
-      shift: newUserData.role === "Pointsman" || newUserData.role === "Train Manager" ? newUserData.shift : "",
-      workLocation: newUserData.role === "Pointsman" || newUserData.role === "Train Manager" ? newUserData.workLocation : ""
-    };
-
-    setUsers(prev => [...prev, newUser]);
-    setShowAddUserModal(false);
-    
-    addAuditLog("Added New User", `Staff: ${newUser.name} (${newUser.id})`);
-    triggerNotification("success", `Added Staff: ${newUser.name} (${newUser.id})`);
+    const payload = { ...newUserData, hrmsId: finalId };
+    const res = await saDataService.saveUser(payload, "add");
+    if (res && res.success) {
+      await fetchLiveDatabaseData();
+      setShowAddUserModal(false);
+      addAuditLog("Added New User", `Staff: ${newUserData.name} (${finalId})`);
+      triggerNotification("success", `Added Staff: ${newUserData.name} (${finalId})`);
+    } else {
+      triggerNotification("danger", "Database Error: " + res?.error);
+    }
   };
 
   const handleEditUser = (userRec) => {
     setEditingUser({ ...userRec });
   };
 
-  const saveEditedUser = (e) => {
+  const saveEditedUser = async (e) => {
     e.preventDefault();
-    setUsers(prev => prev.map(u => u.id === editingUser.id ? editingUser : u));
-    addAuditLog("User Profile Modified", `Staff ID: ${editingUser.id}, Name: ${editingUser.name}`);
-    triggerNotification("success", `Profile updated for ${editingUser.name}.`);
-    setEditingUser(null);
+    const payload = {
+      hrmsId: editingUser.hrmsId || editingUser.id,
+      name: editingUser.name,
+      contact: editingUser.contact,
+      stationName: editingUser.stationName || editingUser.station,
+      role: editingUser.role,
+      designation: editingUser.designation,
+      pmeStatus: editingUser.pmeStatus,
+      refStatus: editingUser.refStatus
+    };
+    
+    const res = await saDataService.saveUser(payload, "edit");
+    if (res && res.success) {
+      await fetchLiveDatabaseData();
+      addAuditLog("User Profile Modified", `Staff ID: ${payload.hrmsId}, Name: ${payload.name}`);
+      triggerNotification("success", `Profile updated for ${payload.name}.`);
+      setEditingUser(null);
+    } else {
+      triggerNotification("danger", "Database Error: " + res?.error);
+    }
   };
 
-  const handleDeleteUser = (userId, userName) => {
+  const handleDeleteUser = async (userId, userName) => {
     if (window.confirm(`Are you absolutely sure you want to revoke operational access for ${userName} (${userId})?`)) {
-      setUsers(prev => prev.filter(u => u.id !== userId));
-      addAuditLog("Revoked User Access", `Staff ID: ${userId}, Name: ${userName}`);
-      triggerNotification("danger", `Revoked access: ${userName} (${userId}).`);
+      const res = await saDataService.deleteUser(userId);
+      if (res && res.success) {
+        await fetchLiveDatabaseData();
+        addAuditLog("Revoked User Access", `Staff ID: ${userId}, Name: ${userName}`);
+        triggerNotification("danger", `Revoked access: ${userName} (${userId}).`);
+      } else {
+        triggerNotification("danger", "Error deleting user: " + res?.error);
+      }
     }
   };
 
   const handleTransferClick = (userRec) => {
-    setTransferringUser({ ...userRec, targetStation: userRec.station });
+    setTransferringUser({ ...userRec, targetStation: userRec.stationName || userRec.station });
   };
 
-  const confirmTransfer = () => {
-    setUsers(prev => prev.map(u => u.id === transferringUser.id ? { ...u, station: transferringUser.targetStation } : u));
-    addAuditLog("Staff Station Transfer", `Staff: ${transferringUser.name} moved from ${transferringUser.station} to ${transferringUser.targetStation}`);
-    triggerNotification("warning", `Transferred ${transferringUser.name} to ${transferringUser.targetStation}.`);
-    setTransferringUser(null);
+  const confirmTransfer = async () => {
+    const payload = {
+      hrmsId: transferringUser.hrmsId || transferringUser.id,
+      name: transferringUser.name,
+      stationName: transferringUser.targetStation,
+      role: transferringUser.role
+    };
+    
+    const res = await saDataService.saveUser(payload, "edit");
+    if (res && res.success) {
+      await fetchLiveDatabaseData();
+      addAuditLog("Staff Station Transfer", `Staff: ${transferringUser.name} moved from ${transferringUser.stationName || transferringUser.station} to ${transferringUser.targetStation}`);
+      triggerNotification("warning", `Transferred ${transferringUser.name} to ${transferringUser.targetStation}.`);
+      setTransferringUser(null);
+    } else {
+      triggerNotification("danger", "Transfer Error: " + res?.error);
+    }
   };
 
   /* ─── My Assessment Test Actions (mirrors SM) ─── */
@@ -659,9 +723,9 @@ function StationSuperintendentModule({ user, onLogout }) {
       percentage,
       passStatus
     };
-    localStorage.setItem(`ss_mcq_test_${employeeId}`, JSON.stringify(testResult));
+    sessionStorage.setItem(`ss_mcq_test_${employeeId}`, JSON.stringify(testResult));
     setSsMcqTest(testResult);
-    localStorage.setItem(`ss_test_assigned_${employeeId}`, "Completed");
+    sessionStorage.setItem(`ss_test_assigned_${employeeId}`, "Completed");
     setTestAssigned("Completed");
     const record = {
       id: Date.now(),
@@ -683,15 +747,15 @@ function StationSuperintendentModule({ user, onLogout }) {
     };
     const newHistory = [record, ...history];
     setHistory(newHistory);
-    localStorage.setItem(`ss_history_${employeeId}`, JSON.stringify(newHistory));
+    sessionStorage.setItem(`ss_history_${employeeId}`, JSON.stringify(newHistory));
     setScreenMode("default");
     setStatusText(`Assessment submitted! Score: ${percentage}% (${correctCount}/25). Status: Completed.`);
   };
 
   /* ─── Test Actions ─── */
   const handleReattempt = () => {
-    localStorage.removeItem(`ss_mcq_test_${employeeId}`);
-    localStorage.setItem(`ss_current_test_${employeeId}`, JSON.stringify(currentTestSeed));
+    sessionStorage.removeItem(`ss_mcq_test_${employeeId}`);
+    sessionStorage.setItem(`ss_current_test_${employeeId}`, JSON.stringify(currentTestSeed));
     setCurrentTest(currentTestSeed);
     setActiveTest(currentTestSeed);
     setResponses(Array(25).fill(null));
@@ -753,10 +817,10 @@ function StationSuperintendentModule({ user, onLogout }) {
     };
     const newHistory = [record, ...history];
     setHistory(newHistory);
-    localStorage.setItem(`ss_history_${employeeId}`, JSON.stringify(newHistory));
+    sessionStorage.setItem(`ss_history_${employeeId}`, JSON.stringify(newHistory));
     
     setCurrentTest(null);
-    localStorage.setItem(`ss_current_test_${employeeId}`, JSON.stringify(null));
+    sessionStorage.setItem(`ss_current_test_${employeeId}`, JSON.stringify(null));
 
     // Save MCQ result for Traffic Inspector
     const correctCount = Math.round(totalScore / 4);
@@ -767,7 +831,7 @@ function StationSuperintendentModule({ user, onLogout }) {
       submittedDate: today,
       percentage: percentage
     };
-    localStorage.setItem(`ss_mcq_test_${employeeId}`, JSON.stringify(mcqResult));
+    sessionStorage.setItem(`ss_mcq_test_${employeeId}`, JSON.stringify(mcqResult));
 
     setSelectedRecord(record);
     setActiveTest(null);
@@ -973,6 +1037,7 @@ function StationSuperintendentModule({ user, onLogout }) {
         <SSMyAssessment
           myAssessSelected={myAssessSelected}
           setMyAssessSelected={setMyAssessSelected}
+          user={user}
           ssMcqTest={ssMcqTest}
           testAssigned={testAssigned}
           ssActiveQIdx={ssActiveQIdx}
@@ -1051,6 +1116,7 @@ function StationSuperintendentModule({ user, onLogout }) {
         <SSMyAssessment
           myAssessSelected={myAssessSelected}
           setMyAssessSelected={setMyAssessSelected}
+          user={user}
           ssMcqTest={ssMcqTest}
           testAssigned={testAssigned}
           ssActiveQIdx={ssActiveQIdx}
@@ -1308,10 +1374,12 @@ function StationSuperintendentModule({ user, onLogout }) {
                 <Gauge size={14} />
                 <span>Avg {averageScore}</span>
               </div>
-              <div className="pm-hkpi" style={{ color: getCategoryColor(latestCategory) }}>
-                <ShieldCheck size={14} />
-                <span>Cat. {latestCategory}</span>
-              </div>
+              {latestCategory !== "Untested" && (
+                <div className="pm-hkpi" style={{ color: getCategoryColor(latestCategory) }}>
+                  <ShieldCheck size={14} />
+                  <span>Cat. {latestCategory}</span>
+                </div>
+              )}
             </div>
           </div>
 

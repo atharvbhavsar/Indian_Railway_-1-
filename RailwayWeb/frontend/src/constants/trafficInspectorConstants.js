@@ -73,151 +73,17 @@ export const ROLE_MAP = {
   "Traffic Inspector": "Traffic Inspector"
 };
 
-export const MONTHLY_TREND = [
-  { month: "Dec'25", score: 81, safety: 80 },
-  { month: "Jan'26", score: 83, safety: 82 },
-  { month: "Feb'26", score: 85, safety: 85 },
-  { month: "Mar'26", score: 87, safety: 88 },
-  { month: "Apr'26", score: 89, safety: 91 },
-  { month: "May'26", score: 91, safety: 94 }
-];
+export const MONTHLY_TREND = [];
 
-export const INIT_STATIONS = [
-  { id: "ST01", name: "Parbhani Junction", code: "PBN", avgScore: 82, safetyPct: 88, highRisk: 1, pointsmenCount: 10 },
-  { id: "ST02", name: "Amla Junction", code: "AMLA", avgScore: 65, safetyPct: 71, highRisk: 3, pointsmenCount: 8 },
-  { id: "ST03", name: "Badnera Junction", code: "BD", avgScore: 78, safetyPct: 83, highRisk: 1, pointsmenCount: 7 },
-  { id: "ST04", name: "Nagpur Junction", code: "NGP", avgScore: 89, safetyPct: 94, highRisk: 0, pointsmenCount: 12 },
-  { id: "ST05", name: "Akola Junction", code: "AK", avgScore: 71, safetyPct: 76, highRisk: 2, pointsmenCount: 8 },
-  { id: "ST06", name: "Wardha Junction", code: "WR", avgScore: 80, safetyPct: 85, highRisk: 1, pointsmenCount: 9 },
-  { id: "ST07", name: "Betul Station", code: "BYT", avgScore: 74, safetyPct: 80, highRisk: 1, pointsmenCount: 6 },
-  { id: "ST08", name: "Itarsi Junction", code: "ET", avgScore: 85, safetyPct: 91, highRisk: 1, pointsmenCount: 11 },
-  { id: "ST09", name: "Chandrapur Station", code: "CD", avgScore: 68, safetyPct: 73, highRisk: 2, pointsmenCount: 7 },
-  { id: "ST10", name: "Gondia Junction", code: "G", avgScore: 82, safetyPct: 87, highRisk: 0, pointsmenCount: 9 },
-  { id: "ST11", name: "Dhamangaon Station", code: "DMN", avgScore: 73, safetyPct: 79, highRisk: 1, pointsmenCount: 5 },
-  { id: "ST12", name: "Pulgaon Junction", code: "PLO", avgScore: 76, safetyPct: 81, highRisk: 1, pointsmenCount: 6 }
-];
+export const INIT_STATIONS = [];
 
-export const INIT_USERS = [
-  { id: "SM_1001", name: "S. Deshmukh", role: "Station Master", designation: "Station Master", station: "Parbhani Junction", cat: "A", lastAssessDate: "2026-03-20", score: 86, pmeStatus: "Fit", refStatus: "Cleared", contact: "+91 98765 11001", joiningDate: "2018-02-12" },
-  { id: "SM_2102", name: "A. Kulkarni", role: "Station Master", designation: "Station Master", station: "Parbhani Junction", cat: "B", lastAssessDate: "2026-02-14", score: 72, pmeStatus: "Fit", refStatus: "Cleared", contact: "+91 98765 11002", joiningDate: "2019-05-15" },
-  { id: "SM_2201", name: "M. Patil", role: "Station Master", designation: "Station Master", station: "Amla Junction", cat: "A", lastAssessDate: "2026-03-12", score: 84, pmeStatus: "Fit", refStatus: "Pending", contact: "+91 98765 11003", joiningDate: "2016-08-20" },
-  { id: "SM_2202", name: "R. Sharma", role: "Station Master", designation: "Station Master", station: "Amla Junction", cat: "C", lastAssessDate: "2026-01-30", score: 54, pmeStatus: "Pending", refStatus: "Pending", contact: "+91 98765 11004", joiningDate: "2021-10-10" },
-  { id: "SM_2301", name: "V. Singh", role: "Station Master", designation: "Station Master", station: "Badnera Junction", cat: "A", lastAssessDate: "2026-03-15", score: 88, pmeStatus: "Fit", refStatus: "Cleared", contact: "+91 98765 11005", joiningDate: "2015-04-12" },
-  { id: "SM_2302", name: "T. Mehta", role: "Station Master", designation: "Station Master", station: "Badnera Junction", cat: "B", lastAssessDate: "2026-02-20", score: 71, pmeStatus: "Fit", refStatus: "Cleared", contact: "+91 98765 11006", joiningDate: "2020-03-18" },
-  { id: "SM_2401", name: "K. Raghuvanshi", role: "Station Master", designation: "Station Master", station: "Nagpur Junction", cat: "A", lastAssessDate: "2026-03-22", score: 92, pmeStatus: "Fit", refStatus: "Cleared", contact: "+91 98765 11007", joiningDate: "2014-06-25" },
-  { id: "SM_2501", name: "P. Wankhede", role: "Station Master", designation: "Station Master", station: "Akola Junction", cat: "B", lastAssessDate: "2026-03-01", score: 74, pmeStatus: "Overdue", refStatus: "Expired", contact: "+91 98765 11008", joiningDate: "2017-09-08" },
-  
-  { id: "PM_1001", name: "K. Pawar", role: "Pointsman", designation: "Pointsman Grade I", station: "Parbhani Junction", cat: "A", lastAssessDate: "2026-04-10", score: 80, pmeStatus: "Fit", refStatus: "Cleared", contact: "+91 98765 22001", joiningDate: "2020-01-10" },
-  { id: "PM_1002", name: "R. Verma", role: "Pointsman", designation: "Pointsman Grade I", station: "Amla Junction", cat: "B", lastAssessDate: "2026-04-09", score: 68, pmeStatus: "Fit", refStatus: "Pending", contact: "+91 98765 22002", joiningDate: "2021-06-18" },
-  { id: "PM_1003", name: "D. Rane", role: "Pointsman", designation: "Pointsman Grade II", station: "Amla Junction", cat: "D", lastAssessDate: "2026-04-08", score: 44, pmeStatus: "Unfit", refStatus: "Pending", contact: "+91 98765 22003", joiningDate: "2022-11-22" },
-  { id: "PM_1004", name: "J. Shaikh", role: "Pointsman", designation: "Pointsman Grade I", station: "Badnera Junction", cat: "A", lastAssessDate: "2026-04-04", score: 88, pmeStatus: "Fit", refStatus: "Cleared", contact: "+91 98765 22004", joiningDate: "2019-12-05" },
-  { id: "PM_1005", name: "A. Gade", role: "Pointsman", designation: "Pointsman Grade II", station: "Akola Junction", cat: "C", lastAssessDate: "2026-03-24", score: 58, pmeStatus: "Overdue", refStatus: "Cleared", contact: "+91 98765 22005", joiningDate: "2023-04-15" },
-  { id: "PM_1006", name: "S. Meshram", role: "Pointsman", designation: "Pointsman Grade I", station: "Nagpur Junction", cat: "A", lastAssessDate: "2026-03-28", score: 94, pmeStatus: "Fit", refStatus: "Cleared", contact: "+91 98765 22006", joiningDate: "2018-05-19" },
-  { id: "PM_1007", name: "G. Chawla", role: "Pointsman", designation: "Pointsman Grade II", station: "Itarsi Junction", cat: "A", lastAssessDate: "2026-03-14", score: 82, pmeStatus: "Fit", refStatus: "Cleared", contact: "+91 98765 22007", joiningDate: "2020-07-20" },
-  { id: "PM_1008", name: "H. Singh", role: "Pointsman", designation: "Pointsman Grade I", station: "Wardha Junction", cat: "B", lastAssessDate: "2026-03-10", score: 76, pmeStatus: "Fit", refStatus: "Expired", contact: "+91 98765 22008", joiningDate: "2017-02-28" },
-  { id: "PM_1009", name: "B. Yadav", role: "Pointsman", designation: "Pointsman Grade II", station: "Chandrapur Station", cat: "C", lastAssessDate: "2026-03-05", score: 51, pmeStatus: "Overdue", refStatus: "Pending", contact: "+91 98765 22009", joiningDate: "2022-09-01" },
-  { id: "PM_1010", name: "N. Dewangan", role: "Pointsman", designation: "Pointsman Grade I", station: "Gondia Junction", cat: "A", lastAssessDate: "2026-03-18", score: 85, pmeStatus: "Fit", refStatus: "Cleared", contact: "+91 98765 22010", joiningDate: "2019-08-11" },
-  
-  { id: "SS_1001", name: "S. K. Mukherjee", role: "Station Superintendent", designation: "Station Superintendent", station: "Nagpur Junction", cat: "A", lastAssessDate: "2026-04-14", score: 92, pmeStatus: "Fit", refStatus: "Cleared", contact: "+91 98765 33001", joiningDate: "2012-05-18" },
-  { id: "SS_1002", name: "H. S. Rawat", role: "Station Superintendent", designation: "Station Superintendent", station: "Parbhani Junction", cat: "A", lastAssessDate: "2026-03-22", score: 89, pmeStatus: "Fit", refStatus: "Cleared", contact: "+91 98765 33002", joiningDate: "2013-09-10" },
-  { id: "SS_1003", name: "Anand Vardhan", role: "Station Superintendent", designation: "Station Superintendent", station: "Akola Junction", cat: "B", lastAssessDate: "2026-02-18", score: 75, pmeStatus: "Fit", refStatus: "Pending", contact: "+91 98765 33003", joiningDate: "2015-11-05" },
+export const INIT_USERS = [];
 
-  { id: "TM_1001", name: "Dilip Kumar", role: "Train Manager", designation: "Train Manager", station: "Nagpur Junction", cat: "A", lastAssessDate: "2026-04-20", score: 90, pmeStatus: "Fit", refStatus: "Cleared", contact: "+91 98765 44001", joiningDate: "2017-06-12" },
-  { id: "TM_1002", name: "Vikas Dubey", role: "Train Manager", designation: "Train Manager", station: "Badnera Junction", cat: "B", lastAssessDate: "2026-03-11", score: 78, pmeStatus: "Fit", refStatus: "Pending", contact: "+91 98765 44002", joiningDate: "2019-10-22" },
-  { id: "TM_1003", name: "J. P. Nadda", role: "Train Manager", designation: "Train Manager", station: "Amla Junction", cat: "C", lastAssessDate: "2026-01-25", score: 56, pmeStatus: "Pending", refStatus: "Expired", contact: "+91 98765 44003", joiningDate: "2021-04-15" }
-];
+export const DEFAULT_SS_TM_USERS = [];
 
-export const DEFAULT_SS_TM_USERS = [
-  { id: "SS_1001", name: "S. K. Mukherjee", role: "Station Superintendent", designation: "Station Superintendent", station: "Nagpur Junction", cat: "A", lastAssessDate: "2026-04-14", score: 92, pmeStatus: "Fit", refStatus: "Cleared", contact: "+91 98765 33001", joiningDate: "2012-05-18" },
-  { id: "SS_1002", name: "H. S. Rawat", role: "Station Superintendent", designation: "Station Superintendent", station: "Parbhani Junction", cat: "A", lastAssessDate: "2026-03-22", score: 89, pmeStatus: "Fit", refStatus: "Cleared", contact: "+91 98765 33002", joiningDate: "2013-09-10" },
-  { id: "SS_1003", name: "Anand Vardhan", role: "Station Superintendent", designation: "Station Superintendent", station: "Akola Junction", cat: "B", lastAssessDate: "2026-02-18", score: 75, pmeStatus: "Fit", refStatus: "Pending", contact: "+91 98765 33003", joiningDate: "2015-11-05" },
+export const MONTHLY = [];
 
-  { id: "TM_1001", name: "Dilip Kumar", role: "Train Manager", designation: "Train Manager", station: "Nagpur Junction", cat: "A", lastAssessDate: "2026-04-20", score: 90, pmeStatus: "Fit", refStatus: "Cleared", contact: "+91 98765 44001", joiningDate: "2017-06-12" },
-  { id: "TM_1002", name: "Vikas Dubey", role: "Train Manager", designation: "Train Manager", station: "Badnera Junction", cat: "B", lastAssessDate: "2026-03-11", score: 78, pmeStatus: "Fit", refStatus: "Pending", contact: "+91 98765 44002", joiningDate: "2019-10-22" },
-  { id: "TM_1003", name: "J. P. Nadda", role: "Train Manager", designation: "Train Manager", station: "Amla Junction", cat: "C", lastAssessDate: "2026-01-25", score: 56, pmeStatus: "Pending", refStatus: "Expired", contact: "+91 98765 44003", joiningDate: "2021-04-15" }
-];
-
-export const MONTHLY = [
-  { month: "Nov 25", assessments: 14, avgScore: 72, safetyAvg: 74 },
-  { month: "Dec 25", assessments: 18, avgScore: 74, safetyAvg: 76 },
-  { month: "Jan 26", assessments: 24, avgScore: 71, safetyAvg: 73 },
-  { month: "Feb 26", assessments: 32, avgScore: 77, safetyAvg: 79 },
-  { month: "Mar 26", assessments: 38, avgScore: 80, safetyAvg: 82 },
-  { month: "Apr 26", assessments: 42, avgScore: 83, safetyAvg: 85 }
-];
-
-export const INIT_PM_ASSESSMENTS = [
-  {
-    id: "PA_1001", pointsmanName: "K. Pawar", hrmsId: "PM_1001",
-    station: "Parbhani Junction", assessingSM: "S. Deshmukh",
-    submissionDate: "2026-04-10", status: "Pending",
-    originalSections: [
-      { title: "Knowledge of Rules",      score: 20, max: 25 },
-      { title: "Alertness & Observation", score: 18, max: 25 },
-      { title: "Safety Record",           score: 12, max: 15 },
-      { title: "Leadership & Management", score: 11, max: 15 },
-      { title: "Discipline",              score: 8,  max: 10 },
-      { title: "Appearance & Neatness",   score: 7,  max: 10 },
-    ],
-    meta: { pmeStatus: "Fit", refStatus: "Cleared", alcoholicStatus: "Non-Alcoholic" },
-    tiRemarks: "", tiModified: false, auditTrail: []
-  },
-  {
-    id: "PA_1002", pointsmanName: "R. Verma", hrmsId: "PM_1002",
-    station: "Amla Junction", assessingSM: "M. Patil",
-    submissionDate: "2026-04-09", status: "Pending",
-    originalSections: [
-      { title: "Knowledge of Rules",      score: 17, max: 25 },
-      { title: "Alertness & Observation", score: 16, max: 25 },
-      { title: "Safety Record",           score: 10, max: 15 },
-      { title: "Leadership & Management", score: 9,  max: 15 },
-      { title: "Discipline",              score: 6,  max: 10 },
-      { title: "Appearance & Neatness",   score: 6,  max: 10 },
-    ],
-    meta: { pmeStatus: "Fit", refStatus: "Pending", alcoholicStatus: "Non-Alcoholic" },
-    tiRemarks: "", tiModified: false, auditTrail: []
-  },
-  {
-    id: "PA_1003", pointsmanName: "D. Rane", hrmsId: "PM_1003",
-    station: "Amla Junction", assessingSM: "M. Patil",
-    submissionDate: "2026-04-08", status: "Pending",
-    originalSections: [
-      { title: "Knowledge of Rules",      score: 14, max: 25 },
-      { title: "Alertness & Observation", score: 13, max: 25 },
-      { title: "Safety Record",           score: 8,  max: 15 },
-      { title: "Leadership & Management", score: 7,  max: 15 },
-      { title: "Discipline",              score: 4,  max: 10 },
-      { title: "Appearance & Neatness",   score: 4,  max: 10 },
-    ],
-    meta: { pmeStatus: "Unfit", refStatus: "Pending", alcoholicStatus: "Alcoholic" },
-    tiRemarks: "", tiModified: false, auditTrail: []
-  },
-  {
-    id: "PA_1004", pointsmanName: "J. Shaikh", hrmsId: "PM_1004",
-    station: "Badnera Junction", assessingSM: "V. Singh",
-    submissionDate: "2026-04-04", status: "Approved",
-    originalSections: [
-      { title: "Knowledge of Rules",      score: 23, max: 25 },
-      { title: "Alertness & Observation", score: 22, max: 25 },
-      { title: "Safety Record",           score: 15, max: 15 },
-      { title: "Leadership & Management", score: 13, max: 15 },
-      { title: "Discipline",              score: 9,  max: 10 },
-      { title: "Appearance & Neatness",   score: 9,  max: 10 },
-    ],
-    finalSections: [
-      { title: "Knowledge of Rules",      score: 23, max: 25 },
-      { title: "Alertness & Observation", score: 22, max: 25 },
-      { title: "Safety Record",           score: 15, max: 15 },
-      { title: "Leadership & Management", score: 13, max: 15 },
-      { title: "Discipline",              score: 9,  max: 10 },
-      { title: "Appearance & Neatness",   score: 9,  max: 10 },
-    ],
-    meta: { pmeStatus: "Fit", refStatus: "Cleared", alcoholicStatus: "Non-Alcoholic" },
-    tiRemarks: "Excellent field performance. Approved as submitted.",
-    tiModified: false, approvalDate: "2026-04-05",
-    auditTrail: [{ action: "Approved without modification", by: "TI R. Khan", date: "2026-04-05" }]
-  },
-];
+export const INIT_PM_ASSESSMENTS = [];
 
 export const TI_SM_CRITERIA = [
   { key: "stationMgmt",  label: "Station Management",          weight: 5, count: 5,
@@ -258,16 +124,9 @@ export const TI_SS_CRITERIA = [
     criteria: ["Platform surface and lighting check", "Footover bridge safety assessment", "Washroom hygiene maintenance", "Waiting room orderliness", "Coach indication board accuracy"] },
 ];
 
-export const INIT_INSPECTIONS = [
-  { id: "IN_101", date: "2026-05-10", station: "Amla Junction", officer: "TI R. Khan", observations: "Siding point interlocking operation checked. Satisfactory speed compliance.", risk: "Low", status: "Closed" },
-  { id: "IN_102", date: "2026-05-18", station: "Chandrapur Station", officer: "TI R. Khan", observations: "Joint gap clearance in crossing 12B slightly wide. Safety Speed restriction of 15km/h advised.", risk: "Medium", status: "Active" },
-  { id: "IN_103", date: "2026-05-24", station: "Akola Junction", officer: "TI R. Khan", observations: "Station Master logs audit. Slight delay in registering daily block clearing times.", risk: "Low", status: "Pending Action" }
-];
+export const INIT_INSPECTIONS = [];
 
-export const INIT_COUNSELLING = [
-  { id: "CL_101", date: "2026-05-12", staffName: "D. Rane", designation: "Pointsman Grade II", station: "Amla Junction", topics: "Alcoholic rehabilitation counseling. Safety and alertness briefing.", duration: "45 mins", progress: "Under Monitor" },
-  { id: "CL_102", date: "2026-05-20", staffName: "A. Gade", designation: "Pointsman Grade II", station: "Akola Junction", topics: "Periodic medical exam preparation. Rest compliance counseling.", duration: "30 mins", progress: "Completed" }
-];
+export const INIT_COUNSELLING = [];
 
 export const TI_QUIZ = [
   { q: "What whistle code must be sounded when a train is passing through a station without stopping?", opts: ["One long", "Continuous short blasts", "One long and one short", "Two short blasts"], ans: 0, explanation: "One long whistle is sounded to alert station staff, pointsmen, and level crossing gatemen of a train passing through without stopping." },
@@ -297,44 +156,7 @@ export const TI_QUIZ = [
   { q: "During block instrument failure, line clear is authorized using:", opts: ["Token", "Paper Line Clear Ticket", "Cabin ticket", "Hand signal"], ans: 1, explanation: "A Paper Line Clear Ticket (PLCT) is the written authority issued to proceed when block instruments fail, ensuring absolute block safety." }
 ];
 
-export const INIT_TI_ASSESS_HISTORY = [
-  {
-    id: 1, date: "2026-03-20", period: "Q1 2026", assessedBy: "AOM_GM_1001 — P. Joshi",
-    totalScore: 88, category: "A", approvalStatus: "Approved",
-    aomRemarks: "Outstanding supervisory performance. Excellent cross-station coordination.",
-    sections: [
-      { title: "Whistle Codes & Hand Signals",          marks: 18, outOf: 20 },
-      { title: "Token & Line Clear Authorities",        marks: 17, outOf: 20 },
-      { title: "Station Interlocking & Track Circuits", marks: 18, outOf: 20 },
-      { title: "Shunting Operations & Point Locking",   marks: 17, outOf: 20 },
-      { title: "Gate Signals & Siding Isolation",        marks: 18, outOf: 20 },
-    ]
-  },
-  {
-    id: 2, date: "2025-12-15", period: "Q4 2025", assessedBy: "AOM_GM_1001 — P. Joshi",
-    totalScore: 81, category: "A", approvalStatus: "Approved",
-    aomRemarks: "Good performance. Minor issues in documentation speed.",
-    sections: [
-      { title: "Whistle Codes & Hand Signals",          marks: 16, outOf: 20 },
-      { title: "Token & Line Clear Authorities",        marks: 16, outOf: 20 },
-      { title: "Station Interlocking & Track Circuits", marks: 17, outOf: 20 },
-      { title: "Shunting Operations & Point Locking",   marks: 15, outOf: 20 },
-      { title: "Gate Signals & Siding Isolation",        marks: 17, outOf: 20 },
-    ]
-  },
-  {
-    id: 3, date: "2025-09-10", period: "Q3 2025", assessedBy: "AOM_GM_1001 — P. Joshi",
-    totalScore: 93, category: "A", approvalStatus: "Approved",
-    aomRemarks: "Exemplary. Best performing TI in the division this quarter.",
-    sections: [
-      { title: "Whistle Codes & Hand Signals",          marks: 19, outOf: 20 },
-      { title: "Token & Line Clear Authorities",        marks: 18, outOf: 20 },
-      { title: "Station Interlocking & Track Circuits", marks: 19, outOf: 20 },
-      { title: "Shunting Operations & Point Locking",   marks: 18, outOf: 20 },
-      { title: "Gate Signals & Siding Isolation",        marks: 19, outOf: 20 },
-    ]
-  }
-];
+export const INIT_TI_ASSESS_HISTORY = [];
 
 export const defaultSMForm = () => ({
   stationMgmt:      Array(5).fill(null),

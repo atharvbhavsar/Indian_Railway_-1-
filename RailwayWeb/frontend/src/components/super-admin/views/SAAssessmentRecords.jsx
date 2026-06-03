@@ -7,8 +7,6 @@ export function SAAssessmentRecords({ staff, STATION_OPTS }) {
   const [recF, setRecF] = useState({ role:"All", station:"All", status:"All", name:"" });
 
   const recFiltered = useMemo(() => {
-    const hasFilter = recF.role !== "All" || recF.station !== "All" || recF.status !== "All" || recF.name;
-    if (!hasFilter) return null;
     return staff.filter(s => {
       const roleLabel = ROLE_MAP[s.role] || s.role;
       return (recF.role    === "All" || roleLabel === recF.role)      &&
@@ -18,7 +16,6 @@ export function SAAssessmentRecords({ staff, STATION_OPTS }) {
     });
   }, [recF, staff]);
 
-  const hasFilter = recF.role!=="All"||recF.station!=="All"||recF.status!=="All"||recF.name;
   const totalByRole = Object.entries(ROLE_MAP).map(([k,v])=>({ label:v, count: staff.filter(s=>s.role===k).length }));
 
   return (
@@ -81,39 +78,29 @@ export function SAAssessmentRecords({ staff, STATION_OPTS }) {
         </div>
       </div>
 
-      {hasFilter && (
-        <div className="sdom-chart-card">
-          <div style={{marginBottom:12,fontWeight:700,color:"#1e293b"}}>{(recFiltered||[]).length} records found</div>
-          <div className="sdom-table-wrap">
-            <table className="sdom-table">
-              <thead><tr><th>Name</th><th>Role</th><th>Station</th><th>TI Area</th><th>Score</th><th>Category</th><th>Status</th><th>Last Date</th></tr></thead>
-              <tbody>
-                {(recFiltered||[]).length === 0 && <tr><td colSpan={8} style={{textAlign:"center",color:"#94a3b8",padding:32}}>No records match the filters</td></tr>}
-                {(recFiltered||[]).map(s=>(
-                  <tr key={s.id}>
-                    <td style={{fontWeight:700}}>{s.name}<br/><span style={{fontSize:"0.78rem",color:"#94a3b8"}}>{s.id}</span></td>
-                    <td>{ROLE_MAP[s.role]||s.role}</td>
-                    <td>{s.station}</td>
-                    <td>{s.ti}</td>
-                    <td style={{fontWeight:700}}>{s.score}</td>
-                    <td>{catBadge(s.cat)}</td>
-                    <td>{statusBadge(s.status)}</td>
-                    <td>{s.lastDate}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+      <div className="sdom-chart-card">
+        <div style={{marginBottom:12,fontWeight:700,color:"#1e293b"}}>{recFiltered.length} records found</div>
+        <div className="sdom-table-wrap">
+          <table className="sdom-table">
+            <thead><tr><th>Name</th><th>Role</th><th>Station</th><th>TI Area</th><th>Score</th><th>Category</th><th>Status</th><th>Last Date</th></tr></thead>
+            <tbody>
+              {recFiltered.length === 0 && <tr><td colSpan={8} style={{textAlign:"center",color:"#94a3b8",padding:32}}>No records match the filters</td></tr>}
+              {recFiltered.map(s=>(
+                <tr key={s.id}>
+                  <td style={{fontWeight:700}}>{s.name}<br/><span style={{fontSize:"0.78rem",color:"#94a3b8"}}>{s.id}</span></td>
+                  <td>{ROLE_MAP[s.role]||s.role}</td>
+                  <td>{s.role === 'ti' || s.role === 'Traffic Inspector' ? (s.jurisdiction || 'Various') : s.station}</td>
+                  <td>{s.ti}</td>
+                  <td style={{fontWeight:700}}>{s.score}</td>
+                  <td>{catBadge(s.cat)}</td>
+                  <td>{statusBadge(s.status)}</td>
+                  <td>{s.lastDate}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
-      )}
-
-      {!hasFilter && (
-        <div className="sdom-empty">
-          <Search size={32} style={{marginBottom:12}}/>
-          <div className="sdom-empty-title">Apply filters to search records</div>
-          <div className="sdom-empty-sub">Select a role, station, or enter a staff name above to view assessment records.</div>
-        </div>
-      )}
+      </div>
     </div>
   );
 }

@@ -1,18 +1,18 @@
 import { useMemo, useState, useEffect } from "react";
 import { getCat, riskLevel } from '../../utils/scoreCalculator';
 import { 
-  smProfile, initialPointsmen, pmAssessmentHistory, 
-  initialDrafts, YN_SECTIONS, defaultAssessForm, 
-  smTestQuestions, smAssessmentHistory 
+  YN_SECTIONS, defaultAssessForm, 
+  smTestQuestions 
 } from '../../data/mockStationMasterData';
+import { saDataService } from '../../services/saDataService';
 
 export function useStationMasterState(user, onLogout) {
 
   const [activeTab, setActiveTab]         = useState("dashboard");
   const [pageMode, setPageMode]           = useState("default");
   const [statusMsg, setStatusMsg]         = useState("");
-  const [pointsmen, setPointsmen]         = useState(initialPointsmen);
-  const [drafts, setDrafts]               = useState(initialDrafts);
+  const [pointsmen, setPointsmen]         = useState([]);
+  const [drafts, setDrafts]               = useState([]);
   const [submittedAssessments, setSubmittedAssessments] = useState([]);
   const [selectedPm, setSelectedPm]       = useState(null);
   const [assessTarget, setAssessTarget]   = useState(null);
@@ -35,6 +35,69 @@ export function useStationMasterState(user, onLogout) {
   const [pmF, setPmF] = useState({ name: "", station: "All", cat: "All", risk: "All" });
   const [viewingPm, setViewingPm] = useState(null);
 
+  const [stationSms, setStationSms] = useState([]);
+  const [assignedTi, setAssignedTi] = useState(null);
+
+  const smName = user?.name || "—";
+  const smId   = user?.hrmsId || "—";
+
+  const fetchLiveDatabaseData = async () => {
+    try {
+      const u = await saDataService.fetchUsers();
+      const mapped = u.map(x => ({
+        ...x,
+        hrmsId: x.id,
+        cat: x.cat || "Untested",
+        risk: x.risk || "Untested",
+        score: x.score !== undefined && x.score !== 0 ? parseInt(x.score) : null,
+        lastScore: x.score !== undefined && x.score !== 0 ? parseInt(x.score) : null,
+        safetyScore: x.safetyScore !== undefined && x.safetyScore !== 0 ? parseInt(x.safetyScore) : null,
+        totalAssessments: x.totalAssessments || 0,
+        approvalStatus: "Approved",
+        stationName: x.station,
+        doj: x.lastDate || "2026-01-01"
+      }));
+
+      const userStation = user?.station || "";
+      const filtered = mapped.filter(x => {
+        const isPm = x.role === "pointsmen" || x.role === "Pointsman" || x.designation?.toLowerCase().includes("pointsman");
+        if (!isPm) return false;
+        if (userStation) {
+          return x.station?.toLowerCase().trim() === userStation.toLowerCase().trim();
+        }
+        return true;
+      });
+      setPointsmen(filtered);
+
+      const sms = mapped.filter(x => {
+        const isSm = x.role === "sm" || x.role === "Station Master";
+        if (!isSm) return false;
+        if (userStation) {
+          return x.station?.toLowerCase().trim() === userStation.toLowerCase().trim();
+        }
+        return true;
+      });
+      setStationSms(sms);
+
+      const ti = mapped.find(x => {
+        const isTi = x.role === "ti" || x.role === "Traffic Inspector";
+        if (!isTi) return false;
+        if (userStation) {
+          return x.station?.toLowerCase().trim() === userStation.toLowerCase().trim();
+        }
+        return false;
+      });
+      setAssignedTi(ti || null);
+
+    } catch (err) {
+      console.error("Error fetching live db data:", err);
+    }
+  };
+
+  useEffect(() => {
+    fetchLiveDatabaseData();
+  }, [user]);
+
   const openPmAdd = () => {
     setPmModal({
       mode: "add",
@@ -44,13 +107,13 @@ export function useStationMasterState(user, onLogout) {
         name: "",
         role: "Pointsman",
         designation: "Pointsman Grade I",
-        station: smProfile.station || "Nagpur Junction",
-        cat: "A",
+        station: user?.station || "",
+        cat: "Untested",
         lastAssessDate: new Date().toISOString().split('T')[0],
-        score: 80,
-        lastScore: 80,
-        safetyScore: 90,
-        totalAssessments: 1,
+        score: 0,
+        lastScore: 0,
+        safetyScore: 0,
+        totalAssessments: 0,
         pmeStatus: "Fit",
         refStatus: "Cleared",
         contact: "",
@@ -60,7 +123,7 @@ export function useStationMasterState(user, onLogout) {
         age: 35,
         basePay: "₹25,000",
         approvalStatus: "Approved",
-        reportingSm: smProfile.name || "S. Deshmukh (SM)",
+        reportingSm: user?.name || "",
         workLocation: "Yard",
         shift: "Morning Shift (06:00 - 14:00)"
       }
@@ -81,31 +144,45 @@ export function useStationMasterState(user, onLogout) {
     });
   };
 
-  const savePmModal = () => {
+  const savePmModal = async () => {
     if (!pmModal.data.name || !pmModal.data.hrmsId) {
       alert("Name and HRMS ID are required.");
       return;
     }
-    if (pmModal.mode === "shift") {
-      const newRole = pmModal.role || "Pointsman";
-      if (newRole !== "Pointsman") {
-        setPointsmen(prev => prev.filter(u => u.hrmsId !== pmModal.data.hrmsId));
-        alert(`${pmModal.data.name} shifted to ${newRole} successfully.`);
-        setPmModal(null);
-        return;
-      }
+    try {
+      const data = pmModal.data;
+      const modalData = {
+        id: data.hrmsId || data.employeeId || data.id,
+        name: data.name,
+        contact: data.contact || data.phone || data.contactNumber,
+        email: data.email || data.emailId,
+        role: pmModal.mode === "shift" ? pmModal.role : "Pointsman",
+        station: data.stationName || data.station || data.smStation,
+        division: data.division || data.smDivision || data.tiArea,
+        lastDate: data.doj || data.lastDate,
+        score: data.lastScore || data.score,
+        cat: data.cat || data.category,
+        reportingSm: data.reportingSm,
+        workLocation: data.workLocation,
+        shift: data.shift,
+        jurisdiction: data.jurisdiction
+      };
+      await saDataService.saveUser(modalData, pmModal.mode);
+      setPmModal(null);
+      await fetchLiveDatabaseData();
+    } catch (err) {
+      alert("Error saving: " + err.message);
     }
-    if (pmModal.mode === "add") {
-      setPointsmen(prev => [pmModal.data, ...prev]);
-    } else {
-      setPointsmen(prev => prev.map(u => u.hrmsId === pmModal.data.hrmsId ? pmModal.data : u));
-    }
-    setPmModal(null);
   };
 
-  const removePm = (hrmsId) => {
+  const removePm = async (id) => {
     if (window.confirm("Remove this pointsman?")) {
-      setPointsmen(prev => prev.filter(u => u.hrmsId !== hrmsId));
+      try {
+        await saDataService.removeUser(id);
+        await fetchLiveDatabaseData();
+      } catch (err) {
+        alert("Error removing: " + err.message);
+      }
     }
   };
 
@@ -117,9 +194,6 @@ export function useStationMasterState(user, onLogout) {
   const [fsRisk, setFsRisk]                   = useState("All");
   const [fsSearch, setFsSearch]               = useState("");
 
-  const smName = user?.name || smProfile.name;
-  const smId   = user?.hrmsId || smProfile.employeeId;
-
   // Reactively Filtered Pointsmen for Fullscreen View
   const filteredFsPointsmen = useMemo(() => {
     return pointsmen.filter(p => {
@@ -128,7 +202,7 @@ export function useStationMasterState(user, onLogout) {
       const matchCategory = fsCategory === "All" || getCat(p.lastScore) === fsCategory;
       const matchRisk = fsRisk === "All" || riskLevel(p) === fsRisk;
       
-      const pmHistoryList = pmAssessmentHistory[p.id] || [];
+      const pmHistoryList = [];
       const mostRecentDate = pmHistoryList.length > 0 ? pmHistoryList[0].date : p.doj;
       let matchDate = true;
       if (fsStartDate) matchDate = matchDate && mostRecentDate >= fsStartDate;
@@ -141,11 +215,11 @@ export function useStationMasterState(user, onLogout) {
   // Reactively Recalculated Monthly Trend for Fullscreen View
   const dynamicMonthlyTrend = useMemo(() => {
     const months = [
-      { label: "Nov 25", start: "2025-11-01", end: "2025-11-30", fallbackScore: 71, fallbackSafety: 68 },
-      { label: "Dec 25", start: "2025-12-01", end: "2025-12-31", fallbackScore: 74, fallbackSafety: 72 },
-      { label: "Jan 26", start: "2026-01-01", end: "2026-01-31", fallbackScore: 68, fallbackSafety: 70 },
-      { label: "Feb 26", start: "2026-02-01", end: "2026-02-28", fallbackScore: 77, fallbackSafety: 75 },
-      { label: "Mar 26", start: "2026-03-01", end: "2026-03-31", fallbackScore: 80, fallbackSafety: 79 }
+      { label: "Nov 25", start: "2025-11-01", end: "2025-11-30" },
+      { label: "Dec 25", start: "2025-12-01", end: "2025-12-31" },
+      { label: "Jan 26", start: "2026-01-01", end: "2026-01-31" },
+      { label: "Feb 26", start: "2026-02-01", end: "2026-02-28" },
+      { label: "Mar 26", start: "2026-03-01", end: "2026-03-31" }
     ];
 
     return months.map(m => {
@@ -154,7 +228,7 @@ export function useStationMasterState(user, onLogout) {
       let count = 0;
 
       filteredFsPointsmen.forEach(p => {
-        const pmHistoryList = pmAssessmentHistory[p.id] || [];
+        const pmHistoryList = [];
         const matches = pmHistoryList.filter(h => h.date >= m.start && h.date <= m.end);
         matches.forEach(h => {
           totalScore += h.total;
@@ -165,9 +239,9 @@ export function useStationMasterState(user, onLogout) {
 
       return {
         month: m.label,
-        assessments: count > 0 ? count : 5,
-        avgScore: count > 0 ? Math.round(totalScore / count) : m.fallbackScore,
-        safetyAvg: count > 0 ? Math.round(totalSafety / count) : m.fallbackSafety
+        assessments: count,
+        avgScore: count > 0 ? Math.round(totalScore / count) : 0,
+        safetyAvg: count > 0 ? Math.round(totalSafety / count) : 0
       };
     });
   }, [filteredFsPointsmen]);
@@ -175,7 +249,7 @@ export function useStationMasterState(user, onLogout) {
   // History State
   const [history, setHistory] = useState(() => {
     const saved = localStorage.getItem(`sm_history_${smId}`);
-    return saved ? JSON.parse(saved) : smAssessmentHistory;
+    return saved ? JSON.parse(saved) : [];
   });
 
   // MCQ Test State
@@ -263,34 +337,37 @@ export function useStationMasterState(user, onLogout) {
   const stats = useMemo(() => {
     const total     = pointsmen.length;
     const pending   = drafts.length;
-    const completed = Object.values(pmAssessmentHistory).flat().length + submittedAssessments.length;
+    const completed = submittedAssessments.length;
     const highRisk  = pointsmen.filter(p => riskLevel(p) === "High").length;
-    const safetyPct = Math.round(
-      pointsmen.reduce((s, p) => s + p.safetyScore, 0) / pointsmen.length
-    );
+    const safetyPct = pointsmen.length > 0 
+      ? Math.round(pointsmen.reduce((s, p) => s + (p.safetyScore || 0), 0) / pointsmen.length)
+      : 0;
     return { total, pending, completed, highRisk, safetyPct };
   }, [pointsmen, drafts, submittedAssessments]);
 
   /* ─── Pie: category dist ─── */
   const pieData = useMemo(() => {
     const counts = { A:0, B:0, C:0, D:0 };
-    pointsmen.forEach(p => { counts[getCat(p.lastScore)]++; });
+    pointsmen.forEach(p => { 
+      const c = getCat(p.lastScore);
+      if (counts[c] !== undefined) counts[c]++; 
+    });
     return Object.entries(counts).filter(([,c]) => c > 0)
       .map(([cat, count]) => ({ name: cat, value: count }));
   }, [pointsmen]);
 
   /* ─── Bottom performers ─── */
   const lowPerformers = useMemo(() =>
-    [...pointsmen].sort((a,b) => a.lastScore - b.lastScore).slice(0,4)
+    [...pointsmen].filter(p => p.lastScore > 0).sort((a,b) => a.lastScore - b.lastScore).slice(0,4)
   , [pointsmen]);
 
   /* ─── Filtered pointsmen list ─── */
   const filteredPm = useMemo(() => {
     return pointsmen.filter(p => {
-      const clean = s => s.toLowerCase().trim().replace(/\s+/g, '').replace(/junction|central|main|town|jn|station/gi, '');
-      const pmSt = p.station || "Nagpur Junction";
-      const smSt = smProfile.station || "Nagpur Junction";
-      if (clean(pmSt) !== clean(smSt) && !clean(pmSt).includes(clean(smSt)) && !clean(smSt).includes(clean(pmSt))) return false;
+      const clean = s => s ? s.toLowerCase().trim().replace(/\s+/g, '').replace(/junction|central|main|town|jn|station/gi, '') : '';
+      const pmSt = p.station || "";
+      const smSt = user?.station || "";
+      if (smSt && clean(pmSt) !== clean(smSt) && !clean(pmSt).includes(clean(smSt)) && !clean(smSt).includes(clean(pmSt))) return false;
 
       if (pmF.name) {
         const s = pmF.name.toLowerCase();
@@ -300,7 +377,7 @@ export function useStationMasterState(user, onLogout) {
       if (pmF.risk !== "All" && riskLevel(p) !== pmF.risk) return false;
       return true;
     });
-  }, [pointsmen, pmF]);
+  }, [pointsmen, pmF, user]);
 
   /* ─── Filtered reports ─── */
   const filteredReports = useMemo(() => {
@@ -357,144 +434,119 @@ export function useStationMasterState(user, onLogout) {
 
   /* ─── Live score computer ─── */
   const computeScore = (form) => {
-    const knowledge = Math.min(parseInt(form.knowledgeMarks) || 0, 25);
-    let ynTotal = 0;
+    let total = 0;
     YN_SECTIONS.forEach(s => {
-      form[s.key].forEach(v => { if (v === "Yes") ynTotal += s.weight; });
+      form[s.key].forEach(v => { if (v === "Yes") total += s.weight; });
     });
-    return { knowledge, ynTotal, total: knowledge + ynTotal };
+    const km = Math.min(parseInt(form.knowledgeMarks) || 0, 25);
+    return { ynScore: total, knowledge: km, total: total + km };
   };
 
-  /* ─── Submit assessment ─── */
-  const submitAssessment = (isDraft) => {
-    if (!isDraft && !assessForm.alcoholicStatus) {
-      setStatusMsg("Alcoholic / Non-Alcoholic status is mandatory."); return;
-    }
-    const { knowledge, ynTotal, total } = computeScore(assessForm);
-    const sectionBreakdown = YN_SECTIONS.map(s => ({
-      title: s.title,
-      marks: assessForm[s.key].filter(v => v === "Yes").length * s.weight,
-      outOf: s.outOf
-    }));
-    const record = {
-      id: Date.now(), pointsmanId: assessTarget.pointsmanId,
-      hrmsId: assessTarget.hrmsId, name: assessTarget.name,
-      date: new Date().toISOString().slice(0,10),
-      knowledgeMarks: knowledge, ynTotal, total,
-      grade: getCat(total), approvalStatus: isDraft ? "Draft" : "Pending",
-      remarks: assessForm.remarks,
-      sections: [
-        { title: "Knowledge of Rules (MCQ)", marks: knowledge, outOf: 25 },
-        ...sectionBreakdown
-      ],
-      meta: {
-        alcoholicStatus: assessForm.alcoholicStatus,
-        pmeStatus: assessForm.pmeStatus,
-        refStatus: assessForm.refStatus,
-        automaticTraining: assessForm.automaticTraining,
-        counselling: assessForm.counselling,
-        dateOfAppointment: assessForm.dateOfAppointment,
-        workingSince: assessForm.workingSince
+  const submitAssessment = async (pm, scoreObj) => {
+    const today = new Date().toISOString().slice(0,10);
+    const scoreVal = scoreObj.total;
+    const updatedPointsmen = pointsmen.map(p => {
+      if (p.hrmsId === pm.hrmsId) {
+        return {
+          ...p,
+          lastScore: scoreVal,
+          cat: getCat(scoreVal),
+          risk: scoreVal >= 80 ? "Low" : scoreVal >= 60 ? "Medium" : "High",
+          totalAssessments: p.totalAssessments + 1,
+          lastAssessDate: today
+        };
       }
-    };
-    setSubmittedAssessments(prev => [record, ...prev]);
-    if (!isDraft) setDrafts(prev => prev.filter(d => d.pointsmanId !== assessTarget.pointsmanId));
-    setPointsmen(prev => prev.map(p =>
-      p.id === assessTarget.pointsmanId
-        ? { ...p, lastScore: total, approvalStatus: isDraft ? p.approvalStatus : "Pending" }
-        : p
-    ));
-    if (!isDraft) setAssessLocked(true);
-    setStatusMsg(isDraft ? "Draft saved." : "Assessment submitted for TI approval. Status: Pending.");
-    if (!isDraft) setPageMode("default");
+      return p;
+    });
+
+    setPointsmen(updatedPointsmen);
+
+    // Save update to Supabase!
+    try {
+      const dbPm = updatedPointsmen.find(p => p.hrmsId === pm.hrmsId);
+      const modalData = {
+        id: dbPm.hrmsId,
+        name: dbPm.name,
+        contact: dbPm.contact,
+        email: dbPm.email,
+        role: "Pointsman",
+        station: dbPm.station,
+        division: dbPm.division,
+        lastDate: dbPm.doj,
+        score: dbPm.lastScore,
+        cat: dbPm.cat,
+        reportingSm: dbPm.reportingSm,
+        workLocation: dbPm.workLocation,
+        shift: dbPm.shift,
+        jurisdiction: dbPm.jurisdiction
+      };
+      await saDataService.saveUser(modalData, "edit");
+    } catch (e) {
+      console.error("Failed to save submitted assessment to DB:", e);
+    }
+
+    setSubmittedAssessments(prev => [...prev, { pmId: pm.hrmsId, date: today, score: scoreVal }]);
+    setPageMode("default");
+    setStatusMsg(`Assessment submitted successfully for ${pm.name}. Total Score: ${scoreVal}/100.`);
   };
 
   return {
-    activeQIdx,
-    activeTab,
-    activatedTests,
-    assessForm,
-    assessLocked,
-    assessTarget,
-    computeScore,
-    drafts,
-    dynamicMonthlyTrend,
-    filteredFsPointsmen,
-    filteredPm,
-    filteredReports,
-    fsCategory,
-    fsEndDate,
-    fsRisk,
-    fsSearch,
-    fsStartDate,
-    fullscreenChart,
-    handleSubmitTestAttempt,
-    history,
-    lowPerformers,
-    myAssessSelected,
-    openAssessForm,
+    activeTab, setActiveTab,
+    pageMode, setPageMode,
+    statusMsg, setStatusMsg,
+    pointsmen, setPointsmen,
+    drafts, setDrafts,
+    submittedAssessments, setSubmittedAssessments,
+    selectedPm, setSelectedPm,
+    assessTarget, setAssessTarget,
+    assessForm, setAssessForm,
+    assessLocked, setAssessLocked,
+    myAssessSelected, setMyAssessSelected,
+    pmFilter, setPmFilter,
+    reportFilter, setReportFilter,
+    activatedTests, setActivatedTests,
+    repApplied, setRepApplied,
+    selectedReportUserId, setSelectedReportUserId,
+    repF, setRepF,
+    viewingStaff, setViewingStaff,
+    pmModal, setPmModal,
+    pmF, setPmF,
+    viewingPm, setViewingPm,
+    fetchLiveDatabaseData,
     openPmAdd,
-    openPmDetail,
     openPmEdit,
     openPmShift,
-    pageMode,
-    pieData,
-    pmF,
-    pmFilter,
-    pmModal,
-    pointsmen,
-    removePm,
-    repApplied,
-    repF,
-    reportFilter,
     savePmModal,
-    selectedPm,
-    selectedReportUserId,
-    setActiveQIdx,
-    setActiveTab,
-    setActivatedTests,
-    setAssessForm,
-    setAssessLocked,
-    setAssessTarget,
-    setDrafts,
-    setFsCategory,
-    setFsEndDate,
-    setFsRisk,
-    setFsSearch,
-    setFsStartDate,
-    setFullscreenChart,
-    setHistory,
-    setMyAssessSelected,
-    setPageMode,
-    setPmF,
-    setPmFilter,
-    setPmModal,
-    setPointsmen,
-    setRepApplied,
-    setRepF,
-    setReportFilter,
-    setSelectedPm,
-    setSelectedReportUserId,
-    setSmMcqTest,
-    setStatusMsg,
-    setSubmittedAssessments,
-    setTestAssigned,
-    setTestResponses,
-    setViewingPm,
-    setViewingStaff,
-    smId,
-    smMcqTest,
-    smName,
+    removePm,
+    fullscreenChart, setFullscreenChart,
+    fsStartDate, setFsStartDate,
+    fsEndDate, setFsEndDate,
+    fsCategory, setFsCategory,
+    fsRisk, setFsRisk,
+    fsSearch, setFsSearch,
+    filteredFsPointsmen,
+    dynamicMonthlyTrend,
+    history, setHistory,
+    smMcqTest, setSmMcqTest,
+    testAssigned, setTestAssigned,
+    activeQIdx, setActiveQIdx,
+    testResponses, setTestResponses,
     startTestAttempt,
+    handleSubmitTestAttempt,
     stats,
-    statusMsg,
-    submitAssessment,
-    submittedAssessments,
+    pieData,
+    lowPerformers,
+    filteredPm,
+    filteredReports,
     switchTab,
-    testAssigned,
-    testResponses,
+    openPmDetail,
+    openAssessForm,
     toggleYN,
-    viewingPm,
-    viewingStaff
+    computeScore,
+    submitAssessment,
+    smName,
+    smId,
+    stationSms,
+    assignedTi
   };
 }

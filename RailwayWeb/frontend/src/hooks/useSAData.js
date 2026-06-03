@@ -3,18 +3,18 @@ import { saDataService } from "../services/saDataService";
 import { ALL_STAFF, UNIFIED_96_STATIONS } from "../utils/saConstants";
 
 export function useSAData() {
-  const [staff, setStaff] = useState(ALL_STAFF);
-  const [stations, setStations] = useState(UNIFIED_96_STATIONS);
+  const [staff, setStaff] = useState([]);
+  const [stations, setStations] = useState([]);
   const [isLoadingLive, setIsLoadingLive] = useState(false);
 
   const fetchLiveDatabaseData = useCallback(async () => {
     setIsLoadingLive(true);
     try {
-      const fetchedStations = await saDataService.fetchStations();
-      if (fetchedStations.length > 0) setStations(fetchedStations);
-      
       const fetchedUsers = await saDataService.fetchUsers();
-      if (fetchedUsers.length > 0) setStaff(fetchedUsers);
+      setStaff(fetchedUsers);
+
+      const fetchedStations = await saDataService.fetchStations(fetchedUsers);
+      setStations(fetchedStations);
     } finally {
       setIsLoadingLive(false);
     }
@@ -29,9 +29,11 @@ export function useSAData() {
     setStations(prev => [newStation, ...prev]);
     try {
       await saDataService.addStation(newStation);
+      alert("Station added successfully!");
       fetchLiveDatabaseData();
     } catch (err) {
-      // Revert could be handled here
+      alert("Failed to add station: " + (err.message || err));
+      fetchLiveDatabaseData();
     }
   };
 
@@ -40,22 +42,22 @@ export function useSAData() {
       id: modalData.id,
       name: modalData.name,
       role: modalData.role,
-      station: modalData.station || "Nagpur Junction",
-      ti: modalData.ti || "TI NGP",
-      cat: modalData.cat || "A",
-      risk: modalData.risk || "Low",
-      score: modalData.score || 80,
-      contact: modalData.contact || "",
-      lastDate: modalData.lastDate || new Date().toISOString().split('T')[0],
+      station: modalData.station || "—",
+      ti: modalData.ti || "—",
+      cat: modalData.cat || (mode === "add" ? "Untested" : "A"),
+      risk: modalData.risk || (mode === "add" ? "Untested" : "Low"),
+      score: modalData.score !== undefined ? modalData.score : (mode === "add" ? 0 : 80),
+      contact: modalData.contact || "—",
+      lastDate: modalData.lastDate || "—",
       status: modalData.status || "Approved",
-      email: modalData.email || "",
+      email: modalData.email || "—",
       division: modalData.division || "Nagpur",
       zone: modalData.zone || "Central Railway",
-      reportingSm: modalData.reportingSm || "",
-      workLocation: modalData.workLocation || "",
-      shift: modalData.shift || "",
-      jurisdiction: modalData.jurisdiction || "Nagpur Division",
-      reportingAom: "P. K. Verma (Sr. DOM)"
+      reportingSm: modalData.reportingSm || "—",
+      workLocation: modalData.workLocation || "—",
+      shift: modalData.shift || "—",
+      jurisdiction: modalData.jurisdiction || "—",
+      reportingAom: "—"
     };
 
     // Optimistic UI update
@@ -67,9 +69,13 @@ export function useSAData() {
 
     try {
       await saDataService.saveUser(modalData, mode);
+      alert(`${mode === "add" ? "User created" : "User updated"} successfully!`);
       fetchLiveDatabaseData();
+      return true;
     } catch (err) {
-      // Handle error gracefully
+      alert("Failed to save user: " + (err.message || err));
+      fetchLiveDatabaseData();
+      return false;
     }
   };
 
@@ -78,9 +84,11 @@ export function useSAData() {
     setStaff(p => p.filter(s => s.id !== id));
     try {
       await saDataService.removeUser(id);
+      alert("User removed successfully!");
       fetchLiveDatabaseData();
     } catch (err) {
-      // Handle error
+      alert("Failed to remove user: " + (err.message || err));
+      fetchLiveDatabaseData();
     }
   };
 

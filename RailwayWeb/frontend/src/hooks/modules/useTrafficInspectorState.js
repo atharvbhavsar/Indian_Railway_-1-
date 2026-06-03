@@ -12,6 +12,9 @@ import {
   TI_SM_CRITERIA, TI_TM_CRITERIA, TI_SS_CRITERIA, INIT_INSPECTIONS, INIT_COUNSELLING,
   TI_QUIZ, INIT_TI_ASSESS_HISTORY, defaultSMForm, defaultTMForm, defaultSSForm
 } from "../../constants/trafficInspectorConstants";
+import { saDataService } from "../../services/saDataService";
+import { supabase } from "../../supabaseClient";
+import { assessmentService } from "../../services/assessmentService";
 
 export function useTrafficInspectorState(user, onLogout) {
   // Navigation & Sub-views
@@ -30,155 +33,289 @@ export function useTrafficInspectorState(user, onLogout) {
   });
 
   // Notifications
-  const [notifications, setNotifications] = useState([
-    { id: 1, type: "warning", message: "Station Master P. Wankhede: PME is Overdue since 2026-03-01.", time: "2 hours ago", read: false },
-    { id: 2, type: "danger", message: "Pointsman H. Singh: REF safety training has EXPIRED.", time: "5 hours ago", read: false },
-    { id: 3, type: "warning", message: "Pointsman B. Yadav: PME is Overdue since 2026-03-05.", time: "1 day ago", read: true },
-    { id: 4, type: "success", message: "Monthly safety audit successfully filed for Parbhani Junction.", time: "2 days ago", read: true }
-  ]);
+  const [notifications, setNotifications] = useState([]);
   const [bellDropdownOpen, setBellDropdownOpen] = useState(false);
 
   // Audit Logs
-  const [auditLogs, setAuditLogs] = useState([
-    { id: 1, timestamp: "2026-05-28 10:15:32", event: "Approved PM Assessment", details: "Approved assessment for Pointsman J. Shaikh (PM_1004). Final Score: 88/100." },
-    { id: 2, timestamp: "2026-05-27 14:22:05", event: "Profile Update", details: "Updated designation for Station Master S. Deshmukh (SM_1001)." },
-    { id: 3, timestamp: "2026-05-25 09:05:44", event: "Added New Station", details: "Added station Akola Junction (AK) under active jurisdiction." }
-  ]);
+  const [auditLogs, setAuditLogs] = useState([]);
 
-  // Core Data Cache (Hydrated from LocalStorage if present, otherwise initial mock)
-  const [stations, setStations] = useState(() => {
-    const saved = localStorage.getItem("ti_stations");
-    return saved ? JSON.parse(saved) : INIT_STATIONS;
-  });
-  useEffect(() => {
-    localStorage.setItem("ti_stations", JSON.stringify(stations));
-  }, [stations]);
+  const [stations, setStations] = useState([]);
+  const [users, setUsers] = useState([]);
 
-  const [users, setUsers] = useState(() => {
-    const saved = localStorage.getItem("ti_users");
-    return saved ? JSON.parse(saved) : INIT_USERS;
-  });
-  useEffect(() => {
-    localStorage.setItem("ti_users", JSON.stringify(users));
-  }, [users]);
-
-  const [pmList, setPmList] = useState(() => {
-    const saved = localStorage.getItem("ti_pm_list");
-    return saved ? JSON.parse(saved) : INIT_PM_ASSESSMENTS;
-  });
-  useEffect(() => {
-    localStorage.setItem("ti_pm_list", JSON.stringify(pmList));
-  }, [pmList]);
-
-  // SS List
-  const POPULATED_SS = DEFAULT_SS_TM_USERS.filter(u => u.role === "Station Superintendent");
-  const [ssList, setSsList] = useState(() => {
-    const saved = localStorage.getItem("ti_ss_list");
-    return saved ? JSON.parse(saved) : POPULATED_SS;
-  });
-  useEffect(() => {
-    localStorage.setItem("ti_ss_list", JSON.stringify(ssList));
-  }, [ssList]);
-
-  // SM List
-  const POPULATED_SM = INIT_USERS.filter(u => u.role === "Station Master");
-  const [smList, setSmList] = useState(() => {
-    const saved = localStorage.getItem("ti_sm_list");
-    if (saved) return JSON.parse(saved);
-    
-    // Fallback: Populate initial status
-    return POPULATED_SM.map(u => ({
-      id: u.id, name: u.name, hrmsId: u.id, station: u.station,
-      contact: u.contact, score: u.score,
-      status: u.id === "SM_1001" ? "Approved" : u.id === "SM_2102" ? "Submitted" : u.id === "SM_2201" ? "Pending" : "Pending",
-      examScore: u.id === "SM_1001" ? 22 : u.id === "SM_2102" ? 18 : undefined,
-      submissionDate: u.id === "SM_1001" ? "2026-03-20" : u.id === "SM_2102" ? "2026-04-12" : undefined,
-      pmeStatus: u.pmeStatus, refStatus: u.refStatus
-    }));
-  });
-  useEffect(() => {
-    localStorage.setItem("ti_sm_list", JSON.stringify(smList));
-  }, [smList]);
-
-  // TM List
-  const POPULATED_TM = DEFAULT_SS_TM_USERS.filter(u => u.role === "Train Manager");
-  const [tmList, setTmList] = useState(() => {
-    const saved = localStorage.getItem("ti_tm_list");
-    if (saved) return JSON.parse(saved);
-
-    return POPULATED_TM.map(u => ({
-      id: u.id, name: u.name, hrmsId: u.id, station: u.station,
-      contact: u.contact, score: u.score,
-      status: u.id === "TM_1001" ? "Approved" : u.id === "TM_1002" ? "Submitted" : "Pending",
-      examScore: u.id === "TM_1001" ? 23 : u.id === "TM_1002" ? 19 : undefined,
-      submissionDate: u.id === "TM_1001" ? "2026-04-20" : u.id === "TM_1002" ? "2026-04-22" : undefined,
-      pmeStatus: u.pmeStatus, refStatus: u.refStatus
-    }));
-  });
-  useEffect(() => {
-    localStorage.setItem("ti_tm_list", JSON.stringify(tmList));
-  }, [tmList]);
-
-  // Hotfix user/SM mismatches in mock
-  useEffect(() => {
-    const savedUsers = localStorage.getItem("ti_users");
-    if (savedUsers) {
-      try {
-        const parsed = JSON.parse(savedUsers);
-        let changed = false;
-        const updated = parsed.map(u => {
-          if (u.id === "SM_2101") {
-            changed = true;
-            return { ...u, id: "SM_1001" };
-          }
-          return u;
-        });
-        if (changed) {
-          localStorage.setItem("ti_users", JSON.stringify(updated));
-          setUsers(updated);
-        }
-      } catch (e) {
-        console.error(e);
-      }
+  const constructSections = (score, max = 100, role = "PM") => {
+    const total = score || 80;
+    if (role === "PM") {
+      return [
+        { title: "Knowledge of Rules",      score: Math.round(total * 0.25), max: 25 },
+        { title: "Alertness & Observation", score: Math.round(total * 0.25), max: 25 },
+        { title: "Safety Record",           score: Math.round(total * 0.15), max: 15 },
+        { title: "Leadership & Management", score: Math.round(total * 0.15), max: 15 },
+        { title: "Discipline",              score: Math.round(total * 0.10), max: 10 },
+        { title: "Appearance & Neatness",   score: Math.round(total * 0.10), max: 10 },
+      ];
+    } else if (role === "SM") {
+      return [
+        { title: "Station Management", score: Math.round(total * 0.25), max: 25 },
+        { title: "Safety & Compliance", score: Math.round(total * 0.20), max: 20 },
+        { title: "Staff Supervision", score: Math.round(total * 0.15), max: 15 },
+        { title: "Documentation & Reporting", score: Math.round(total * 0.15), max: 15 },
+        { title: "Emergency Handling", score: Math.round(total * 0.25), max: 25 },
+        { title: "Written Exam (Knowledge)", score: Math.round(total * 0.20), max: 25 }
+      ];
+    } else if (role === "TM") {
+      return [
+        { title: "Train Safety & Brake Inspection", score: Math.round(total * 0.25), max: 25 },
+        { title: "Signaling & Whistle Compliance", score: Math.round(total * 0.20), max: 20 },
+        { title: "Shunting & Coupling Ops", score: Math.round(total * 0.15), max: 15 },
+        { title: "Train Log & Guard Certificates", score: Math.round(total * 0.15), max: 15 },
+        { title: "Emergency Train Protection", score: Math.round(total * 0.25), max: 25 },
+        { title: "Written Exam (Knowledge)", score: Math.round(total * 0.20), max: 25 }
+      ];
+    } else { // SS
+      return [
+        { title: "Station Safety", score: Math.round(total * 0.30), max: 30 },
+        { title: "Rule Compliance", score: Math.round(total * 0.25), max: 25 },
+        { title: "Incident Management", score: Math.round(total * 0.20), max: 20 },
+        { title: "Communication Standards", score: Math.round(total * 0.15), max: 15 },
+        { title: "Documentation Audit", score: Math.round(total * 0.10), max: 10 }
+      ];
     }
+  };
 
-    const savedSmList = localStorage.getItem("ti_sm_list");
-    if (savedSmList) {
-      try {
-        const parsed = JSON.parse(savedSmList);
-        let changed = false;
-        const updated = parsed.map(s => {
-          if (s.hrmsId === "SM_2101") {
-            changed = true;
-            return { ...s, hrmsId: "SM_1001" };
-          }
-          return s;
+  const fetchLiveDatabaseData = async () => {
+    try {
+      const u = await saDataService.fetchUsers();
+      const st = await saDataService.fetchStations(u);
+      setStations(st);
+      const mapped = u.map(x => {
+        let fullRole = "Pointsman";
+        if (x.role === "sm") fullRole = "Station Master";
+        else if (x.role === "ss") fullRole = "Station Superintendent";
+        else if (x.role === "tm") fullRole = "Train Manager";
+        else if (x.role === "ti") fullRole = "Traffic Inspector";
+
+        return {
+          ...x,
+          role: fullRole,
+          hrmsId: x.id,
+          cat: x.category || "A",
+          risk: x.riskLevel || "Low",
+          score: parseInt(x.score) || 80,
+          safetyScore: 85,
+          totalAssessments: 2,
+          approvalStatus: "Approved",
+          stationName: x.station,
+          doj: x.lastDate || "2026-01-01"
+        };
+      });
+      setUsers(mapped);
+
+      // Now query assessments from database
+      const { data: assessList, error: assessError } = await supabase
+        .from("ASSESSMENT")
+        .select(`
+          *,
+          employee:USERS!employee_id (
+            user_id,
+            hrms_id,
+            full_name,
+            email,
+            mobile_no,
+            ROLE (role_name),
+            EMPLOYEE_PROFILE (
+              joining_date,
+              current_score,
+              safety_score,
+              category,
+              monitoring_status,
+              shift,
+              work_location,
+              STATION (station_name, station_code)
+            )
+          ),
+          conducted_by_user:USERS!conducted_by (
+            full_name
+          ),
+          TEST_ATTEMPT (*),
+          APPROVAL (*, USERS!approved_by(full_name))
+        `)
+        .order("created_at", { ascending: false });
+
+      if (!assessError && assessList) {
+        // 1. Pointsmen Assessments (pmList)
+        const pms = assessList.filter(a => a.assessment_type === "Pointsman Checklist" || a.assessment_type === "Pointsman Evaluation" || a.assessment_type === "Checklist Evaluation");
+        const pmMapped = pms.map(a => {
+          const score = a.TEST_ATTEMPT?.[0]?.obtained_marks || 0;
+          const subDate = a.assessment_date ? new Date(a.assessment_date).toISOString().slice(0, 10) : "";
+          return {
+            id: a.assessment_id,
+            pointsmanName: a.employee?.full_name || "",
+            hrmsId: a.employee?.hrms_id || "",
+            station: a.employee?.EMPLOYEE_PROFILE?.STATION?.station_name || "—",
+            assessingSM: a.conducted_by_user?.full_name || "SM",
+            submissionDate: subDate,
+            status: a.status === 'Pending' ? 'Pending' : a.status,
+            originalSections: constructSections(score, 100, "PM"),
+            finalSections: a.status === "Approved" ? constructSections(score, 100, "PM") : undefined,
+            finalScore: score,
+            tiRemarks: a.APPROVAL?.remarks || "",
+            tiModified: false,
+            approvalDate: a.APPROVAL?.approval_date ? new Date(a.APPROVAL.approval_date).toISOString().slice(0, 10) : "",
+            auditTrail: a.APPROVAL ? [{ action: "Approved", by: a.APPROVAL.USERS?.full_name || "TI", date: new Date(a.APPROVAL.approval_date).toISOString().slice(0,10), remark: a.APPROVAL.remarks }] : []
+          };
         });
-        if (changed) {
-          localStorage.setItem("ti_sm_list", JSON.stringify(updated));
-          setSmList(updated);
-        }
-      } catch (e) {
-        console.error(e);
+        setPmList(pmMapped);
+
+        // 2. Station Master Checklist List (smList)
+        const sms = mapped.filter(u => u.role === "Station Master");
+        const smMapped = sms.map(u => {
+          const latest = assessList.find(a => a.employee_id === u.user_id && a.assessment_type === "Station Master Assessment");
+          const score = latest?.TEST_ATTEMPT?.[0]?.obtained_marks || u.score || 0;
+          return {
+            id: u.user_id,
+            name: u.name,
+            hrmsId: u.hrmsId,
+            station: u.stationName,
+            contact: u.contact,
+            score: score,
+            cat: latest?.TEST_ATTEMPT?.[0]?.category || u.cat || "A",
+            status: latest ? (latest.status === 'Approved' ? 'Approved' : (latest.status === 'Rejected' ? 'Rejected' : 'Submitted')) : 'Pending',
+            examScore: latest?.TEST_ATTEMPT?.[0]?.obtained_marks,
+            submissionDate: latest?.assessment_date ? new Date(latest.assessment_date).toISOString().slice(0, 10) : undefined,
+            pmeStatus: u.pmeStatus || 'Fit',
+            refStatus: u.refStatus || 'Cleared'
+          };
+        });
+        setSmList(smMapped);
+
+        // 3. Train Manager Checklist List (tmList)
+        const tms = mapped.filter(u => u.role === "Train Manager");
+        const tmMapped = tms.map(u => {
+          const latest = assessList.find(a => a.employee_id === u.user_id && a.assessment_type === "Train Manager Assessment");
+          const score = latest?.TEST_ATTEMPT?.[0]?.obtained_marks || u.score || 0;
+          return {
+            id: u.user_id,
+            name: u.name,
+            hrmsId: u.hrmsId,
+            station: u.stationName,
+            contact: u.contact,
+            score: score,
+            cat: latest?.TEST_ATTEMPT?.[0]?.category || u.cat || "A",
+            status: latest ? (latest.status === 'Approved' ? 'Approved' : (latest.status === 'Rejected' ? 'Rejected' : 'Submitted')) : 'Pending',
+            examScore: latest?.TEST_ATTEMPT?.[0]?.obtained_marks,
+            submissionDate: latest?.assessment_date ? new Date(latest.assessment_date).toISOString().slice(0, 10) : undefined,
+            pmeStatus: u.pmeStatus || 'Fit',
+            refStatus: u.refStatus || 'Cleared'
+          };
+        });
+        setTmList(tmMapped);
+
+        // 4. Station Superintendent Checklist List (ssList)
+        const sss = mapped.filter(u => u.role === "Station Superintendent");
+        const ssMapped = sss.map(u => {
+          const latest = assessList.find(a => a.employee_id === u.user_id && a.assessment_type === "Station Superintendent Assessment");
+          const score = latest?.TEST_ATTEMPT?.[0]?.obtained_marks || u.score || 0;
+          return {
+            id: u.user_id,
+            name: u.name,
+            hrmsId: u.hrmsId,
+            station: u.stationName,
+            contact: u.contact,
+            score: score,
+            cat: latest?.TEST_ATTEMPT?.[0]?.category || u.cat || "A",
+            status: latest ? (latest.status === 'Approved' ? 'Approved' : (latest.status === 'Rejected' ? 'Rejected' : 'Submitted')) : 'Pending',
+            examScore: latest?.TEST_ATTEMPT?.[0]?.obtained_marks,
+            submissionDate: latest?.assessment_date ? new Date(latest.assessment_date).toISOString().slice(0, 10) : undefined,
+            pmeStatus: u.pmeStatus || 'Fit',
+            refStatus: u.refStatus || 'Cleared'
+          };
+        });
+        setSsList(ssMapped);
+
+        // 5. TI Self-Assessments (tiAssessments)
+        const tiAssess = assessList.filter(a => a.employee_id === user?.userId);
+        const tiAssessMapped = tiAssess.map(a => {
+          const score = a.TEST_ATTEMPT?.[0]?.obtained_marks || 0;
+          const cat = a.TEST_ATTEMPT?.[0]?.category || "A";
+          return {
+            id: a.assessment_id,
+            date: a.assessment_date ? new Date(a.assessment_date).toISOString().slice(0, 10) : "",
+            period: a.assessment_type,
+            assessedBy: a.conducted_by_user?.full_name || "AOM/G",
+            totalScore: score,
+            category: cat,
+            approvalStatus: a.status,
+            aomRemarks: a.APPROVAL?.remarks || "Submitted safety compliance assessment.",
+            sections: [
+              { title: "Whistle Codes & Hand Signals", marks: Math.round(score * 0.20), outOf: 20 },
+              { title: "Token & Line Clear Authorities", marks: Math.round(score * 0.20), outOf: 20 },
+              { title: "Station Interlocking & Track Circuits", marks: Math.round(score * 0.20), outOf: 20 },
+              { title: "Shunting Operations & Point Locking", marks: Math.round(score * 0.20), outOf: 20 },
+              { title: "Gate Signals & Siding Isolation", marks: Math.round(score * 0.20), outOf: 20 }
+            ],
+            userAnswers: []
+          };
+        });
+        setTiAssessments(tiAssessMapped);
+
+        // Check if TI exam is assigned
+        const pendingTIExam = assessList.find(a => a.employee_id === user?.userId && a.status === 'Pending' && a.TEST_ATTEMPT?.length === 0);
+        setIsExamAssigned(!!pendingTIExam);
       }
+
+      // 6. Inspections & Counselling from SAFETY_RECORD
+      const { data: safetyRecords, error: safetyError } = await supabase
+        .from("SAFETY_RECORD")
+        .select(`
+          *,
+          employee:USERS!user_id (
+            full_name,
+            hrms_id,
+            EMPLOYEE_PROFILE (STATION (station_name))
+          )
+        `);
+      if (!safetyError && safetyRecords) {
+        const inspects = safetyRecords.filter(r => r.incident_type === 'Inspection').map(r => ({
+          id: r.safety_id,
+          date: r.incident_date,
+          station: r.employee?.EMPLOYEE_PROFILE?.STATION?.station_name || "Nagpur Junction",
+          officer: "TI " + (user?.name || "R. Khan"),
+          observations: r.description,
+          risk: r.action_taken || "Low",
+          status: "Active"
+        }));
+        setInspections(inspects);
+
+        const couns = safetyRecords.filter(r => r.incident_type === 'Counseling').map(r => ({
+          id: r.safety_id,
+          date: r.incident_date,
+          staffName: r.employee?.full_name || "Pointsman",
+          designation: "Pointsman Grade I",
+          station: r.employee?.EMPLOYEE_PROFILE?.STATION?.station_name || "Nagpur Junction",
+          topics: r.description,
+          duration: "30 mins",
+          progress: r.action_taken || "Under Monitor"
+        }));
+        setCounsellings(couns);
+      }
+    } catch (err) {
+      console.error("Error fetching live db data:", err);
     }
+  };
+
+  useEffect(() => {
+    fetchLiveDatabaseData();
   }, []);
 
-  const [inspections, setInspections] = useState(INIT_INSPECTIONS);
-  const [counsellings, setCounsellings] = useState(INIT_COUNSELLING);
-
-  // Self assessment state
+  const [pmList, setPmList] = useState([]);
+  const [ssList, setSsList] = useState([]);
+  const [smList, setSmList] = useState([]);
+  const [tmList, setTmList] = useState([]);
+  const [inspections, setInspections] = useState([]);
+  const [counsellings, setCounsellings] = useState([]);
   const [selectedRecord, setSelectedRecord] = useState(null);
-  const [tiAssessments, setTiAssessments] = useState(() => {
-    const saved = localStorage.getItem("ti_assessments");
-    return saved ? JSON.parse(saved) : INIT_TI_ASSESS_HISTORY;
-  });
-  useEffect(() => {
-    localStorage.setItem("ti_assessments", JSON.stringify(tiAssessments));
-  }, [tiAssessments]);
-
-  // Safety Exam assignment simulation from AOM
-  const [isExamAssigned, setIsExamAssigned] = useState(() => localStorage.getItem("ti_exam_assigned") === "true");
+  const [tiAssessments, setTiAssessments] = useState([]);
+  const [isExamAssigned, setIsExamAssigned] = useState(false);
 
   // Search/Sort/Filter inputs
   const [selectedReportUserId, setSelectedReportUserId] = useState(null);
@@ -206,33 +343,15 @@ export function useTrafficInspectorState(user, onLogout) {
   const [rejectMode, setRejectMode] = useState({});
 
   // Assessment Forms
-  const [smForms, setSmForms] = useState(() => {
-    const saved = localStorage.getItem("ti_sm_forms");
-    return saved ? JSON.parse(saved) : {};
-  });
-  useEffect(() => {
-    localStorage.setItem("ti_sm_forms", JSON.stringify(smForms));
-  }, [smForms]);
+  const [smForms, setSmForms] = useState({});
   const [smLocked, setSmLocked] = useState({});
   const [activeSmId, setActiveSmId] = useState(null);
 
-  const [tmForms, setTmForms] = useState(() => {
-    const saved = localStorage.getItem("ti_tm_forms");
-    return saved ? JSON.parse(saved) : {};
-  });
-  useEffect(() => {
-    localStorage.setItem("ti_tm_forms", JSON.stringify(tmForms));
-  }, [tmForms]);
+  const [tmForms, setTmForms] = useState({});
   const [tmLocked, setTmLocked] = useState({});
   const [activeTmId, setActiveTmId] = useState(null);
 
-  const [ssForms, setSsForms] = useState(() => {
-    const saved = localStorage.getItem("ti_ss_forms");
-    return saved ? JSON.parse(saved) : {};
-  });
-  useEffect(() => {
-    localStorage.setItem("ti_ss_forms", JSON.stringify(ssForms));
-  }, [ssForms]);
+  const [ssForms, setSsForms] = useState({});
   const [ssLocked, setSsLocked] = useState({});
   const [activeSsId, setActiveSsId] = useState(null);
 
@@ -297,11 +416,11 @@ export function useTrafficInspectorState(user, onLogout) {
   // Sync exam assigned status continuously
   useEffect(() => {
     const handleStorageChange = () => {
-      setIsExamAssigned(localStorage.getItem("ti_exam_assigned") === "true");
+      setIsExamAssigned(localStorage.getItem("v2_ti_exam_assigned") === "true");
     };
     window.addEventListener("storage", handleStorageChange);
     const interval = setInterval(() => {
-      setIsExamAssigned(localStorage.getItem("ti_exam_assigned") === "true");
+      setIsExamAssigned(localStorage.getItem("v2_ti_exam_assigned") === "true");
     }, 1000);
     return () => {
       window.removeEventListener("storage", handleStorageChange);
@@ -645,27 +764,29 @@ export function useTrafficInspectorState(user, onLogout) {
   };
 
   /* ── Operational / Admin Actions ── */
-  const handleAddStationSubmit = (e) => {
+  const handleAddStationSubmit = async (e) => {
     e.preventDefault();
     if (!newStationData.name || !newStationData.code) return;
     const newSt = {
-      id: Date.now(),
-      name: newStationData.name,
-      code: newStationData.code.toUpperCase(),
+      id: Date.now().toString(),
+      stationName: newStationData.name,
+      stationCode: newStationData.code.toUpperCase(),
       division: "Parbhani-Amla Section",
       zone: "Central Railway",
-      completed: 0,
-      pending: 2,
-      avgScore: 0,
       category: "B",
       riskLevel: "Medium",
       lastUpdatedDate: new Date().toISOString().slice(0, 10)
     };
-    setStations(prev => [...prev, newSt]);
-    addAuditLog("Added New Station", `Station: ${newSt.name} (${newSt.code})`);
-    triggerNotification("success", `Station ${newSt.name} added to division.`);
-    setNewStationData({ name: "", code: "" });
-    setShowAddStationModal(false);
+    try {
+      await saDataService.saveStation(newSt, "add");
+      await fetchLiveDatabaseData();
+      addAuditLog("Added New Station", `Station: ${newSt.stationName} (${newSt.stationCode})`);
+      triggerNotification("success", `Station ${newSt.stationName} added to division.`);
+      setNewStationData({ name: "", code: "" });
+      setShowAddStationModal(false);
+    } catch (err) {
+      alert("Error adding station: " + err.message);
+    }
   };
 
   const openAddUserModal = () => {
@@ -686,39 +807,55 @@ export function useTrafficInspectorState(user, onLogout) {
     setShowAddUserModal(true);
   };
 
-  const handleAddUserSubmit = (e) => {
+  const handleAddUserSubmit = async (e) => {
     e.preventDefault();
     const newUser = {
       ...newUserData,
+      id: newUserData.id || `USER_${Date.now().toString().slice(-4)}`,
       score: 75,
       cat: "B",
-      lastAssessDate: new Date().toISOString().slice(0, 10)
+      lastDate: new Date().toISOString().slice(0, 10)
     };
-    setUsers(prev => [...prev, newUser]);
-    addAuditLog("New User Created", `Staff ID: ${newUser.id}, Name: ${newUser.name}`);
-    triggerNotification("success", `Account provisioned for ${newUser.name}.`);
-    setShowAddUserModal(false);
+    try {
+      await saDataService.saveUser(newUser, "add");
+      await fetchLiveDatabaseData();
+      addAuditLog("New User Created", `Staff ID: ${newUser.id}, Name: ${newUser.name}`);
+      triggerNotification("success", `Account provisioned for ${newUser.name}.`);
+      setShowAddUserModal(false);
+    } catch (err) {
+      alert("Error adding user: " + err.message);
+    }
   };
 
   const handleEditUser = (userRec) => {
     setEditingUser({ ...userRec });
   };
 
-  const saveEditedUser = (e) => {
+  const saveEditedUser = async (e) => {
     e.preventDefault();
-    setUsers(prev => prev.map(u => u.id === editingUser.id ? editingUser : u));
-    addAuditLog("User Profile Modified", `Staff ID: ${editingUser.id}, Name: ${editingUser.name}`);
-    triggerNotification("success", `Profile updated for ${editingUser.name}.`);
-    setEditingUser(null);
-    setStatusMsg("User profile updated successfully.");
+    try {
+      await saDataService.saveUser(editingUser, "edit");
+      await fetchLiveDatabaseData();
+      addAuditLog("User Profile Modified", `Staff ID: ${editingUser.id}, Name: ${editingUser.name}`);
+      triggerNotification("success", `Profile updated for ${editingUser.name}.`);
+      setEditingUser(null);
+      setStatusMsg("User profile updated successfully.");
+    } catch (err) {
+      alert("Error updating user: " + err.message);
+    }
   };
 
-  const handleDeleteUser = (userId, userName) => {
+  const handleDeleteUser = async (userId, userName) => {
     if (window.confirm(`Are you absolutely sure you want to revoke operational access for ${userName} (${userId})?`)) {
-      setUsers(prev => prev.filter(u => u.id !== userId));
-      addAuditLog("Revoked User Access", `Staff ID: ${userId}, Name: ${userName}`);
-      triggerNotification("danger", `Revoked access: ${userName} (${userId}).`);
-      setStatusMsg(`Revoked evaluation and access clearance for ${userName}.`);
+      try {
+        await saDataService.removeUser(userId);
+        await fetchLiveDatabaseData();
+        addAuditLog("Revoked User Access", `Staff ID: ${userId}, Name: ${userName}`);
+        triggerNotification("danger", `Revoked access: ${userName} (${userId}).`);
+        setStatusMsg(`Revoked evaluation and access clearance for ${userName}.`);
+      } catch (err) {
+        alert("Error removing user: " + err.message);
+      }
     }
   };
 
@@ -726,12 +863,18 @@ export function useTrafficInspectorState(user, onLogout) {
     setTransferringUser({ ...userRec, targetStation: userRec.station });
   };
 
-  const confirmTransfer = () => {
-    setUsers(prev => prev.map(u => u.id === transferringUser.id ? { ...u, station: transferringUser.targetStation } : u));
-    addAuditLog("Staff Station Transfer", `Staff: ${transferringUser.name} moved from ${transferringUser.station} to ${transferringUser.targetStation}`);
-    triggerNotification("warning", `Transferred ${transferringUser.name} to ${transferringUser.targetStation}.`);
-    setStatusMsg(`Operational deployment of ${transferringUser.name} transferred to ${transferringUser.targetStation}.`);
-    setTransferringUser(null);
+  const confirmTransfer = async () => {
+    try {
+      const updatedUser = { ...transferringUser, station: transferringUser.targetStation };
+      await saDataService.saveUser(updatedUser, "edit");
+      await fetchLiveDatabaseData();
+      addAuditLog("Staff Station Transfer", `Staff: ${transferringUser.name} moved from ${transferringUser.station} to ${transferringUser.targetStation}`);
+      triggerNotification("warning", `Transferred ${transferringUser.name} to ${transferringUser.targetStation}.`);
+      setStatusMsg(`Operational deployment of ${transferringUser.name} transferred to ${transferringUser.targetStation}.`);
+      setTransferringUser(null);
+    } catch (err) {
+      alert("Error transferring user: " + err.message);
+    }
   };
 
   /* ── PM Review Actions ── */
@@ -751,39 +894,81 @@ export function useTrafficInspectorState(user, onLogout) {
     });
   };
 
-  const finalizePM = (id,mode,rejectNote="") => {
-    let total = 0;
-    setPmList(prev=>prev.map(p=>{
-      if (p.id!==id) return p;
-      const secs  = editSections[id]||p.originalSections;
-      total = secs.reduce((s,x)=>s+x.score,0);
-      const modified = JSON.stringify(secs)!==JSON.stringify(p.originalSections);
-      const audit = [...(p.auditTrail||[]),{
-        action: mode==="reject"?"Rejected":(modified?"Modified & Approved":"Approved without modification"),
-        by:`TI ${tiName}`, date:new Date().toISOString().slice(0,10),
-        remark: mode==="reject"?rejectNote:(tiRemarks[id]||"")
-      }];
-      return {
-        ...p, status: mode==="reject"?"Rejected":"Approved",
-        finalSections:mode==="reject"?p.originalSections:secs,
-        finalScore:total, tiRemarks:tiRemarks[id]||rejectNote,
-        tiModified:modified, approvalDate:new Date().toISOString().slice(0,10),
-        auditTrail:audit
-      };
-    }));
-    
-    const targetAssess = pmList.find(p => p.id === id);
-    if (targetAssess && mode !== "reject") {
-      const finalSecs = editSections[id] || targetAssess.originalSections;
-      const finalSum = finalSecs.reduce((s, x) => s + x.score, 0);
-      setUsers(prev => prev.map(u => u.id === targetAssess.hrmsId ? { ...u, score: finalSum, cat: getCat(finalSum) } : u));
-    }
+  const finalizePM = async (id, mode, rejectNote = "") => {
+    try {
+      const newStatus = mode === "reject" ? "Rejected" : "Approved";
+      
+      const { error: updateError } = await supabase
+        .from("ASSESSMENT")
+        .update({ status: newStatus })
+        .eq("assessment_id", id);
+      if (updateError) throw updateError;
 
-    setSelectedPmId(null);
-    setStatusMsg(mode==="reject"?"Assessment rejected. SM has been notified.":`Assessment ${mode==="approve"?"approved":"modified & approved"} successfully.`);
-    addAuditLog(mode==="reject"?"Rejected PM Assessment":"Approved PM Assessment", `Staff ID: ${targetAssess?.hrmsId || ""}, Score: ${mode==="reject"?"-":total}`);
-    triggerNotification("success", `Reviewed PM Assessment for ${targetAssess?.pointsmanName || ""}.`);
-    setReviewTab(mode==="reject"?"Rejected":"Approved");
+      const { data: currentApproval } = await supabase
+        .from("APPROVAL")
+        .select("approval_id")
+        .eq("assessment_id", id)
+        .maybeSingle();
+
+      if (currentApproval) {
+        await supabase
+          .from("APPROVAL")
+          .update({
+            approved_by: user.userId,
+            approval_date: new Date().toISOString(),
+            remarks: mode === "reject" ? rejectNote : (tiRemarks[id] || "Approved by TI")
+          })
+          .eq("approval_id", currentApproval.approval_id);
+      } else {
+        await supabase
+          .from("APPROVAL")
+          .insert([{
+            assessment_id: id,
+            approved_by: user.userId,
+            approval_level: "Traffic Inspector",
+            remarks: mode === "reject" ? rejectNote : (tiRemarks[id] || "Approved by TI")
+          }]);
+      }
+
+      const targetAssess = pmList.find(p => p.id === id);
+
+      if (mode !== "reject") {
+        const secs = editSections[id] || targetAssess.originalSections;
+        const total = secs.reduce((s, x) => s + x.score, 0);
+
+        await supabase
+          .from("TEST_ATTEMPT")
+          .update({
+            obtained_marks: total,
+            percentage: total,
+            category: getCat(total)
+          })
+          .eq("assessment_id", id);
+
+        if (targetAssess?.hrmsId) {
+          const emp = users.find(u => u.hrmsId === targetAssess.hrmsId);
+          if (emp?.user_id) {
+            await supabase
+              .from("EMPLOYEE_PROFILE")
+              .update({
+                current_score: total,
+                category: getCat(total)
+              })
+              .eq("user_id", emp.user_id);
+          }
+        }
+      }
+
+      setSelectedPmId(null);
+      setStatusMsg(mode === "reject" ? "Assessment rejected. SM has been notified." : `Assessment approved successfully.`);
+      addAuditLog(mode === "reject" ? "Rejected PM Assessment" : "Approved PM Assessment", `Staff ID: ${targetAssess?.hrmsId || ""}, Score: ${mode === "reject" ? "-" : targetAssess?.finalScore}`);
+      triggerNotification("success", `Reviewed PM Assessment for ${targetAssess?.pointsmanName || ""}.`);
+      setReviewTab(mode === "reject" ? "Rejected" : "Approved");
+      await fetchLiveDatabaseData();
+    } catch (err) {
+      console.error("Error finalizing PM assessment:", err);
+      setStatusMsg("Failed to finalize assessment in database.");
+    }
   };
 
   /* ── SM Form ── */
@@ -829,33 +1014,58 @@ export function useTrafficInspectorState(user, onLogout) {
 
   const setSMField = (id,key,val) => { if(smLocked[id])return; setSmForms(p=>({...p,[id]:{...p[id],[key]:val}})); };
 
-  const submitSMAssessment = id => {
+  const submitSMAssessment = async id => {
     const f = smForms[id];
     if (!f?.alcoholicStatus){ setStatusMsg("Alcoholic/Non-Alcoholic status is mandatory."); return; }
     const {total} = computeSMScore(f, TI_SM_CRITERIA);
     
     const isAlcoholic = f.alcoholicStatus === "Alcoholic";
     const cat = isAlcoholic ? "D" : getCat(total);
+    const targetUser = users.find(u => u.id === id);
 
-    setSmList(prev=>prev.map(s=>s.id===id?{...s,status:"Submitted",score:total,category:cat}:s));
-    setSmLocked(p=>({...p,[id]:true}));
-    
-    const smAssess = smList.find(s => s.id === id);
-    if (smAssess) {
-      setUsers(prev => prev.map(u => u.id === smAssess.hrmsId ? {
-        ...u,
-        score: total,
-        cat: cat,
-        alcoholicStatus: f.alcoholicStatus,
-        pmeStatus: f.pmeStatus,
-        refStatus: f.refStatus
-      } : u));
+    try {
+      const { data: newAssess, error: assessError } = await supabase
+        .from("ASSESSMENT")
+        .insert([{
+          employee_id: targetUser.user_id,
+          conducted_by: user.userId,
+          assessment_type: "Station Master Assessment",
+          status: "Pending",
+          assessment_date: new Date().toISOString()
+        }])
+        .select()
+        .single();
+
+      if (assessError) throw assessError;
+
+      await assessmentService.submitTestAttempt({
+        assessment_id: newAssess.assessment_id,
+        obtained_marks: total,
+        total_marks: 100,
+        percentage: total,
+        category: cat,
+        answers: {
+          alcoholicStatus: f.alcoholicStatus,
+          pmeStatus: f.pmeStatus,
+          refStatus: f.refStatus,
+          stationMgmt: f.stationMgmt,
+          safety: f.safety,
+          staffSupervision: f.staffSupervision,
+          documentation: f.documentation,
+          emergency: f.emergency,
+          knowledgeMarks: f.knowledgeMarks
+        }
+      });
+
+      setStatusMsg("SM assessment submitted successfully. Pending AOM approval.");
+      addAuditLog("Submitted SM Assessment", `SM: ${targetUser?.name || ""}, Grand Score: ${total}`);
+      triggerNotification("success", `Field evaluation logged for SM ${targetUser?.name || ""}.`);
+      setActiveSmId(null);
+      await fetchLiveDatabaseData();
+    } catch (err) {
+      console.error("Error submitting SM assessment:", err);
+      setStatusMsg("Failed to submit assessment to database.");
     }
-
-    setStatusMsg("SM assessment submitted. Pending AOM approval.");
-    addAuditLog("Submitted SM Assessment", `SM: ${smAssess?.name || ""}, Grand Score: ${total}`);
-    triggerNotification("success", `Field evaluation logged for SM ${smAssess?.name || ""}.`);
-    setActiveSmId(null);
   };
 
   /* ── TM Form ── */
@@ -906,7 +1116,7 @@ export function useTrafficInspectorState(user, onLogout) {
     setTmForms(p => ({ ...p, [id]: { ...p[id], [key]: val } }));
   };
 
-  const submitTMAssessment = id => {
+  const submitTMAssessment = async id => {
     const f = tmForms[id];
     if (!f?.alcoholicStatus) {
       setStatusMsg("Alcoholic/Non-Alcoholic status is mandatory.");
@@ -916,26 +1126,51 @@ export function useTrafficInspectorState(user, onLogout) {
 
     const isAlcoholic = f.alcoholicStatus === "Alcoholic";
     const cat = isAlcoholic ? "D" : getCat(total);
+    const targetUser = users.find(u => u.id === id);
 
-    setTmList(prev => prev.map(t => t.id === id ? { ...t, status: "Submitted", score: total, category: cat } : t));
-    setTmLocked(p => ({ ...p, [id]: true }));
+    try {
+      const { data: newAssess, error: assessError } = await supabase
+        .from("ASSESSMENT")
+        .insert([{
+          employee_id: targetUser.user_id,
+          conducted_by: user.userId,
+          assessment_type: "Train Manager Assessment",
+          status: "Pending",
+          assessment_date: new Date().toISOString()
+        }])
+        .select()
+        .single();
 
-    const tmAssess = tmList.find(t => t.id === id);
-    if (tmAssess) {
-      setUsers(prev => prev.map(u => u.id === tmAssess.hrmsId ? {
-        ...u,
-        score: total,
-        cat: cat,
-        alcoholicStatus: f.alcoholicStatus,
-        pmeStatus: f.pmeStatus,
-        refStatus: f.refStatus
-      } : u));
+      if (assessError) throw assessError;
+
+      await assessmentService.submitTestAttempt({
+        assessment_id: newAssess.assessment_id,
+        obtained_marks: total,
+        total_marks: 100,
+        percentage: total,
+        category: cat,
+        answers: {
+          alcoholicStatus: f.alcoholicStatus,
+          pmeStatus: f.pmeStatus,
+          refStatus: f.refStatus,
+          trainSafety: f.trainSafety,
+          signaling: f.signaling,
+          shunting: f.shunting,
+          documentation: f.documentation,
+          emergency: f.emergency,
+          knowledgeMarks: f.knowledgeMarks
+        }
+      });
+
+      setStatusMsg("TM assessment submitted successfully. Pending AOM approval.");
+      addAuditLog("Submitted TM Assessment", `TM: ${targetUser?.name || ""}, Grand Score: ${total}`);
+      triggerNotification("success", `Field evaluation logged for TM ${targetUser?.name || ""}.`);
+      setActiveTmId(null);
+      await fetchLiveDatabaseData();
+    } catch (err) {
+      console.error("Error submitting TM assessment:", err);
+      setStatusMsg("Failed to submit assessment to database.");
     }
-
-    setStatusMsg("TM assessment submitted. Pending AOM approval.");
-    addAuditLog("Submitted TM Assessment", `TM: ${tmAssess?.name || ""}, Grand Score: ${total}`);
-    triggerNotification("success", `Field evaluation logged for TM ${tmAssess?.name || ""}.`);
-    setActiveTmId(null);
   };
 
   /* ── SS Helpers ── */
@@ -964,7 +1199,7 @@ export function useTrafficInspectorState(user, onLogout) {
 
   const setSSField = (id, key, val) => { if (ssLocked[id]) return; setSsForms(p => ({ ...p, [id]: { ...(p[id] || defaultSSForm()), [key]: val } })); };
 
-  const submitSSAssessment = id => {
+  const submitSSAssessment = async id => {
     const f = ssForms[id];
     if (!f?.alcoholicStatus) {
       setStatusMsg("Alcoholic/Non-Alcoholic status is mandatory.");
@@ -973,62 +1208,109 @@ export function useTrafficInspectorState(user, onLogout) {
     const { total } = computeSSScore(f, TI_SS_CRITERIA);
     const isAlcoholic = f.alcoholicStatus === "Alcoholic";
     const cat = isAlcoholic ? "D" : getCat(total);
+    const targetUser = users.find(u => u.id === id);
 
-    setSsList(prev => prev.map(s => s.id === id ? { ...s, status: "Submitted", score: total, category: cat } : s));
-    setSsLocked(p => ({ ...p, [id]: true }));
+    try {
+      const { data: newAssess, error: assessError } = await supabase
+        .from("ASSESSMENT")
+        .insert([{
+          employee_id: targetUser.user_id,
+          conducted_by: user.userId,
+          assessment_type: "Station Superintendent Assessment",
+          status: "Pending",
+          assessment_date: new Date().toISOString()
+        }])
+        .select()
+        .single();
 
-    const ssAssess = ssList.find(s => s.id === id);
-    if (ssAssess) {
-      setUsers(prev => prev.map(u => u.id === ssAssess.hrmsId ? {
-        ...u, score: total, cat: cat,
-        alcoholicStatus: f.alcoholicStatus, pmeStatus: f.pmeStatus, refStatus: f.refStatus
-      } : u));
+      if (assessError) throw assessError;
+
+      await assessmentService.submitTestAttempt({
+        assessment_id: newAssess.assessment_id,
+        obtained_marks: total,
+        total_marks: 100,
+        percentage: total,
+        category: cat,
+        answers: {
+          alcoholicStatus: f.alcoholicStatus,
+          pmeStatus: f.pmeStatus,
+          refStatus: f.refStatus,
+          stationSafety: f.stationSafety,
+          ruleCompliance: f.ruleCompliance,
+          incidentMgmt: f.incidentMgmt,
+          communication: f.communication,
+          documentation: f.documentation,
+          knowledgeMarks: f.knowledgeMarks
+        }
+      });
+
+      setStatusMsg("SS assessment submitted successfully. Pending AOM approval.");
+      addAuditLog("Submitted SS Assessment", `SS: ${targetUser?.name || ""}, Grand Score: ${total}`);
+      triggerNotification("success", `Field evaluation logged for SS ${targetUser?.name || ""}.`);
+      setActiveSsId(null);
+      await fetchLiveDatabaseData();
+    } catch (err) {
+      console.error("Error submitting SS assessment:", err);
+      setStatusMsg("Failed to submit assessment to database.");
     }
-
-    setStatusMsg("SS assessment submitted. Pending AOM approval.");
-    addAuditLog("Submitted SS Assessment", `SS: ${ssAssess?.name || ""}, Grand Score: ${total}`);
-    triggerNotification("success", `Field evaluation logged for SS ${ssAssess?.name || ""}.`);
-    setActiveSsId(null);
   };
 
   /* ── Logging Inspections & Counselling ── */
-  const submitInspection = (e) => {
+  const submitInspection = async (e) => {
     e.preventDefault();
-    const newRecord = {
-      id: "IN_" + Date.now(),
-      date: new Date().toISOString().slice(0, 10),
-      station: newInsp.station,
-      officer: newInsp.officer,
-      observations: newInsp.observations,
-      risk: newInsp.risk,
-      status: "Active"
-    };
-    setInspections(prev => [newRecord, ...prev]);
-    addAuditLog("Logged Station Inspection", `Station: ${newInsp.station}, Risk: ${newInsp.risk}`);
-    triggerNotification("warning", `NEW INSPECTION REPORT FILED: ${newInsp.station}`);
-    setStatusMsg(`Inspection audit log successfully created for ${newInsp.station}.`);
-    setNewInsp({ station: "Parbhani Junction", officer: "TI R. Khan", observations: "", risk: "Low" });
-    setShowInspForm(false);
+    try {
+      const { error } = await supabase
+        .from("SAFETY_RECORD")
+        .insert([{
+          user_id: user.userId,
+          incident_type: "Inspection",
+          incident_date: new Date().toISOString().slice(0, 10),
+          description: newInsp.observations,
+          action_taken: newInsp.risk
+        }]);
+
+      if (error) throw error;
+
+      addAuditLog("Logged Station Inspection", `Station: ${newInsp.station}, Risk: ${newInsp.risk}`);
+      triggerNotification("warning", `NEW INSPECTION REPORT FILED: ${newInsp.station}`);
+      setStatusMsg(`Inspection audit log successfully created for ${newInsp.station}.`);
+      setNewInsp({ station: "Parbhani Junction", officer: "TI R. Khan", observations: "", risk: "Low" });
+      setShowInspForm(false);
+      await fetchLiveDatabaseData();
+    } catch (err) {
+      console.error("Error submitting inspection:", err);
+      setStatusMsg("Failed to log inspection to database.");
+    }
   };
 
-  const submitCounselling = (e) => {
+  const submitCounselling = async (e) => {
     e.preventDefault();
-    const newRecord = {
-      id: "CL_" + Date.now(),
-      date: new Date().toISOString().slice(0, 10),
-      staffName: newCoun.staffName,
-      designation: newCoun.designation,
-      station: newCoun.station,
-      topics: newCoun.topics,
-      duration: newCoun.duration,
-      progress: newCoun.progress
-    };
-    setCounsellings(prev => [newRecord, ...prev]);
-    addAuditLog("Logged Counselling Session", `Staff: ${newCoun.staffName}, Topics: ${newCoun.topics.slice(0,25)}...`);
-    triggerNotification("success", `Counselling session registered for ${newCoun.staffName}.`);
-    setStatusMsg(`Staff safety counseling briefing registered for ${newCoun.staffName}.`);
-    setNewCoun({ staffName: "", designation: "Pointsman Grade I", station: "Parbhani Junction", topics: "", duration: "30 mins", progress: "Under Monitor" });
-    setShowCounForm(false);
+    try {
+      const targetUser = users.find(u => u.name === newCoun.staffName);
+      const targetUserId = targetUser?.user_id || user.userId;
+
+      const { error } = await supabase
+        .from("SAFETY_RECORD")
+        .insert([{
+          user_id: targetUserId,
+          incident_type: "Counseling",
+          incident_date: new Date().toISOString().slice(0, 10),
+          description: newCoun.topics,
+          action_taken: newCoun.progress
+        }]);
+
+      if (error) throw error;
+
+      addAuditLog("Logged Counselling Session", `Staff: ${newCoun.staffName}, Topics: ${newCoun.topics.slice(0,25)}...`);
+      triggerNotification("success", `Counselling session registered for ${newCoun.staffName}.`);
+      setStatusMsg(`Staff safety counseling briefing registered for ${newCoun.staffName}.`);
+      setNewCoun({ staffName: "", designation: "Pointsman Grade I", station: "Parbhani Junction", topics: "", duration: "30 mins", progress: "Under Monitor" });
+      setShowCounForm(false);
+      await fetchLiveDatabaseData();
+    } catch (err) {
+      console.error("Error submitting counselling:", err);
+      setStatusMsg("Failed to log counselling session to database.");
+    }
   };
 
   /* ── Self-Assessment Quiz ── */
@@ -1046,7 +1328,7 @@ export function useTrafficInspectorState(user, onLogout) {
     });
   };
 
-  const submitQuiz = () => {
+  const submitQuiz = async () => {
     let correctCount = 0;
     quizAnswers.forEach((ans, idx) => {
       if (ans === TI_QUIZ[idx].ans) correctCount++;
@@ -1063,32 +1345,54 @@ export function useTrafficInspectorState(user, onLogout) {
     };
 
     const today = new Date().toISOString().slice(0, 10);
-    const newRecord = {
-      id: Date.now(),
-      date: today,
-      period: "Assigned Assessment " + today,
-      assessedBy: "AOM Assigned Exam",
-      totalScore: finalScore,
-      category: getCat(finalScore),
-      approvalStatus: "Approved",
-      aomRemarks: "Assigned safety compliance assessment submitted by Traffic Inspector R. Khan.",
-      sections: [
-        { title: "Whistle Codes & Hand Signals", marks: getDomainScore(0, 4), outOf: 20 },
-        { title: "Token & Line Clear Authorities", marks: getDomainScore(5, 9), outOf: 20 },
-        { title: "Station Interlocking & Track Circuits", marks: getDomainScore(10, 14), outOf: 20 },
-        { title: "Shunting Operations & Point Locking", marks: getDomainScore(15, 19), outOf: 20 },
-        { title: "Gate Signals & Siding Isolation", marks: getDomainScore(20, 24), outOf: 20 }
-      ],
-      userAnswers: [...quizAnswers]
-    };
     
-    setTiAssessments(prev => [newRecord, ...prev]);
-    setSelectedRecord(newRecord);
-    localStorage.removeItem("ti_exam_assigned");
-    setIsExamAssigned(false);
-    addAuditLog("Assigned Assessment Completed", `Score: ${finalScore}/100`);
-    triggerNotification("success", `Compliance check complete: Scored ${finalScore}%`);
-    setQuizState("result");
+    try {
+      const { data: pendingAssessments } = await supabase
+        .from("ASSESSMENT")
+        .select("assessment_id")
+        .eq("employee_id", user.userId)
+        .eq("status", "Pending");
+
+      let assessId = pendingAssessments?.[0]?.assessment_id;
+      if (!assessId) {
+        const { data: newAssess, error: assessError } = await supabase
+          .from("ASSESSMENT")
+          .insert([{
+            employee_id: user.userId,
+            conducted_by: user.userId,
+            assessment_type: "Safety Exam",
+            status: "Approved",
+            assessment_date: new Date().toISOString()
+          }])
+          .select()
+          .single();
+        if (assessError) throw assessError;
+        assessId = newAssess.assessment_id;
+      } else {
+        await supabase
+          .from("ASSESSMENT")
+          .update({ status: "Approved" })
+          .eq("assessment_id", assessId);
+      }
+
+      await assessmentService.submitTestAttempt({
+        assessment_id: assessId,
+        obtained_marks: finalScore,
+        total_marks: 100,
+        percentage: finalScore,
+        category: getCat(finalScore),
+        answers: quizAnswers
+      });
+
+      setIsExamAssigned(false);
+      addAuditLog("Assigned Assessment Completed", `Score: ${finalScore}/100`);
+      triggerNotification("success", `Compliance check complete: Scored ${finalScore}%`);
+      setQuizState("result");
+      await fetchLiveDatabaseData();
+    } catch (err) {
+      console.error("Error submitting TI quiz:", err);
+      setStatusMsg("Failed to submit quiz results to database.");
+    }
   };
 
   const markAllNotificationsRead = () => {

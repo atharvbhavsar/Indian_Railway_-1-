@@ -43,20 +43,20 @@ import { SAProfile } from "./components/super-admin/views/SAProfile";
    ═══════════════════════════════════════════ */
 export default function SuperAdminModule({ user, onLogout }) {
   const { staff, stations, isLoadingLive, addStation, saveUser, removeUser } = useSAData();
-  const [page, setPage]     = useState("dashboard");
-  const [view, setView]     = useState(null); // { type, data } for drill-down pages
+  const [page, setPage] = useState("dashboard");
+  const [view, setView] = useState(null); // { type, data } for drill-down pages
   const [showAddStation, setShowAddStation] = useState(false);
   const [newStName, setNewStName] = useState("");
   const [newStCode, setNewStCode] = useState("");
   const [newStTi, setNewStTi] = useState("TI NGP");
-  const [modal, setModal]   = useState(null); // add/edit form
+  const [modal, setModal] = useState(null); // add/edit form
 
 
   // Filters
-  const [roleF, setRoleF]   = useState({ name:"", station:"All", ti:"All", cat:"All", risk:"All" });
-  const [stF,   setStF]     = useState({ name:"" });
-  const [recF,  setRecF]    = useState({ role:"All", station:"All", status:"All", name:"" });
-  const [repF,  setRepF]    = useState({ role:"All", station:"All", cat:"All", risk:"All", ti:"All" });
+  const [roleF, setRoleF] = useState({ name: "", station: "All", ti: "All", cat: "All", risk: "All" });
+  const [stF, setStF] = useState({ name: "" });
+  const [recF, setRecF] = useState({ role: "All", station: "All", status: "All", name: "" });
+  const [repF, setRepF] = useState({ role: "All", station: "All", cat: "All", risk: "All", ti: "All" });
   const [repApplied, setRepApplied] = useState(false);
   const [selectedReportUserId, setSelectedReportUserId] = useState(null);
 
@@ -88,10 +88,10 @@ export default function SuperAdminModule({ user, onLogout }) {
     setPage(p);
     setView(null);
     setSelectedReportUserId(null);
-    setRoleF({ name:"", station:"All", ti:"All", cat:"All", risk:"All" });
+    setRoleF({ name: "", station: "All", ti: "All", cat: "All", risk: "All" });
   }
   function openView(type, data) { setView({ type, data }); }
-  function closeView()           { setView(null); }
+  function closeView() { setView(null); }
 
   const handleAddStation = async () => {
     if (!newStName.trim() || !newStCode.trim()) {
@@ -120,13 +120,13 @@ export default function SuperAdminModule({ user, onLogout }) {
       mode: "add",
       role,
       data: {
-        id: `EMP_${Date.now()}`,
+        id: "",
         name: "",
         station: stations[0] ? stations[0].name : "Nagpur Junction",
         ti: "TI PAR",
         cat: "A",
         risk: "Low",
-        score: 0,
+        score: 80,
         contact: "",
         lastDate: "",
         status: "Pending",
@@ -146,16 +146,18 @@ export default function SuperAdminModule({ user, onLogout }) {
     });
   }
   function openEdit(s) {
-    setModal({ mode:"edit", role:s.role, data:{ ...s } });
+    setModal({ mode: "edit", role: s.role, data: { ...s } });
   }
   function openShift(s) {
-    setModal({ mode:"shift", role:s.role, data:{ ...s } });
+    setModal({ mode: "shift", role: s.role, data: { ...s } });
   }
 
   const saveModal = async () => {
     if (!modal.data.name || !modal.data.id) return;
-    await saveUser(modal.data, modal.mode);
-    setModal(null);
+    const success = await saveUser({ ...modal.data, role: modal.role }, modal.mode);
+    if (success) {
+      setModal(null);
+    }
   };
 
   const removeStaff = async (id) => {
@@ -168,11 +170,11 @@ export default function SuperAdminModule({ user, onLogout }) {
     return staff.filter(s =>
       s.role === roleKey &&
       (roleF.station === "All" || s.station === roleF.station) &&
-      (roleF.ti      === "All" || s.ti      === roleF.ti)      &&
-      (roleF.cat     === "All" || s.cat     === roleF.cat)     &&
-      (roleF.risk    === "All" || s.risk    === roleF.risk)    &&
+      (roleF.ti === "All" || s.ti === roleF.ti) &&
+      (roleF.cat === "All" || s.cat === roleF.cat) &&
+      (roleF.risk === "All" || s.risk === roleF.risk) &&
       (!roleF.name || s.name.toLowerCase().includes(roleF.name.toLowerCase()) ||
-                      s.id.toLowerCase().includes(roleF.name.toLowerCase()))
+        s.id.toLowerCase().includes(roleF.name.toLowerCase()))
     );
   }
 
@@ -181,10 +183,10 @@ export default function SuperAdminModule({ user, onLogout }) {
     if (!hasFilter) return null;
     return staff.filter(s => {
       const roleLabel = ROLE_MAP[s.role] || s.role;
-      return (recF.role    === "All" || roleLabel === recF.role)      &&
-             (recF.station === "All" || s.station === recF.station)   &&
-             (recF.status  === "All" || s.status  === recF.status)    &&
-             (!recF.name   || s.name.toLowerCase().includes(recF.name.toLowerCase()));
+      return (recF.role === "All" || roleLabel === recF.role) &&
+        (recF.station === "All" || s.station === recF.station) &&
+        (recF.status === "All" || s.status === recF.status) &&
+        (!recF.name || s.name.toLowerCase().includes(recF.name.toLowerCase()));
     });
   }, [recF, staff]);
 
@@ -192,11 +194,11 @@ export default function SuperAdminModule({ user, onLogout }) {
     if (!repApplied) return null;
     return staff.filter(s => {
       const roleLabel = ROLE_MAP[s.role] || s.role;
-      return (repF.role    === "All" || roleLabel === repF.role)      &&
-             (repF.station === "All" || s.station === repF.station)   &&
-             (repF.cat     === "All" || s.cat     === repF.cat)       &&
-             (repF.risk    === "All" || s.risk    === repF.risk)      &&
-             (repF.ti      === "All" || s.ti      === repF.ti);
+      return (repF.role === "All" || roleLabel === repF.role) &&
+        (repF.station === "All" || s.station === repF.station) &&
+        (repF.cat === "All" || s.cat === repF.cat) &&
+        (repF.risk === "All" || s.risk === repF.risk) &&
+        (repF.ti === "All" || s.ti === repF.ti);
     });
   }, [repApplied, repF, staff]);
 
@@ -207,11 +209,11 @@ export default function SuperAdminModule({ user, onLogout }) {
   /* ── DASHBOARD ── */
   function renderDashboard() {
     return (
-      <SADashboard 
-        staff={staff} 
-        stations={stations} 
-        handleChartClick={handleChartClick} 
-        handlePieClick={handlePieClick} 
+      <SADashboard
+        staff={staff}
+        stations={stations}
+        handleChartClick={handleChartClick}
+        handlePieClick={handlePieClick}
       />
     );
   }
@@ -220,17 +222,17 @@ export default function SuperAdminModule({ user, onLogout }) {
   function renderRole(roleKey, title) {
     if (view?.type === "staffDetail") {
       return (
-        <SAStaffDetail 
-          staffMember={view.data} 
-          view={view} 
-          setView={setView} 
-          closeView={closeView} 
+        <SAStaffDetail
+          staffMember={view.data}
+          view={view}
+          setView={setView}
+          closeView={closeView}
         />
       );
     }
-    
+
     return (
-      <SARoleDirectory 
+      <SARoleDirectory
         roleKey={roleKey}
         title={title}
         staff={staff}
@@ -247,27 +249,27 @@ export default function SuperAdminModule({ user, onLogout }) {
 
 
   function renderProfile() {
-    return <SAProfile user={user} />;
+    return <SAProfile user={user} staff={staff} />;
   }
 
   function renderStations() {
     if (view?.type === "staffDetail") {
       return (
-        <SAStaffDetail 
-          staffMember={view.data} 
-          view={view} 
-          setView={setView} 
-          closeView={closeView} 
+        <SAStaffDetail
+          staffMember={view.data}
+          view={view}
+          setView={setView}
+          closeView={closeView}
         />
       );
     }
     if (view?.type === "stationDetail") {
       return (
-        <SAStationDetail 
-          st={view.data} 
-          staff={staff} 
-          closeView={closeView} 
-          setView={setView} 
+        <SAStationDetail
+          st={view.data}
+          staff={staff}
+          closeView={closeView}
+          setView={setView}
         />
       );
     }
@@ -284,18 +286,18 @@ export default function SuperAdminModule({ user, onLogout }) {
 
   /* ── ROUTER ── */
   function renderBody() {
-    switch(page) {
-      case "dashboard":  return renderDashboard();
-      case "pointsmen":  return renderRole("pointsmen","Pointsman");
-      case "sm":         return renderRole("sm","Station Master");
-      case "ss":         return renderRole("ss","Station Superintendent");
-      case "tm":         return renderRole("tm","Train Manager");
-      case "ti":         return renderRole("ti","Traffic Inspector");
-      case "stations":   return renderStations();
-      case "records":    return renderRecords();
-      case "reports":    return renderReports();
-      case "profile":    return renderProfile();
-      default:           return renderDashboard();
+    switch (page) {
+      case "dashboard": return renderDashboard();
+      case "pointsmen": return renderRole("pointsmen", "Pointsman");
+      case "sm": return renderRole("sm", "Station Master");
+      case "ss": return renderRole("ss", "Station Superintendent");
+      case "tm": return renderRole("tm", "Train Manager");
+      case "ti": return renderRole("ti", "Traffic Inspector");
+      case "stations": return renderStations();
+      case "records": return renderRecords();
+      case "reports": return renderReports();
+      case "profile": return renderProfile();
+      default: return renderDashboard();
     }
   }
 
@@ -327,7 +329,7 @@ export default function SuperAdminModule({ user, onLogout }) {
             </div>
           </div>
           <button onClick={onLogout} className="sdom-logout-btn">
-            <LogOut size={14}/> Logout
+            <LogOut size={14} /> Logout
           </button>
         </div>
       </header>
@@ -339,9 +341,9 @@ export default function SuperAdminModule({ user, onLogout }) {
           {NAV.map(item => {
             const Icon = item.icon;
             return (
-              <button key={item.key} className={`sdom-nav-btn ${page===item.key?"active":""}`}
-                onClick={()=>navigate(item.key)}>
-                <Icon size={17}/> <span>{item.label}</span>
+              <button key={item.key} className={`sdom-nav-btn ${page === item.key ? "active" : ""}`}
+                onClick={() => navigate(item.key)}>
+                <Icon size={17} /> <span>{item.label}</span>
               </button>
             );
           })}
@@ -353,7 +355,7 @@ export default function SuperAdminModule({ user, onLogout }) {
         </main>
       </div>
 
-      <SAStaffModal modal={modal} setModal={setModal} stations={stations} saveModal={saveModal} />
+      <SAStaffModal modal={modal} setModal={setModal} stations={stations} staff={staff} saveModal={saveModal} />
       <SAChartZoomModal
         isOpen={isChartZoomModalOpen}
         onClose={() => setIsChartZoomModalOpen(false)}

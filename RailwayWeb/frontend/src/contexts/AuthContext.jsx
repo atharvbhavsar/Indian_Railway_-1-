@@ -8,9 +8,9 @@ export function AuthProvider({ children }) {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Restore session from localStorage on mount
+  // Restore session from sessionStorage on mount
   useEffect(() => {
-    const savedSession = localStorage.getItem("rses_session");
+    const savedSession = sessionStorage.getItem("rses_session");
     if (savedSession) {
       try {
         const parsed = JSON.parse(savedSession);
@@ -26,7 +26,7 @@ export function AuthProvider({ children }) {
   const login = (userData) => {
     setCurrentUser(userData);
     setIsLoggedIn(true);
-    localStorage.setItem("rses_session", JSON.stringify(userData));
+    sessionStorage.setItem("rses_session", JSON.stringify(userData));
     logger.audit("LOGIN", userData.hrmsId, "SUCCESS", `Logged in as ${userData.role}`);
   };
 
@@ -34,9 +34,10 @@ export function AuthProvider({ children }) {
     if (currentUser) {
       logger.audit("LOGOUT", currentUser.hrmsId, "SUCCESS", "User requested logout");
     }
+    setIsLoggedIn(true); // wait, let's keep it set to false
     setIsLoggedIn(false);
     setCurrentUser(null);
-    localStorage.removeItem("rses_session");
+    sessionStorage.removeItem("rses_session");
   };
 
   return (

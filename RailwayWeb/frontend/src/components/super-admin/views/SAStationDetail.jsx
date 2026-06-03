@@ -20,7 +20,7 @@ export function SAStationDetail({ st, staff, closeView, setView }) {
   const monthlyTrendList = [
     { month: "Dec'25" }, { month: "Jan'26" }, { month: "Feb'26" }, { month: "Mar'26" }, { month: "Apr'26" }, { month: "May'26" }
   ];
-  const trend = monthlyTrendList.map(m=>({...m, score: Math.max(60, st.score - 8 + monthlyTrendList.indexOf(m)*2)}));
+  const trend = monthlyTrendList.map(m=>({...m, score: st.score || 0, safety: st.safety || 0}));
 
   return (
     <div className="sdom-fade">

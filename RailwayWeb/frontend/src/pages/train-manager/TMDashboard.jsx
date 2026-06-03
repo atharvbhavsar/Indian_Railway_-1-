@@ -46,7 +46,7 @@ export function TMDashboard({
           </div>
           <div>
             <label>Latest Score</label>
-            <strong>{latestScore !== null ? `${latestScore}/100` : "—"}</strong>
+            <strong>{latestScore !== null && latestScore > 0 ? `${latestScore}/100` : "—"}</strong>
           </div>
         </article>
 
@@ -56,18 +56,18 @@ export function TMDashboard({
           </div>
           <div>
             <label>Average Score</label>
-            <strong>{averageScore}/100</strong>
+            <strong>{averageScore > 0 ? `${averageScore}/100` : "—"}</strong>
           </div>
         </article>
 
         <article className="pm-sum-card" style={{ cursor: "pointer" }} onClick={() => setActiveNav("myAssessment")}>
-          <div className="pm-sum-icon" style={{ background: getCategoryBg(latestCategory) }}>
-            <ShieldCheck size={20} color={getCategoryColor(latestCategory)} />
+          <div className="pm-sum-icon" style={{ background: latestCategory === "Untested" || latestCategory === "—" ? "#fffdbf" : getCategoryBg(latestCategory) }}>
+            <ShieldCheck size={20} color={latestCategory === "Untested" || latestCategory === "—" ? "#b58900" : getCategoryColor(latestCategory)} />
           </div>
           <div>
             <label>Current Category</label>
-            <strong style={{ color: getCategoryColor(latestCategory) }}>
-              {latestCategory !== "—" ? `Category ${latestCategory}` : "—"}
+            <strong style={{ color: latestCategory === "Untested" || latestCategory === "—" ? "#b58900" : getCategoryColor(latestCategory) }}>
+              {latestCategory === "Untested" || latestCategory === "—" ? "Untested" : `Category ${latestCategory}`}
             </strong>
           </div>
         </article>

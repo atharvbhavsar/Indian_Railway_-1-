@@ -13,14 +13,18 @@ export function useEmployees() {
       if (data && data.length > 0) {
         // Flatten nested relational data for easy table rendering
         const flattened = data.map(user => {
-          const profile = user.EMPLOYEE_PROFILE && user.EMPLOYEE_PROFILE.length > 0 
-            ? user.EMPLOYEE_PROFILE[0] 
-            : {};
+          const profile = Array.isArray(user.EMPLOYEE_PROFILE)
+            ? (user.EMPLOYEE_PROFILE[0] || {})
+            : (user.EMPLOYEE_PROFILE || {});
+          
+          const stationObj = Array.isArray(profile.STATION)
+            ? (profile.STATION[0] || {})
+            : (profile.STATION || {});
           
           return {
             ...user,
             ...profile,
-            stationName: profile.STATION ? profile.STATION.station_name : "Unassigned",
+            stationName: stationObj.station_name || "Unassigned",
             designation: user.ROLE ? user.ROLE.role_name : "Unknown"
           };
         });

@@ -46,41 +46,18 @@ const NAV = [
   { key: "profile",                 label: "My Profile",                   icon: UserCircle2 },
 ];
 
-const TI_PROFILE = {
-  designation: "Traffic Inspector (Safety Officer)",
-  jurisdiction: "Parbhani-Amla Section",
-  hrmsId: "TI_1001",
-  dob: "1985-05-14",
-  doa: "2017-04-12",
-  pmeDueDate: "2029-08-20",
-  pmeDoneDate: "2025-08-20",
-  isolatorCertDate: "2026-02-18",
-  autoTrainingDate: "2026-03-05",
-  counsellingDate: "2026-05-12"
-};
+const TI_PROFILE = {};
 
-const stationTiMap = {
-  "Parbhani Junction": "TI PAR",
-  "Amla Junction": "TI AMLA",
-  "Badnera Junction": "TI NGP",
-  "Akola Junction": "TI PAR",
-  "Nagpur Junction": "TI NGP",
-  "Wardha Junction": "TI NGP",
-  "Betul Station": "TI AMLA",
-  "Itarsi Junction": "TI AMLA",
-  "Chandrapur Station": "TI NGP",
-  "Gondia Junction": "TI NGP",
-  "Dhamangaon Station": "TI NGP",
-  "Pulgaon Junction": "TI NGP"
-};
+const stationTiMap = {};
 
 
 /* ═══════════════════════════════════════════
    HELPERS & CATEGORIES
 ═══════════════════════════════════════════ */
-const getCat = s => s >= 80 ? "A" : s >= 50 ? "B" : s >= 26 ? "C" : "D";
+const getCat = s => (s === 0 || s === undefined || s === null || isNaN(s)) ? "Untested" : (s >= 80 ? "A" : s >= 50 ? "B" : s >= 26 ? "C" : "D");
 
 const getUserRisk = (u) => {
+  if (u.score === undefined || u.score === null || isNaN(u.score)) return "Untested";
   return u.pmeStatus === "Overdue" || u.refStatus === "Expired" || u.score < 50 ? "High" : u.score >= 80 ? "Low" : "Medium";
 };
 
@@ -118,161 +95,21 @@ const ROLE_MAP = {
   "Traffic Inspector": "Traffic Inspector"
 };
 
-const MONTHLY_TREND = [
-  { month: "Dec'25", score: 81, safety: 80 },
-  { month: "Jan'26", score: 83, safety: 82 },
-  { month: "Feb'26", score: 85, safety: 85 },
-  { month: "Mar'26", score: 87, safety: 88 },
-  { month: "Apr'26", score: 89, safety: 91 },
-  { month: "May'26", score: 91, safety: 94 }
-];
+const MONTHLY_TREND = [];
 
 
 /* ═══════════════════════════════════════════
    STATIC MOCK DATA — 12 STATIONS
 ═══════════════════════════════════════════ */
-const INIT_STATIONS = [
-  { id: "ST01", name: "Parbhani Junction", code: "PBN", avgScore: 82, safetyPct: 88, highRisk: 1, pointsmenCount: 10 },
-  { id: "ST02", name: "Amla Junction", code: "AMLA", avgScore: 65, safetyPct: 71, highRisk: 3, pointsmenCount: 8 },
-  { id: "ST03", name: "Badnera Junction", code: "BD", avgScore: 78, safetyPct: 83, highRisk: 1, pointsmenCount: 7 },
-  { id: "ST04", name: "Nagpur Junction", code: "NGP", avgScore: 89, safetyPct: 94, highRisk: 0, pointsmenCount: 12 },
-  { id: "ST05", name: "Akola Junction", code: "AK", avgScore: 71, safetyPct: 76, highRisk: 2, pointsmenCount: 8 },
-  { id: "ST06", name: "Wardha Junction", code: "WR", avgScore: 80, safetyPct: 85, highRisk: 1, pointsmenCount: 9 },
-  { id: "ST07", name: "Betul Station", code: "BYT", avgScore: 74, safetyPct: 80, highRisk: 1, pointsmenCount: 6 },
-  { id: "ST08", name: "Itarsi Junction", code: "ET", avgScore: 85, safetyPct: 91, highRisk: 1, pointsmenCount: 11 },
-  { id: "ST09", name: "Chandrapur Station", code: "CD", avgScore: 68, safetyPct: 73, highRisk: 2, pointsmenCount: 7 },
-  { id: "ST10", name: "Gondia Junction", code: "G", avgScore: 82, safetyPct: 87, highRisk: 0, pointsmenCount: 9 },
-  { id: "ST11", name: "Dhamangaon Station", code: "DMN", avgScore: 73, safetyPct: 79, highRisk: 1, pointsmenCount: 5 },
-  { id: "ST12", name: "Pulgaon Junction", code: "PLO", avgScore: 76, safetyPct: 81, highRisk: 1, pointsmenCount: 6 }
-];
+const INIT_STATIONS = [];
 
-const INIT_USERS = [
-  // Station Masters
-  { id: "SM_1001", name: "S. Deshmukh", role: "Station Master", designation: "Station Master", station: "Parbhani Junction", cat: "A", lastAssessDate: "2026-03-20", score: 86, pmeStatus: "Fit", refStatus: "Cleared", contact: "+91 98765 11001", joiningDate: "2018-02-12" },
-  { id: "SM_2102", name: "A. Kulkarni", role: "Station Master", designation: "Station Master", station: "Parbhani Junction", cat: "B", lastAssessDate: "2026-02-14", score: 72, pmeStatus: "Fit", refStatus: "Cleared", contact: "+91 98765 11002", joiningDate: "2019-05-15" },
-  { id: "SM_2201", name: "M. Patil", role: "Station Master", designation: "Station Master", station: "Amla Junction", cat: "A", lastAssessDate: "2026-03-12", score: 84, pmeStatus: "Fit", refStatus: "Pending", contact: "+91 98765 11003", joiningDate: "2016-08-20" },
-  { id: "SM_2202", name: "R. Sharma", role: "Station Master", designation: "Station Master", station: "Amla Junction", cat: "C", lastAssessDate: "2026-01-30", score: 54, pmeStatus: "Pending", refStatus: "Pending", contact: "+91 98765 11004", joiningDate: "2021-10-10" },
-  { id: "SM_2301", name: "V. Singh", role: "Station Master", designation: "Station Master", station: "Badnera Junction", cat: "A", lastAssessDate: "2026-03-15", score: 88, pmeStatus: "Fit", refStatus: "Cleared", contact: "+91 98765 11005", joiningDate: "2015-04-12" },
-  { id: "SM_2302", name: "T. Mehta", role: "Station Master", designation: "Station Master", station: "Badnera Junction", cat: "B", lastAssessDate: "2026-02-20", score: 71, pmeStatus: "Fit", refStatus: "Cleared", contact: "+91 98765 11006", joiningDate: "2020-03-18" },
-  { id: "SM_2401", name: "K. Raghuvanshi", role: "Station Master", designation: "Station Master", station: "Nagpur Junction", cat: "A", lastAssessDate: "2026-03-22", score: 92, pmeStatus: "Fit", refStatus: "Cleared", contact: "+91 98765 11007", joiningDate: "2014-06-25" },
-  { id: "SM_2501", name: "P. Wankhede", role: "Station Master", designation: "Station Master", station: "Akola Junction", cat: "B", lastAssessDate: "2026-03-01", score: 74, pmeStatus: "Overdue", refStatus: "Expired", contact: "+91 98765 11008", joiningDate: "2017-09-08" },
-  
-  // Pointsmen
-  { id: "PM_1001", name: "K. Pawar", role: "Pointsman", designation: "Pointsman Grade I", station: "Parbhani Junction", cat: "A", lastAssessDate: "2026-04-10", score: 80, pmeStatus: "Fit", refStatus: "Cleared", contact: "+91 98765 22001", joiningDate: "2020-01-10" },
-  { id: "PM_1002", name: "R. Verma", role: "Pointsman", designation: "Pointsman Grade I", station: "Amla Junction", cat: "B", lastAssessDate: "2026-04-09", score: 68, pmeStatus: "Fit", refStatus: "Pending", contact: "+91 98765 22002", joiningDate: "2021-06-18" },
-  { id: "PM_1003", name: "D. Rane", role: "Pointsman", designation: "Pointsman Grade II", station: "Amla Junction", cat: "D", lastAssessDate: "2026-04-08", score: 44, pmeStatus: "Unfit", refStatus: "Pending", contact: "+91 98765 22003", joiningDate: "2022-11-22" },
-  { id: "PM_1004", name: "J. Shaikh", role: "Pointsman", designation: "Pointsman Grade I", station: "Badnera Junction", cat: "A", lastAssessDate: "2026-04-04", score: 88, pmeStatus: "Fit", refStatus: "Cleared", contact: "+91 98765 22004", joiningDate: "2019-12-05" },
-  { id: "PM_1005", name: "A. Gade", role: "Pointsman", designation: "Pointsman Grade II", station: "Akola Junction", cat: "C", lastAssessDate: "2026-03-24", score: 58, pmeStatus: "Overdue", refStatus: "Cleared", contact: "+91 98765 22005", joiningDate: "2023-04-15" },
-  { id: "PM_1006", name: "S. Meshram", role: "Pointsman", designation: "Pointsman Grade I", station: "Nagpur Junction", cat: "A", lastAssessDate: "2026-03-28", score: 94, pmeStatus: "Fit", refStatus: "Cleared", contact: "+91 98765 22006", joiningDate: "2018-05-19" },
-  { id: "PM_1007", name: "G. Chawla", role: "Pointsman", designation: "Pointsman Grade II", station: "Itarsi Junction", cat: "A", lastAssessDate: "2026-03-14", score: 82, pmeStatus: "Fit", refStatus: "Cleared", contact: "+91 98765 22007", joiningDate: "2020-07-20" },
-  { id: "PM_1008", name: "H. Singh", role: "Pointsman", designation: "Pointsman Grade I", station: "Wardha Junction", cat: "B", lastAssessDate: "2026-03-10", score: 76, pmeStatus: "Fit", refStatus: "Expired", contact: "+91 98765 22008", joiningDate: "2017-02-28" },
-  { id: "PM_1009", name: "B. Yadav", role: "Pointsman", designation: "Pointsman Grade II", station: "Chandrapur Station", cat: "C", lastAssessDate: "2026-03-05", score: 51, pmeStatus: "Overdue", refStatus: "Pending", contact: "+91 98765 22009", joiningDate: "2022-09-01" },
-  { id: "PM_1010", name: "N. Dewangan", role: "Pointsman", designation: "Pointsman Grade I", station: "Gondia Junction", cat: "A", lastAssessDate: "2026-03-18", score: 85, pmeStatus: "Fit", refStatus: "Cleared", contact: "+91 98765 22010", joiningDate: "2019-08-11" },
-  
-  // Station Superintendents
-  { id: "SS_1001", name: "S. K. Mukherjee", role: "Station Superintendent", designation: "Station Superintendent", station: "Nagpur Junction", cat: "A", lastAssessDate: "2026-04-14", score: 92, pmeStatus: "Fit", refStatus: "Cleared", contact: "+91 98765 33001", joiningDate: "2012-05-18" },
-  { id: "SS_1002", name: "H. S. Rawat", role: "Station Superintendent", designation: "Station Superintendent", station: "Parbhani Junction", cat: "A", lastAssessDate: "2026-03-22", score: 89, pmeStatus: "Fit", refStatus: "Cleared", contact: "+91 98765 33002", joiningDate: "2013-09-10" },
-  { id: "SS_1003", name: "Anand Vardhan", role: "Station Superintendent", designation: "Station Superintendent", station: "Akola Junction", cat: "B", lastAssessDate: "2026-02-18", score: 75, pmeStatus: "Fit", refStatus: "Pending", contact: "+91 98765 33003", joiningDate: "2015-11-05" },
+const INIT_USERS = [];
 
-  // Train Managers
-  { id: "TM_1001", name: "Dilip Kumar", role: "Train Manager", designation: "Train Manager", station: "Nagpur Junction", cat: "A", lastAssessDate: "2026-04-20", score: 90, pmeStatus: "Fit", refStatus: "Cleared", contact: "+91 98765 44001", joiningDate: "2017-06-12" },
-  { id: "TM_1002", name: "Vikas Dubey", role: "Train Manager", designation: "Train Manager", station: "Badnera Junction", cat: "B", lastAssessDate: "2026-03-11", score: 78, pmeStatus: "Fit", refStatus: "Pending", contact: "+91 98765 44002", joiningDate: "2019-10-22" },
-  { id: "TM_1003", name: "J. P. Nadda", role: "Train Manager", designation: "Train Manager", station: "Amla Junction", cat: "C", lastAssessDate: "2026-01-25", score: 56, pmeStatus: "Pending", refStatus: "Expired", contact: "+91 98765 44003", joiningDate: "2021-04-15" }
-];
+const DEFAULT_SS_TM_USERS = [];
 
-const DEFAULT_SS_TM_USERS = [
-  // Station Superintendents
-  { id: "SS_1001", name: "S. K. Mukherjee", role: "Station Superintendent", designation: "Station Superintendent", station: "Nagpur Junction", cat: "A", lastAssessDate: "2026-04-14", score: 92, pmeStatus: "Fit", refStatus: "Cleared", contact: "+91 98765 33001", joiningDate: "2012-05-18" },
-  { id: "SS_1002", name: "H. S. Rawat", role: "Station Superintendent", designation: "Station Superintendent", station: "Parbhani Junction", cat: "A", lastAssessDate: "2026-03-22", score: 89, pmeStatus: "Fit", refStatus: "Cleared", contact: "+91 98765 33002", joiningDate: "2013-09-10" },
-  { id: "SS_1003", name: "Anand Vardhan", role: "Station Superintendent", designation: "Station Superintendent", station: "Akola Junction", cat: "B", lastAssessDate: "2026-02-18", score: 75, pmeStatus: "Fit", refStatus: "Pending", contact: "+91 98765 33003", joiningDate: "2015-11-05" },
+const MONTHLY = [];
 
-  // Train Managers
-  { id: "TM_1001", name: "Dilip Kumar", role: "Train Manager", designation: "Train Manager", station: "Nagpur Junction", cat: "A", lastAssessDate: "2026-04-20", score: 90, pmeStatus: "Fit", refStatus: "Cleared", contact: "+91 98765 44001", joiningDate: "2017-06-12" },
-  { id: "TM_1002", name: "Vikas Dubey", role: "Train Manager", designation: "Train Manager", station: "Badnera Junction", cat: "B", lastAssessDate: "2026-03-11", score: 78, pmeStatus: "Fit", refStatus: "Pending", contact: "+91 98765 44002", joiningDate: "2019-10-22" },
-  { id: "TM_1003", name: "J. P. Nadda", role: "Train Manager", designation: "Train Manager", station: "Amla Junction", cat: "C", lastAssessDate: "2026-01-25", score: 56, pmeStatus: "Pending", refStatus: "Expired", contact: "+91 98765 44003", joiningDate: "2021-04-15" }
-];
-
-const MONTHLY = [
-  { month: "Nov 25", assessments: 14, avgScore: 72, safetyAvg: 74 },
-  { month: "Dec 25", assessments: 18, avgScore: 74, safetyAvg: 76 },
-  { month: "Jan 26", assessments: 24, avgScore: 71, safetyAvg: 73 },
-  { month: "Feb 26", assessments: 32, avgScore: 77, safetyAvg: 79 },
-  { month: "Mar 26", assessments: 38, avgScore: 80, safetyAvg: 82 },
-  { month: "Apr 26", assessments: 42, avgScore: 83, safetyAvg: 85 }
-];
-
-const INIT_PM_ASSESSMENTS = [
-  {
-    id: "PA_1001", pointsmanName: "K. Pawar", hrmsId: "PM_1001",
-    station: "Parbhani Junction", assessingSM: "S. Deshmukh",
-    submissionDate: "2026-04-10", status: "Pending",
-    originalSections: [
-      { title: "Knowledge of Rules",      score: 20, max: 25 },
-      { title: "Alertness & Observation", score: 18, max: 25 },
-      { title: "Safety Record",           score: 12, max: 15 },
-      { title: "Leadership & Management", score: 11, max: 15 },
-      { title: "Discipline",              score: 8,  max: 10 },
-      { title: "Appearance & Neatness",   score: 7,  max: 10 },
-    ],
-    meta: { pmeStatus: "Fit", refStatus: "Cleared", alcoholicStatus: "Non-Alcoholic" },
-    tiRemarks: "", tiModified: false, auditTrail: []
-  },
-  {
-    id: "PA_1002", pointsmanName: "R. Verma", hrmsId: "PM_1002",
-    station: "Amla Junction", assessingSM: "M. Patil",
-    submissionDate: "2026-04-09", status: "Pending",
-    originalSections: [
-      { title: "Knowledge of Rules",      score: 17, max: 25 },
-      { title: "Alertness & Observation", score: 16, max: 25 },
-      { title: "Safety Record",           score: 10, max: 15 },
-      { title: "Leadership & Management", score: 9,  max: 15 },
-      { title: "Discipline",              score: 6,  max: 10 },
-      { title: "Appearance & Neatness",   score: 6,  max: 10 },
-    ],
-    meta: { pmeStatus: "Fit", refStatus: "Pending", alcoholicStatus: "Non-Alcoholic" },
-    tiRemarks: "", tiModified: false, auditTrail: []
-  },
-  {
-    id: "PA_1003", pointsmanName: "D. Rane", hrmsId: "PM_1003",
-    station: "Amla Junction", assessingSM: "M. Patil",
-    submissionDate: "2026-04-08", status: "Pending",
-    originalSections: [
-      { title: "Knowledge of Rules",      score: 14, max: 25 },
-      { title: "Alertness & Observation", score: 13, max: 25 },
-      { title: "Safety Record",           score: 8,  max: 15 },
-      { title: "Leadership & Management", score: 7,  max: 15 },
-      { title: "Discipline",              score: 4,  max: 10 },
-      { title: "Appearance & Neatness",   score: 4,  max: 10 },
-    ],
-    meta: { pmeStatus: "Unfit", refStatus: "Pending", alcoholicStatus: "Alcoholic" },
-    tiRemarks: "", tiModified: false, auditTrail: []
-  },
-  {
-    id: "PA_1004", pointsmanName: "J. Shaikh", hrmsId: "PM_1004",
-    station: "Badnera Junction", assessingSM: "V. Singh",
-    submissionDate: "2026-04-04", status: "Approved",
-    originalSections: [
-      { title: "Knowledge of Rules",      score: 23, max: 25 },
-      { title: "Alertness & Observation", score: 22, max: 25 },
-      { title: "Safety Record",           score: 15, max: 15 },
-      { title: "Leadership & Management", score: 13, max: 15 },
-      { title: "Discipline",              score: 9,  max: 10 },
-      { title: "Appearance & Neatness",   score: 9,  max: 10 },
-    ],
-    finalSections: [
-      { title: "Knowledge of Rules",      score: 23, max: 25 },
-      { title: "Alertness & Observation", score: 22, max: 25 },
-      { title: "Safety Record",           score: 15, max: 15 },
-      { title: "Leadership & Management", score: 13, max: 15 },
-      { title: "Discipline",              score: 9,  max: 10 },
-      { title: "Appearance & Neatness",   score: 9,  max: 10 },
-    ],
-    meta: { pmeStatus: "Fit", refStatus: "Cleared", alcoholicStatus: "Non-Alcoholic" },
-    tiRemarks: "Excellent field performance. Approved as submitted.",
-    tiModified: false, approvalDate: "2026-04-05",
-    auditTrail: [{ action: "Approved without modification", by: "TI R. Khan", date: "2026-04-05" }]
-  },
-];
+const INIT_PM_ASSESSMENTS = [];
 
 const TI_SM_CRITERIA = [
   { key: "stationMgmt",  label: "Station Management",          weight: 5, count: 5,
@@ -307,12 +144,7 @@ const computeSMScore = form => {
   return { ynScore: Math.min(total, 75), knowledge: km, total: Math.min(total, 75) + km };
 };
 
-const INIT_SM_LIST = [
-  { id: "SMA_5001", name: "S. Deshmukh", hrmsId: "SM_1001", station: "Parbhani Junction", lastDate: "2026-03-20", status: "Pending" },
-  { id: "SMA_5002", name: "M. Patil",    hrmsId: "SM_2201", station: "Amla Junction",       lastDate: "2026-03-12", status: "Pending" },
-  { id: "SMA_5003", name: "V. Singh",    hrmsId: "SM_2301", station: "Badnera Junction",   lastDate: "2026-03-15", status: "Submitted" },
-  { id: "SMA_5004", name: "A. Kulkarni", hrmsId: "SM_2102", station: "Parbhani Junction",  lastDate: "2026-02-14", status: "Pending" },
-];
+const INIT_SM_LIST = [];
 
 const TI_TM_CRITERIA = [
   { key: "trainSafety",  label: "Train Safety & Brake Inspection",   weight: 5, count: 5,
@@ -347,18 +179,9 @@ const computeTMScore = form => {
   return { ynScore: Math.min(total, 75), knowledge: km, total: Math.min(total, 75) + km };
 };
 
-const INIT_TM_LIST = [
-  { id: "TMA_6001", name: "R. P. Yadav", hrmsId: "TM_3001", station: "Nagpur Junction", lastDate: "2026-04-02", status: "Pending" },
-  { id: "TMA_6002", name: "S. K. Mishra", hrmsId: "TM_3002", station: "Parbhani Junction", lastDate: "2026-03-25", status: "Pending" },
-  { id: "TMA_6003", name: "D. K. Sen", hrmsId: "TM_3003", station: "Badnera Junction", lastDate: "2026-03-18", status: "Submitted" },
-  { id: "TMA_6004", name: "A. V. Joshi", hrmsId: "TM_3004", station: "Amla Junction", lastDate: "2026-02-28", status: "Pending" },
-];
+const INIT_TM_LIST = [];
 
-const INIT_SS_LIST = [
-  { id: "SSA_7001", name: "S. K. Mukherjee", hrmsId: "SS_1001", station: "Nagpur Junction",    lastDate: "2026-04-05", status: "Pending" },
-  { id: "SSA_7002", name: "H. S. Rawat",     hrmsId: "SS_1002", station: "Parbhani Junction",  lastDate: "2026-03-28", status: "Pending" },
-  { id: "SSA_7003", name: "Anand Vardhan",   hrmsId: "SS_1003", station: "Akola Junction",     lastDate: "2026-03-10", status: "Submitted" },
-];
+const INIT_SS_LIST = [];
 
 const TI_SS_CRITERIA = [
   { key: "stationOps",    label: "Station Operations & Supervision",   weight: 5, count: 5,
@@ -393,16 +216,9 @@ const computeSSScore = form => {
   return { ynScore: Math.min(total, 75), knowledge: km, total: Math.min(total, 75) + km };
 };
 
-const INIT_INSPECTIONS = [
-  { id: "IN_101", date: "2026-05-10", station: "Amla Junction", officer: "TI R. Khan", observations: "Siding point interlocking operation checked. Satisfactory speed compliance.", risk: "Low", status: "Closed" },
-  { id: "IN_102", date: "2026-05-18", station: "Chandrapur Station", officer: "TI R. Khan", observations: "Joint gap clearance in crossing 12B slightly wide. Safety Speed restriction of 15km/h advised.", risk: "Medium", status: "Active" },
-  { id: "IN_103", date: "2026-05-24", station: "Akola Junction", officer: "TI R. Khan", observations: "Station Master logs audit. Slight delay in registering daily block clearing times.", risk: "Low", status: "Pending Action" }
-];
+const INIT_INSPECTIONS = [];
 
-const INIT_COUNSELLING = [
-  { id: "CL_101", date: "2026-05-12", staffName: "D. Rane", designation: "Pointsman Grade II", station: "Amla Junction", topics: "Alcoholic rehabilitation counseling. Safety and alertness briefing.", duration: "45 mins", progress: "Under Monitor" },
-  { id: "CL_102", date: "2026-05-20", staffName: "A. Gade", designation: "Pointsman Grade II", station: "Akola Junction", topics: "Periodic medical exam preparation. Rest compliance counseling.", duration: "30 mins", progress: "Completed" }
-];
+const INIT_COUNSELLING = [];
 
 // Interactive quiz questions for self-assessments
 const TI_QUIZ = [
@@ -483,47 +299,7 @@ const formatQuarterPeriod = (periodStr) => {
   }
 };
 
-const INIT_TI_ASSESS_HISTORY = [
-  {
-    id: 1, date: "2026-03-20", period: "Q1 2026", assessedBy: "AOM_GM_1001 — P. Joshi",
-    totalScore: 88, category: "A", approvalStatus: "Approved",
-    aomRemarks: "Outstanding supervisory performance. Excellent cross-station coordination.",
-    sections: [
-      { title: "Whistle Codes & Hand Signals",          marks: 18, outOf: 20 },
-      { title: "Token & Line Clear Authorities",        marks: 17, outOf: 20 },
-      { title: "Station Interlocking & Track Circuits", marks: 18, outOf: 20 },
-      { title: "Shunting Operations & Point Locking",   marks: 17, outOf: 20 },
-      { title: "Gate Signals & Siding Isolation",        marks: 18, outOf: 20 },
-    ],
-    userAnswers: generateTiMockResponses(88)
-  },
-  {
-    id: 2, date: "2025-12-15", period: "Q4 2025", assessedBy: "AOM_GM_1001 — P. Joshi",
-    totalScore: 81, category: "A", approvalStatus: "Approved",
-    aomRemarks: "Good performance. Minor issues in documentation speed.",
-    sections: [
-      { title: "Whistle Codes & Hand Signals",          marks: 16, outOf: 20 },
-      { title: "Token & Line Clear Authorities",        marks: 16, outOf: 20 },
-      { title: "Station Interlocking & Track Circuits", marks: 17, outOf: 20 },
-      { title: "Shunting Operations & Point Locking",   marks: 15, outOf: 20 },
-      { title: "Gate Signals & Siding Isolation",        marks: 17, outOf: 20 },
-    ],
-    userAnswers: generateTiMockResponses(81)
-  },
-  {
-    id: 3, date: "2025-09-10", period: "Q3 2025", assessedBy: "AOM_GM_1001 — P. Joshi",
-    totalScore: 93, category: "A", approvalStatus: "Approved",
-    aomRemarks: "Exemplary. Best performing TI in the division this quarter.",
-    sections: [
-      { title: "Whistle Codes & Hand Signals",          marks: 19, outOf: 20 },
-      { title: "Token & Line Clear Authorities",        marks: 18, outOf: 20 },
-      { title: "Station Interlocking & Track Circuits", marks: 19, outOf: 20 },
-      { title: "Shunting Operations & Point Locking",   marks: 18, outOf: 20 },
-      { title: "Gate Signals & Siding Isolation",        marks: 19, outOf: 20 },
-    ],
-    userAnswers: generateTiMockResponses(93)
-  }
-];
+const INIT_TI_ASSESS_HISTORY = [];
 
 
 /* ═══════════════════════════════════════════
@@ -937,7 +713,7 @@ export default function TrafficInspectorModule({ user, onLogout }) {
     const renderDashboard = ()=>(
     <div className="sdom-fade">
       {/* Page header */}
-      <h1 className="sdom-page-title">{TI_PROFILE.jurisdiction} Section Command Center</h1>
+      <h1 className="sdom-page-title">{user?.jurisdiction || "Jurisdiction"} Section Command Center</h1>
       <p className="sdom-page-subtitle">Complete strategic overview of your section — staff, performance, safety and assessment pipeline.</p>
 
       {/* ── Summary Cards ── */}
@@ -1302,26 +1078,26 @@ export default function TrafficInspectorModule({ user, onLogout }) {
           <div className="sdom-station-header-meta">
             <div style={{ fontSize: "0.8rem", color: "rgba(255,255,255,0.6)", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.06em" }}>Staff Profile</div>
             <div style={{ fontSize: "1.8rem", fontWeight: 800, marginBottom: 4 }}>{user?.name || tiName}</div>
-            <div style={{ fontSize: "0.9rem", color: "rgba(255,255,255,0.7)" }}>{TI_PROFILE.designation} &bull; Nagpur Division &bull; Central Railway</div>
+            <div style={{ fontSize: "0.9rem", color: "rgba(255,255,255,0.7)" }}>{user?.role || "Traffic Inspector"} &bull; {user?.division || "Division"} &bull; {user?.zone || "Zone"}</div>
             <div style={{ marginTop: 12, display: "flex", gap: 10 }}>
-              <span className="sdom-badge sdom-badge-success">Category A</span>
+              <span className="sdom-badge sdom-badge-success">Category {user?.cat || "Untested"}</span>
               <span className="sdom-badge sdom-badge-success">Inspector</span>
               <span className="sdom-badge sdom-badge-success">Active</span>
             </div>
           </div>
           <div className="sdom-station-header-stats">
             <div className="sdom-station-header-stat">
-              <span className="val">88%</span>
+              <span className="val">{user?.score || "N/A"}{user?.score ? "%" : ""}</span>
               <span className="lbl">Section Avg</span>
             </div>
             <div style={{ width: 1, height: 60, background: "rgba(255,255,255,0.15)" }}/>
             <div className="sdom-station-header-stat">
-              <span className="val">+91 98900 12211</span>
+              <span className="val">{user?.contact || "N/A"}</span>
               <span className="lbl">Contact</span>
             </div>
             <div style={{ width: 1, height: 60, background: "rgba(255,255,255,0.15)" }}/>
             <div className="sdom-station-header-stat">
-              <span className="val">2026-05-28</span>
+              <span className="val">{user?.lastAssessDate || "N/A"}</span>
               <span className="lbl">Last Audit</span>
             </div>
           </div>
@@ -1335,13 +1111,13 @@ export default function TrafficInspectorModule({ user, onLogout }) {
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '15px', paddingBottom: '20px' }}>
               {[
                 ["Employee ID / HRMS ID", user?.hrmsId || tiId],
-                ["Designation", TI_PROFILE.designation],
-                ["Mobile Number", "+91 98900 12211"],
+                ["Designation", user?.role || "Traffic Inspector"],
+                ["Mobile Number", user?.contact || "N/A"],
                 ["Email ID", `${(user?.hrmsId || tiId).toLowerCase()}@rail.in`],
                 ["Account Status", "Active"],
                 ["Current Zone", "Central Railway"],
                 ["Current Division", "Nagpur Division"],
-                ["Current Placement", TI_PROFILE.jurisdiction],
+                ["Current Placement", user?.jurisdiction || "Various"],
                 ["Reporting Officer", "P. K. Verma (Sr. DOM)"]
               ].map(([lbl, val]) => (
                 <div key={lbl} style={{ background: "#f8fafc", borderRadius: 8, padding: "12px 16px", border: "1px solid #e2e8f0" }}>
@@ -1362,11 +1138,11 @@ export default function TrafficInspectorModule({ user, onLogout }) {
                 <div><strong>Inspector Safety Training:</strong><div style={{fontWeight: 700, color: "#0d2c4d", marginTop: 4}}>2025-11-05</div></div>
                 <div><strong>Safety Seminar Attended:</strong><div style={{fontWeight: 700, color: "#0d2c4d", marginTop: 4}}>2026-04-02</div></div>
                 
-                <div><strong>PME Done Date:</strong><div style={{fontWeight: 700, color: "#065f46", marginTop: 4}}>{TI_PROFILE.pmeDoneDate}</div></div>
-                <div><strong>PME Due Date:</strong><div style={{fontWeight: 700, color: "#991b1b", marginTop: 4}}>{TI_PROFILE.pmeDueDate}</div></div>
-                <div><strong>Isolator Certificate issued:</strong><div style={{fontWeight: 700, color: "#0d2c4d", marginTop: 4}}>{TI_PROFILE.isolatorCertDate}</div></div>
-                <div><strong>Automatic Training Date:</strong><div style={{fontWeight: 700, color: "#0d2c4d", marginTop: 4}}>{TI_PROFILE.autoTrainingDate}</div></div>
-                <div style={{ gridColumn: "span 2" }}><strong>Counselling Done Date:</strong><div style={{fontWeight: 700, color: "#d97706", marginTop: 4}}>{TI_PROFILE.counsellingDate || "2026-04-10"}</div></div>
+                <div><strong>PME Done Date:</strong><div style={{fontWeight: 700, color: "#065f46", marginTop: 4}}>{user?.pmeDoneDate || "N/A"}</div></div>
+                <div><strong>PME Due Date:</strong><div style={{fontWeight: 700, color: "#991b1b", marginTop: 4}}>{user?.pmeDueDate || "N/A"}</div></div>
+                <div><strong>Isolator Certificate issued:</strong><div style={{fontWeight: 700, color: "#0d2c4d", marginTop: 4}}>{user?.isolatorCertDate || "N/A"}</div></div>
+                <div><strong>Automatic Training Date:</strong><div style={{fontWeight: 700, color: "#0d2c4d", marginTop: 4}}>{user?.autoTrainingDate || "N/A"}</div></div>
+                <div style={{ gridColumn: "span 2" }}><strong>Counselling Done Date:</strong><div style={{fontWeight: 700, color: "#d97706", marginTop: 4}}>{user?.counsellingDate || "N/A"}</div></div>
                 
                 <div style={{ gridColumn: "span 2", marginTop: 8 }}>
                   <strong>Assigned Stations Under Jurisdiction ({myStations.length})</strong>
@@ -2373,7 +2149,7 @@ export default function TrafficInspectorModule({ user, onLogout }) {
             </div>
             <div>
               <span className="pm-cat-badge-lg" style={{ background: CAT_B[cat], color: CAT_C[cat], display: "inline-block", padding: "4px 10px", borderRadius: "999px", fontSize: "12px", fontWeight: "700", marginBottom: "6px" }}>
-                Final Category: Category {cat}
+                Final Category: {cat === "Untested" ? "Untested" : `Category ${cat}`}
               </span>
               <p className="pm-sc-period" style={{ margin: "2px 0", fontSize: "14px", color: "#1e293b", fontWeight: "600" }}>{sc.period} - Self-Compliance Audit</p>
               <p className="pm-sc-date" style={{ margin: "2px 0 0", fontSize: "12px", color: "#64748b" }}>Attempt Completed: {sc.date} &nbsp;·&nbsp; Assessed By: {sc.assessedBy || "Area Operation Manager"}</p>
@@ -2555,11 +2331,11 @@ export default function TrafficInspectorModule({ user, onLogout }) {
             <div style={{display:"flex", gap:16, fontSize:12, textAlign:"right"}}>
               <div>
                 <span style={{color:"#166534", display:"block"}}>Last Exam Score</span>
-                <strong style={{color:"#14532d", fontSize:13}}>{tiAssessments[0] ? `${tiAssessments[0].totalScore}%` : "88%"}</strong>
+                <strong style={{color:"#14532d", fontSize:13}}>{tiAssessments[0] ? `${tiAssessments[0].totalScore}%` : "N/A"}</strong>
               </div>
               <div style={{borderLeft:"1px solid #bbf7d0", paddingLeft:16}}>
                 <span style={{color:"#166534", display:"block"}}>Next Due Date</span>
-                <strong style={{color:"#14532d", fontSize:13}}>25 Sep 2026</strong>
+                <strong style={{color:"#14532d", fontSize:13}}>N/A</strong>
               </div>
             </div>
           </div>
@@ -4669,15 +4445,6 @@ export default function TrafficInspectorModule({ user, onLogout }) {
         desc: "Conduct structured field evaluations for Station Masters on safety compliance, rule knowledge, administrative duties, and operational practices."
       },
       {
-        key: "SS",
-        label: "Station Superintendents",
-        icon: UserCheck,
-        pending: ssPending,
-        completed: ssCompleted,
-        total: ssList.length,
-        desc: "Evaluate Station Superintendents on operational supervision, staff management, safety compliance, and infrastructure upkeep."
-      },
-      {
         key: "TM",
         label: "Train Managers",
         icon: Train,
@@ -4698,7 +4465,7 @@ export default function TrafficInspectorModule({ user, onLogout }) {
         </div>
 
         {/* 3 Grid Cards */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "24px", marginBottom: "24px" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "24px", marginBottom: "24px" }}>
           {roles.map(role => (
             <div 
               key={role.key}
@@ -4866,13 +4633,7 @@ export default function TrafficInspectorModule({ user, onLogout }) {
                 </tr>
               </thead>
               <tbody>
-                {[
-                  { name: "R. Khan", role: "Station Master", type: "Field Evaluation", status: "Pending", by: "TI PAR", date: "09 May 2026" },
-                  { name: "A. Kulkarni", role: "Station Superintendent", type: "Operational Review", status: "Pending", by: "TI AMLA", date: "08 May 2026" },
-                  { name: "S. Verma", role: "Train Manager", type: "Safety & Compliance", status: "Completed", by: "TI NGP", date: "07 May 2026" },
-                  { name: "P. Sharma", role: "Station Master", type: "Field Evaluation", status: "Pending", by: "TI PAR", date: "06 May 2026" },
-                  { name: "M. Joshi", role: "Train Manager", type: "Documentation Audit", status: "Pending", by: "TI AMLA", date: "05 May 2026" }
-                ].map((row, idx) => {
+                {[].map((row, idx) => {
                   const roleColors = {
                     "Station Master": { bg: "#eff6ff", color: "#2563eb" },
                     "Station Superintendent": { bg: "#f5f3ff", color: "#7c3aed" },
@@ -4942,15 +4703,15 @@ export default function TrafficInspectorModule({ user, onLogout }) {
       const u = users.find(x => x.id === selectedReportUserId);
       if (!u) return null;
 
-      const getCat = s => s >= 80 ? "A" : s >= 50 ? "B" : s >= 26 ? "C" : "D";
+      const getCat = s => (s === 0 || s === undefined || s === null || isNaN(s)) ? "Untested" : (s >= 80 ? "A" : s >= 50 ? "B" : s >= 26 ? "C" : "D");
       const cat = u.cat || getCat(u.score || 0);
       
       const CAT_C  = { A: "#16a34a", B: "#2563eb", C: "#d97706", D: "#dc2626" };
       const CAT_B  = { A: "#dcfce7", B: "#dbeafe", C: "#fef3c7", D: "#fee2e2" };
       const RISK_C = { High: "#dc2626", Medium: "#d97706", Low: "#16a34a" };
       
-      const isHighRisk = u.pmeStatus === "Overdue" || u.refStatus === "Expired" || (u.score || 0) < 50;
-      const risk = isHighRisk ? "High" : (u.score || 0) >= 80 ? "Low" : "Medium";
+      const isHighRisk = u.pmeStatus === "Overdue" || u.refStatus === "Expired" || (u.score !== undefined && u.score !== null && u.score < 50);
+      const risk = (u.score === undefined || u.score === null) ? "Untested" : isHighRisk ? "High" : (u.score >= 80 ? "Low" : "Medium");
       const pmeVal = u.pmeStatus === "Fit" ? "FIT" : u.pmeStatus === "Pending" ? "PENDING" : u.pmeStatus === "Overdue" ? "OVERDUE" : "UNFIT";
       const refVal = u.refStatus === "Cleared" ? "CLEARED" : "EXPIRED";
 
@@ -4978,13 +4739,13 @@ export default function TrafficInspectorModule({ user, onLogout }) {
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "16px", marginBottom: "24px" }}>
             <div style={{ background: "#f8fafc", border: "1px solid #e2edf8", padding: "14px", borderRadius: "12px", textAlign: "center" }}>
               <span style={{ fontSize: "11px", fontWeight: "800", color: "#64748b", textTransform: "uppercase", letterSpacing: "0.5px" }}>Grand Total Score</span>
-              <strong style={{ display: "block", fontSize: "24px", color: CAT_C[cat] || "#2563eb", marginTop: "4px", fontWeight: "900" }}>{u.score}/100</strong>
+              <strong style={{ display: "block", fontSize: "24px", color: CAT_C[cat] || "#2563eb", marginTop: "4px", fontWeight: "900" }}>{(u.score !== undefined && u.score !== null) ? `${u.score}/100` : "N/A"}</strong>
             </div>
             <div style={{ background: "#f8fafc", border: "1px solid #e2edf8", padding: "14px", borderRadius: "12px", textAlign: "center" }}>
               <span style={{ fontSize: "11px", fontWeight: "800", color: "#64748b", textTransform: "uppercase", letterSpacing: "0.5px" }}>Safety Grade</span>
               <div>
                 <span className="ti2-badge" style={{ display: "inline-block", background: CAT_B[cat] || "#dbeafe", color: CAT_C[cat] || "#2563eb", fontSize: "13px", fontWeight: "800", padding: "4px 14px", borderRadius: "8px", marginTop: "8px" }}>
-                  Category {cat}
+                  {cat === "Untested" ? "Untested" : `Category ${cat}`}
                 </span>
               </div>
             </div>
@@ -5112,26 +4873,12 @@ export default function TrafficInspectorModule({ user, onLogout }) {
     ];
 
     const STATION_OPTS = ["All", ...stations.map(s => s.name)];
-    const TI_OPTS      = ["All","TI PAR","TI AMLA","TI NGP"];
+    const TI_OPTS      = ["All", user?.name || "TI Area"];
     const ROLE_OPTS    = ["All","Pointsman","Station Master","Station Superintendent","Train Manager"];
 
-    const stationTiMap = {
-      "Parbhani Junction": "TI PAR",
-      "Amla Junction": "TI AMLA",
-      "Badnera Junction": "TI NGP",
-      "Akola Junction": "TI PAR",
-      "Nagpur Junction": "TI NGP",
-      "Wardha Junction": "TI NGP",
-      "Betul Station": "TI AMLA",
-      "Itarsi Junction": "TI AMLA",
-      "Chandrapur Station": "TI NGP",
-      "Gondia Junction": "TI NGP",
-      "Dhamangaon Station": "TI NGP",
-      "Pulgaon Junction": "TI NGP"
-    };
-    const getTiArea = (st) => stationTiMap[st] || "TI NGP";
+    const getTiArea = (st) => user?.name || "TI Area";
 
-    const getCat = s => s >= 80 ? "A" : s >= 50 ? "B" : s >= 26 ? "C" : "D";
+    const getCat = s => (s === 0 || s === undefined || s === null || isNaN(s)) ? "Untested" : (s >= 80 ? "A" : s >= 50 ? "B" : s >= 26 ? "C" : "D");
 
     const repFiltered = users.filter(s => {
       const matchesSearch = !repF.search || 
@@ -5471,9 +5218,9 @@ export default function TrafficInspectorModule({ user, onLogout }) {
                 <>
                   {[
                     { label: "Total Tests Taken", value: MONTHLY.reduce((s,x)=>s+x.assessments,0), color: "#2563eb", glowColor: "rgba(37,99,235,0.15)" },
-                    { label: "Overall Score Average", value: Math.round(MONTHLY.reduce((s,x)=>s+x.avgScore,0)/MONTHLY.length) + "%", color: "#0891b2", glowColor: "rgba(8,145,178,0.15)" },
-                    { label: "Overall Safety Average", value: Math.round(MONTHLY.reduce((s,x)=>s+x.safetyAvg,0)/MONTHLY.length) + "%", color: "#16a34a", glowColor: "rgba(22,163,74,0.15)" },
-                    { label: "Safety Compliance Peak", value: Math.max(...MONTHLY.map(m=>m.safetyAvg)) + "%", color: "#7c3aed", glowColor: "rgba(124,58,237,0.15)" },
+                    { label: "Overall Score Average", value: (MONTHLY.length > 0 ? Math.round(MONTHLY.reduce((s,x)=>s+x.avgScore,0)/MONTHLY.length) : 0) + "%", color: "#0891b2", glowColor: "rgba(8,145,178,0.15)" },
+                    { label: "Overall Safety Average", value: (MONTHLY.length > 0 ? Math.round(MONTHLY.reduce((s,x)=>s+x.safetyAvg,0)/MONTHLY.length) : 0) + "%", color: "#16a34a", glowColor: "rgba(22,163,74,0.15)" },
+                    { label: "Safety Compliance Peak", value: (MONTHLY.length > 0 ? Math.max(...MONTHLY.map(m=>m.safetyAvg)) : 0) + "%", color: "#7c3aed", glowColor: "rgba(124,58,237,0.15)" },
                     { label: "Evaluation Cycles Logged", value: MONTHLY.length, color: "#475569", glowColor: "rgba(71,85,105,0.15)" },
                   ].map(k => (
                     <div key={k.label} className="sm2-fs-kpi-card" style={{ "--glow": k.glowColor }}>

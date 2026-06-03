@@ -3126,32 +3126,117 @@ function AOmModule({ user, onLogout }) {
         }
 
         // --- LEVEL 2: Roster View ---
-        const rosterList = getTiRosterList();
-        
+        const isTI = assessmentRoleTab === "TI";
+        const rolePrefix = isTI ? "ti" : "ss";
+        const roleTitle = isTI ? "Traffic Inspectors" : "Station Superintendents";
+        const roleDesc = isTI
+          ? "Traffic Inspectors pending assessment are listed below. Open the form to conduct a structured evaluation."
+          : "Station Superintendents pending assessment are listed below. Open the form to conduct a structured evaluation.";
+
+        // Dynamic source list
+        const sourceEmployees = isTI ? trafficInspectors : aomSuperintendents;
+
+        const rosterList = sourceEmployees.map((emp) => {
+          const pending = pendingAssessments.find(p => p.id === emp.employeeId);
+          const approved = approvedAssessments.find(a => a.id === emp.employeeId);
+          
+          let status = "Pending";
+          let score = emp.lastScore || "";
+          let lastAssessed = emp.lastAssessedDate || "2026-05-30";
+          
+          if (pending) {
+            const isExamAssigned = localStorage.getItem(`${rolePrefix}_exam_assigned_${emp.employeeId}`) === "true";
+            const isExamTaken = localStorage.getItem(`${rolePrefix}_exam_taken_${emp.employeeId}`) === "true";
+            
+            if (isExamTaken) {
+              status = "Exam Taken";
+            } else if (isExamAssigned) {
+              status = "Exam Sent";
+            } else if (pending.actionType === "approval") {
+              status = "Submitted";
+            } else {
+              status = "Pending";
+            }
+          } else if (approved) {
+            status = "Approved";
+            const match = approved.score?.match(/Score:\s*(\d+)/i);
+            score = match ? parseInt(match[1]) : (emp.lastScore || 85);
+            const dateMatch = approved.detail?.match(/on\s+(\d{4}-\d{2}-\d{2})/i);
+            lastAssessed = dateMatch ? dateMatch[1] : "2026-05-30";
+          } else {
+            status = emp.assessmentStatus === "Completed" ? "Approved" : (emp.assessmentStatus || "Pending");
+          }
+          
+          return {
+            ...emp,
+            status,
+            score,
+            lastAssessed
+          };
+        });
+
         // Roster totals
-        const totalTIs = rosterList.length;
+        const totalEmployeesCount = rosterList.length;
         const pendingCount = rosterList.filter(x => x.status === "Pending" || x.status === "Exam Sent").length;
         const completedCount = rosterList.filter(x => x.status === "Approved" || x.status === "Exam Taken" || x.status === "Submitted").length;
         const rejectedCount = rosterList.filter(x => x.status === "Rejected").length;
         const lastUpdatedDate = "30 May 2026";
-        
+
         // Filter elements
         const uniqueStationsList = ["All", ...new Set(stations.map(s => s.name || s.stationName).filter(Boolean))];
         
-        const filteredTiList = rosterList.filter((ti) => {
+        const filteredList = rosterList.filter((emp) => {
           const matchesSearch = assessSearch === "" ||
-            ti.name.toLowerCase().includes(assessSearch.toLowerCase()) ||
-            ti.employeeId.toLowerCase().includes(assessSearch.toLowerCase());
+            emp.name.toLowerCase().includes(assessSearch.toLowerCase()) ||
+            emp.employeeId.toLowerCase().includes(assessSearch.toLowerCase());
           
           const matchesStation = assessStation === "All" ||
-            ti.stationName === assessStation ||
-            ti.division === assessStation;
+            emp.stationName === assessStation ||
+            emp.division === assessStation;
             
-          const matchesStatus = assessStatus === "All" || ti.status === assessStatus;
-          const matchesDate = assessDate === "" || ti.lastAssessed === assessDate;
+          const matchesStatus = assessStatus === "All" || emp.status === assessStatus;
+          const matchesDate = assessDate === "" || emp.lastAssessed === assessDate;
           
           return matchesSearch && matchesStation && matchesStatus && matchesDate;
         });
+
+        const openForm = (emp) => {
+          let pendingItem = pendingAssessments.find(p => p.id === emp.employeeId);
+          if (!pendingItem) {
+            const approvedItem = approvedAssessments.find(a => a.id === emp.employeeId);
+            if (approvedItem) {
+              pendingItem = {
+                id: approvedItem.id,
+                title: approvedItem.title,
+                statusLabel: "Approved",
+                assessedByLine: approvedItem.detail,
+                employeeLine: `Employee: ${emp.name} | Division: ${emp.division || "Nagpur"}`,
+                actionType: "approval"
+              };
+            } else {
+              pendingItem = {
+                id: emp.employeeId,
+                title: `${isTI ? "Traffic Inspector" : "Station Superintendent"} - ${emp.employeeId}`,
+                statusLabel: "Pending Assessment",
+                assessedByLine: `Awaiting: Your Assessment - on ${todayIso()}`,
+                employeeLine: `Employee: ${emp.name} | Division: ${emp.division || "Nagpur"}`,
+                actionType: "assessment"
+              };
+              setPendingAssessments(prev => [pendingItem, ...prev]);
+            }
+          }
+          
+          setOpenAssessmentId(pendingItem.id);
+          setAnswersByAssessment((prev) => {
+            if (prev[pendingItem.id]) {
+              return prev;
+            }
+            return {
+              ...prev,
+              [pendingItem.id]: buildPrefilledAnswers(pendingItem.title)
+            };
+          });
+        };
 
         const stationCodeMap = {
           "Parbhani Junction": "PBN",
@@ -3167,18 +3252,109 @@ function AOmModule({ user, onLogout }) {
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
               <div>
                 <h1 style={{ fontSize: "28px", fontWeight: "800", color: "#0f172a", margin: "0 0 4px" }}>
-                  Assessments — Traffic Inspectors
+                  Assessments — {roleTitle}
                 </h1>
                 <p style={{ margin: 0, fontSize: "14px", color: "#64748b", fontWeight: "500" }}>
-                  Traffic Inspectors pending assessment are listed below. Open the form to conduct a structured evaluation.
+                  {roleDesc}
                 </p>
+              </div>
+            </div>
+
+            {/* Unified Role Choice Selection Boxes */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px", marginBottom: "24px" }}>
+              <div
+                onClick={() => {
+                  setAssessmentRoleTab("TI");
+                  setAssessSearch("");
+                  setAssessStation("All");
+                  setAssessStatus("All");
+                  setAssessDate("");
+                }}
+                style={{
+                  background: "#ffffff",
+                  border: assessmentRoleTab === "TI" ? "2px solid #2563eb" : "1px solid #e2e8f0",
+                  borderRadius: "16px",
+                  padding: "20px 24px",
+                  cursor: "pointer",
+                  boxShadow: assessmentRoleTab === "TI" ? "0 4px 12px rgba(37,99,235,0.08)" : "0 1px 3px rgba(0,0,0,0.02)",
+                  transition: "all 0.2s ease",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "16px"
+                }}
+              >
+                <div style={{
+                  width: "48px",
+                  height: "48px",
+                  borderRadius: "10px",
+                  background: assessmentRoleTab === "TI" ? "#eff6ff" : "#f8fafc",
+                  color: assessmentRoleTab === "TI" ? "#2563eb" : "#64748b",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexShrink: 0
+                }}>
+                  <ShieldCheck size={24} />
+                </div>
+                <div>
+                  <h3 style={{ margin: "0 0 4px", fontSize: "16px", fontWeight: "800", color: "#0f172a" }}>
+                    Traffic Inspectors (TI)
+                  </h3>
+                  <p style={{ margin: 0, fontSize: "12.5px", color: "#64748b", fontWeight: "500", lineHeight: "1.4" }}>
+                    Conduct safety audits, check online exams, and manage inspector approvals.
+                  </p>
+                </div>
+              </div>
+
+              <div
+                onClick={() => {
+                  setAssessmentRoleTab("SS");
+                  setAssessSearch("");
+                  setAssessStation("All");
+                  setAssessStatus("All");
+                  setAssessDate("");
+                }}
+                style={{
+                  background: "#ffffff",
+                  border: assessmentRoleTab === "SS" ? "2px solid #2563eb" : "1px solid #e2e8f0",
+                  borderRadius: "16px",
+                  padding: "20px 24px",
+                  cursor: "pointer",
+                  boxShadow: assessmentRoleTab === "SS" ? "0 4px 12px rgba(37,99,235,0.08)" : "0 1px 3px rgba(0,0,0,0.02)",
+                  transition: "all 0.2s ease",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "16px"
+                }}
+              >
+                <div style={{
+                  width: "48px",
+                  height: "48px",
+                  borderRadius: "10px",
+                  background: assessmentRoleTab === "SS" ? "#eff6ff" : "#f8fafc",
+                  color: assessmentRoleTab === "SS" ? "#2563eb" : "#64748b",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexShrink: 0
+                }}>
+                  <UserCheck size={24} />
+                </div>
+                <div>
+                  <h3 style={{ margin: "0 0 4px", fontSize: "16px", fontWeight: "800", color: "#0f172a" }}>
+                    Station Superintendents (SS)
+                  </h3>
+                  <p style={{ margin: 0, fontSize: "12.5px", color: "#64748b", fontWeight: "500", lineHeight: "1.4" }}>
+                    Track safety performance, perform active shift audits, and view compliance lists.
+                  </p>
+                </div>
               </div>
             </div>
 
             {/* KPI Cards */}
             <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: "16px", marginBottom: "24px" }}>
               {[
-                { label: `Total Traffic Inspectors`, value: totalTIs, subtitle: "In your jurisdiction", icon: Users, bg: "#ffffff", color: "#475569", valColor: "#0f172a" },
+                { label: `Total ${isTI ? "Traffic Inspectors" : "Station Superintendents"}`, value: totalEmployeesCount, subtitle: "In your jurisdiction", icon: Users, bg: "#ffffff", color: "#475569", valColor: "#0f172a" },
                 { label: "Pending Assessments", value: pendingCount, subtitle: "Awaiting completion", icon: ClipboardCheck, bg: "#ffffff", color: "#ea580c", valColor: "#ea580c" },
                 { label: "Completed This Month", value: completedCount, subtitle: "Assessments done", icon: CheckCircle, bg: "#ffffff", color: "#16a34a", valColor: "#16a34a" },
                 { label: "Rejected", value: rejectedCount, subtitle: "Needs review", icon: AlertTriangle, bg: "#ffffff", color: "#dc2626", valColor: "#dc2626" },
@@ -3225,7 +3401,7 @@ function AOmModule({ user, onLogout }) {
               <div style={{ display: "grid", gridTemplateColumns: "1.5fr 1fr 1fr 1fr auto", gap: "16px", alignItems: "end" }}>
                 <div>
                   <label style={{ display: "block", fontSize: "12px", fontWeight: "700", color: "#334155", marginBottom: "6px" }}>
-                    Search Traffic Inspector
+                    Search {isTI ? "Traffic Inspector" : "Station Superintendent"}
                   </label>
                   <div style={{ position: "relative" }}>
                     <Search size={14} style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", color: "#64748b" }} />
@@ -3371,7 +3547,7 @@ function AOmModule({ user, onLogout }) {
                   <thead>
                     <tr style={{ borderBottom: "1.5px solid #e2e8f0", background: "#f8fafc", textAlign: "left" }}>
                       <th style={{ padding: "12px 16px", fontSize: "11px", color: "#475569", fontWeight: "800", textTransform: "uppercase", letterSpacing: "0.5px" }}>
-                        TRAFFIC INSPECTOR
+                        {isTI ? "TRAFFIC INSPECTOR" : "STATION SUPERINTENDENT"}
                       </th>
                       <th style={{ padding: "12px 16px", fontSize: "11px", color: "#475569", fontWeight: "800", textTransform: "uppercase", letterSpacing: "0.5px" }}>HRMS ID</th>
                       <th style={{ padding: "12px 16px", fontSize: "11px", color: "#475569", fontWeight: "800", textTransform: "uppercase", letterSpacing: "0.5px" }}>STATION</th>
@@ -3382,7 +3558,7 @@ function AOmModule({ user, onLogout }) {
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredTiList.map((item) => {
+                    {filteredList.map((item) => {
                       const stationCode = stationCodeMap[item.stationName] || "STN";
 
                       const examStatusBadgeStyle = (status) => {
@@ -3405,7 +3581,9 @@ function AOmModule({ user, onLogout }) {
                               </div>
                               <div>
                                 <div style={{ fontWeight: "700", color: "#0f172a", fontSize: "14px" }}>{item.name}</div>
-                                <div style={{ fontSize: "11px", color: "#64748b", fontWeight: "500", marginTop: "2px" }}>Senior Scale</div>
+                                <div style={{ fontSize: "11px", color: "#64748b", fontWeight: "500", marginTop: "2px" }}>
+                                  {isTI ? "Traffic Inspector" : "Station Superintendent"}
+                                </div>
                               </div>
                             </div>
                           </td>
@@ -3449,20 +3627,19 @@ function AOmModule({ user, onLogout }) {
                                 <>
                                   <button
                                     onClick={() => {
-                                      localStorage.setItem(`ti_exam_assigned_${item.employeeId}`, "true");
-                                      // Add an item to pendingAssessments if it doesn't exist
+                                      localStorage.setItem(`${rolePrefix}_exam_assigned_${item.employeeId}`, "true");
                                       const exists = pendingAssessments.some(p => p.id === item.employeeId);
                                       if (!exists) {
                                         setPendingAssessments(prev => [{
                                           id: item.employeeId,
-                                          title: `Traffic Inspector - ${item.employeeId}`,
+                                          title: `${isTI ? "Traffic Inspector" : "Station Superintendent"} - ${item.employeeId}`,
                                           statusLabel: "Pending Assessment",
                                           assessedByLine: `Awaiting: Your Assessment - on ${todayIso()}`,
                                           employeeLine: `Employee: ${item.name} | Division: ${item.division || "Nagpur"}`,
                                           actionType: "assessment"
                                         }, ...prev]);
                                       }
-                                      alert(`Exam assigned and sent to Traffic Inspector ${item.name || ""}.`);
+                                      alert(`Exam assigned and sent to ${isTI ? "Traffic Inspector" : "Station Superintendent"} ${item.name || ""}.`);
                                       setAssessmentActionNotice(`Exam assigned to ${item.name}.`);
                                     }}
                                     style={{
@@ -3479,7 +3656,7 @@ function AOmModule({ user, onLogout }) {
                                     Send Access
                                   </button>
                                   <button
-                                    onClick={() => openTiForm(item)}
+                                    onClick={() => openForm(item)}
                                     style={{
                                       background: "#ffffff",
                                       border: "1px solid #cbd5e1",
@@ -3502,8 +3679,8 @@ function AOmModule({ user, onLogout }) {
                                 <>
                                   <button
                                     onClick={() => {
-                                      localStorage.setItem(`ti_exam_taken_${item.employeeId}`, "true");
-                                      alert(`Mock sync: Traffic Inspector ${item.name} completed the online exam.`);
+                                      localStorage.setItem(`${rolePrefix}_exam_taken_${item.employeeId}`, "true");
+                                      alert(`Mock sync: ${isTI ? "Traffic Inspector" : "Station Superintendent"} ${item.name} completed the online exam.`);
                                       setAssessmentActionNotice(`Online exam completed by ${item.name}.`);
                                     }}
                                     style={{
@@ -3520,7 +3697,7 @@ function AOmModule({ user, onLogout }) {
                                     Simulate Exam Taken
                                   </button>
                                   <button
-                                    onClick={() => openTiForm(item)}
+                                    onClick={() => openForm(item)}
                                     style={{
                                       background: "#ffffff",
                                       border: "1px solid #cbd5e1",
@@ -3541,7 +3718,7 @@ function AOmModule({ user, onLogout }) {
                               )}
                               {item.status === "Exam Taken" && (
                                 <button
-                                  onClick={() => openTiForm(item)}
+                                  onClick={() => openForm(item)}
                                   style={{
                                     background: "#16a34a",
                                     border: "none",
@@ -3559,7 +3736,7 @@ function AOmModule({ user, onLogout }) {
                               {item.status === "Submitted" && (
                                 <>
                                   <button
-                                    onClick={() => openTiForm(item)}
+                                    onClick={() => openForm(item)}
                                     style={{
                                       background: "#2563eb",
                                       border: "none",
@@ -3574,7 +3751,7 @@ function AOmModule({ user, onLogout }) {
                                     View Form
                                   </button>
                                   <button
-                                    onClick={() => openTiForm(item)}
+                                    onClick={() => openForm(item)}
                                     style={{
                                       background: "#ea580c",
                                       border: "none",
@@ -3592,7 +3769,7 @@ function AOmModule({ user, onLogout }) {
                               )}
                               {item.status === "Approved" && (
                                 <button
-                                  onClick={() => openTiForm(item)}
+                                  onClick={() => openForm(item)}
                                   style={{
                                     background: "#2563eb",
                                     border: "none",
@@ -3612,10 +3789,10 @@ function AOmModule({ user, onLogout }) {
                         </tr>
                       );
                     })}
-                    {filteredTiList.length === 0 && (
+                    {filteredList.length === 0 && (
                       <tr>
                         <td colSpan={7} style={{ padding: "40px", textAlign: "center", color: "#64748b", fontSize: "14px", fontWeight: "500" }}>
-                          No Traffic Inspectors match your current filters.
+                          No {isTI ? "Traffic Inspectors" : "Station Superintendents"} match your current filters.
                         </td>
                       </tr>
                     )}
@@ -3626,7 +3803,7 @@ function AOmModule({ user, onLogout }) {
               {/* Pagination Info */}
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "20px", borderTop: "1px solid #f1f5f9", paddingTop: "16px" }}>
                 <div style={{ fontSize: "13px", color: "#64748b", fontWeight: "500" }}>
-                  Showing 1 to {filteredTiList.length} of {filteredTiList.length} entries
+                  Showing 1 to {filteredList.length} of {filteredList.length} entries
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                   <button

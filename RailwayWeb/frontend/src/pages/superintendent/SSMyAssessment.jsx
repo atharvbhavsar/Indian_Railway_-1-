@@ -37,6 +37,7 @@ export default function SSMyAssessment({
   screenMode,
   fullName,
   employeeId,
+  user = {},
   stationSuperintendentProfile,
   performanceSummaryText,
   historyPage,
@@ -238,7 +239,7 @@ const renderMyAssessment = () => {
             <div style={{display:"flex", gap:16, fontSize:12, textAlign:"right"}}>
               <div>
                 <span style={{color:"#166534", display:"block"}}>Last Exam Score</span>
-                <strong style={{color:"#14532d", fontSize:13}}>{ssMcqTest ? `${ssMcqTest.correctCount}/25 (${ssMcqTest.percentage}%)` : `${history[0]?.totalScore || 84}/100`}</strong>
+                <strong style={{color:"#14532d", fontSize:13}}>{ssMcqTest ? `${ssMcqTest.correctCount}/25 (${ssMcqTest.percentage}%)` : (history[0]?.totalScore ? `${history[0]?.totalScore}/100` : "—")}</strong>
               </div>
               <div style={{borderLeft:"1px solid #bbf7d0", paddingLeft:16}}>
                 <span style={{color:"#166534", display:"block"}}>Next Due Date</span>
@@ -251,62 +252,72 @@ const renderMyAssessment = () => {
         <div className="sm2-card-hdr"><h2>My Assessment History</h2></div>
         <p className="sm2-subtitle">All assessments conducted by the Traffic Inspector for your record. Click any row to view the detailed scorecard.</p>
 
-        {/* Summary strip */}
-        <div className="sm2-myassess-summary">
-          <div className="sm2-report-mini">
-            <label>Total Assessments</label>
-            <strong>{history.length}</strong>
+        {history.length === 0 ? (
+          <div style={{ padding: "40px 20px", background: "#f8fafc", borderRadius: "12px", border: "1px dashed #cbd5e1", textAlign: "center", color: "#64748b", marginTop: "20px" }}>
+            <FileBarChart2 size={40} style={{ margin: "0 auto 12px", color: "#94a3b8" }}/>
+            <h3 style={{ margin: "0 0 6px", color: "#1e293b", fontSize: "15px", fontWeight: 700 }}>No Assessment Records Available</h3>
+            <p style={{ margin: 0, fontSize: "13px" }}>You have not completed any evaluations or tests yet.</p>
           </div>
-          <div className="sm2-report-mini">
-            <label>Latest Score</label>
-            <strong>{history[0]?.totalScore ?? "—"}/{history[0]?.isOnlineExam ? 25 : 100}</strong>
-          </div>
-          <div className="sm2-report-mini">
-            <label>Average TI Score</label>
-            <strong>{
-              (() => {
-                const regs = history.filter(h => !h.isOnlineExam);
-                return regs.length ? `${Math.round(regs.reduce((s, a) => s + a.totalScore, 0) / regs.length)}/100` : "—";
-              })()
-            }</strong>
-          </div>
-          <div className="sm2-report-mini">
-            <label>Latest Assessment</label>
-            <strong style={{color: getCategoryColor(getCategory(history[0]?.totalScore || 0))}}>
-              {history[0]?.isOnlineExam ? "Online CBT" : `Category ${getCategory(history[0]?.totalScore || 0)}`}
-            </strong>
-          </div>
-        </div>
+        ) : (
+          <>
+            {/* Summary strip */}
+            <div className="sm2-myassess-summary">
+              <div className="sm2-report-mini">
+                <label>Total Assessments</label>
+                <strong>{history.length}</strong>
+              </div>
+              <div className="sm2-report-mini">
+                <label>Latest Score</label>
+                <strong>{history[0]?.totalScore ?? "—"}/{history[0]?.isOnlineExam ? 25 : 100}</strong>
+              </div>
+              <div className="sm2-report-mini">
+                <label>Average TI Score</label>
+                <strong>{
+                  (() => {
+                    const regs = history.filter(h => !h.isOnlineExam);
+                    return regs.length ? `${Math.round(regs.reduce((s, a) => s + a.totalScore, 0) / regs.length)}/100` : "—";
+                  })()
+                }</strong>
+              </div>
+              <div className="sm2-report-mini">
+                <label>Latest Assessment</label>
+                <strong style={{color: getCategoryColor(getCategory(history[0]?.totalScore || 0))}}>
+                  {history[0]?.isOnlineExam ? "Online CBT" : `Category ${getCategory(history[0]?.totalScore || 0)}`}
+                </strong>
+              </div>
+            </div>
 
-        {/* List */}
-        <div className="sm2-myassess-list">
-          <div className="sm2-myassess-head">
-            {["Period","Date","Score Scale","Category","Assessed By","Status",""].map(h =>
-              <span key={h}>{h}</span>)}
-          </div>
-          {history.map(sc => {
-            const cat = getCategory(sc.totalScore);
-            return (
-              <button key={sc.id} className="sm2-myassess-row" onClick={() => setMyAssessSelected(sc)}>
-                <span title={`Cycle: ${sc.assessmentPeriod}\nDuration: ${formatQuarterPeriod(sc.assessmentPeriod)}`}>
-                  <strong>{formatQuarterPeriod(sc.assessmentPeriod)}</strong>
-                </span>
-                <span>{sc.date}</span>
-                <span><strong>{sc.totalScore}/{sc.isOnlineExam ? 25 : 100}</strong></span>
-                <span>
-                  <span className="sm2-badge" style={{background:getCategoryBg(cat),color:getCategoryColor(cat)}}>
-                    {sc.isOnlineExam ? "CBT Exam" : `Cat. ${cat}`}
-                  </span>
-                </span>
-                <span style={{fontSize:11,color:"#64748b"}}>{sc.assessedBy || "S. Deshmukh (TI)"}</span>
-                <span>
-                  <span className={`sm2-status-pill sm2-status-${(sc.approvalStatus || "approved").toLowerCase()}`}>{sc.approvalStatus || "Approved"}</span>
-                </span>
-                <span style={{color:"#2563eb",fontSize:12,fontWeight:600}}>View Form</span>
-              </button>
-            );
-          })}
-        </div>
+            {/* List */}
+            <div className="sm2-myassess-list">
+              <div className="sm2-myassess-head">
+                {["Period","Date","Score Scale","Category","Assessed By","Status",""].map(h =>
+                  <span key={h}>{h}</span>)}
+              </div>
+              {history.map(sc => {
+                const cat = getCategory(sc.totalScore);
+                return (
+                  <button key={sc.id} className="sm2-myassess-row" onClick={() => setMyAssessSelected(sc)}>
+                    <span title={`Cycle: ${sc.assessmentPeriod}\nDuration: ${formatQuarterPeriod(sc.assessmentPeriod)}`}>
+                      <strong>{formatQuarterPeriod(sc.assessmentPeriod)}</strong>
+                    </span>
+                    <span>{sc.date}</span>
+                    <span><strong>{sc.totalScore}/{sc.isOnlineExam ? 25 : 100}</strong></span>
+                    <span>
+                      <span className="sm2-badge" style={{background:getCategoryBg(cat),color:getCategoryColor(cat)}}>
+                        {sc.isOnlineExam ? "CBT Exam" : `Cat. ${cat}`}
+                      </span>
+                    </span>
+                    <span style={{fontSize:11,color:"#64748b"}}>{sc.assessedBy || "S. Deshmukh (TI)"}</span>
+                    <span>
+                      <span className={`sm2-status-pill sm2-status-${(sc.approvalStatus || "approved").toLowerCase()}`}>{sc.approvalStatus || "Approved"}</span>
+                    </span>
+                    <span style={{color:"#2563eb",fontSize:12,fontWeight:600}}>View Form</span>
+                  </button>
+                );
+              })}
+            </div>
+          </>
+        )}
       </section>
     );
   };
@@ -357,7 +368,7 @@ const renderTakeTest = () => {
         </header>
 
         <div style={{display:"flex", justifyContent:"space-between", alignItems:"center", background:"#ffffff", borderBottom:"1.5px solid #e2e8f0", padding:"12px 24px", height:"50px", flexShrink:0, fontSize:13.5, color:"#334155"}}>
-          <div>Candidate: <strong style={{color:"#1e3a8a"}}>{fullName}</strong> &nbsp;|&nbsp; HRMS: <strong style={{color:"#1e3a8a"}}>{employeeId}</strong> &nbsp;|&nbsp; Station: <strong>{stationSuperintendentProfile.stationName}</strong></div>
+          <div>Candidate: <strong style={{color:"#1e3a8a"}}>{fullName}</strong> &nbsp;|&nbsp; HRMS: <strong style={{color:"#1e3a8a"}}>{employeeId}</strong> &nbsp;|&nbsp; Station: <strong>{user?.station || stationSuperintendentProfile?.stationName || "—"}</strong></div>
           <div style={{display:"flex", alignItems:"center", gap:12}}>
             <span style={{fontWeight:600}}>Progress: <strong style={{color:"#ea580c"}}>{answeredCount} / 25 Answered</strong> ({completionRate}%)</span>
             <div style={{width:140, height:8, background:"#e2e8f0", borderRadius:4, overflow:"hidden"}}>
@@ -933,7 +944,7 @@ const renderAttemptPage = () => {
           color: "#334155"
         }}>
           <div>
-            Candidate Name: <strong style={{color: "#1e3a8a"}}>{fullName}</strong> &nbsp;|&nbsp; HRMS ID: <strong style={{color: "#1e3a8a"}}>{employeeId}</strong> &nbsp;|&nbsp; Station: <strong>{stationSuperintendentProfile.stationName}</strong>
+            Candidate Name: <strong style={{color: "#1e3a8a"}}>{fullName}</strong> &nbsp;|&nbsp; HRMS ID: <strong style={{color: "#1e3a8a"}}>{employeeId}</strong> &nbsp;|&nbsp; Station: <strong>{user?.station || stationSuperintendentProfile?.stationName || "—"}</strong>
           </div>
           <div style={{display: "flex", alignItems: "center", gap: 12}}>
             <span style={{fontWeight: 600}}>Progress: <strong style={{color: "#f97316"}}>{answeredCount} / 25 Answered</strong> ({completionRate}%)</span>

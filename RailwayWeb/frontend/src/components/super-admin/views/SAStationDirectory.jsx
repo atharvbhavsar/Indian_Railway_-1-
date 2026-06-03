@@ -17,10 +17,25 @@ export function SAStationDirectory({ stations, addStation, openView }) {
       alert("Please enter both Station Name and Station Code.");
       return;
     }
+    const cleanCode = newStCode.trim().toUpperCase();
+    const cleanName = newStName.trim();
+
+    const codeExists = stations.some(st => st.code.toUpperCase() === cleanCode);
+    const nameExists = stations.some(st => st.name.toLowerCase() === cleanName.toLowerCase());
+
+    if (codeExists) {
+      alert(`A station with code "${cleanCode}" already exists!`);
+      return;
+    }
+    if (nameExists) {
+      alert(`A station named "${cleanName}" already exists!`);
+      return;
+    }
+
     const newStation = {
       id: `ST_${Date.now()}`,
-      name: newStName.trim(),
-      code: newStCode.trim().toUpperCase(),
+      name: cleanName,
+      code: cleanCode,
       ti: newStTi,
       smCount: 0,
       pmCount: 0,

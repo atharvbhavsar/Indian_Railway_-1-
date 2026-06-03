@@ -230,62 +230,72 @@ export function StationMasterAssessments(props) {
         <div className="sm2-card-hdr"><h2>My Assessment History (by TI)</h2></div>
         <p className="sm2-subtitle">All assessments conducted by the Traffic Inspector for your station. Click any row to view the detailed scorecard.</p>
 
-        {/* Summary strip */}
-        <div className="sm2-myassess-summary">
-          <div className="sm2-report-mini">
-            <label>Total Assessments</label>
-            <strong>{smAssessmentHistory.length}</strong>
+        {smAssessmentHistory.length === 0 ? (
+          <div style={{ padding: "40px 20px", background: "#f8fafc", borderRadius: "12px", border: "1px dashed #cbd5e1", textAlign: "center", color: "#64748b", marginTop: "20px" }}>
+            <FileBarChart2 size={40} style={{ margin: "0 auto 12px", color: "#94a3b8" }}/>
+            <h3 style={{ margin: "0 0 6px", color: "#1e293b", fontSize: "15px", fontWeight: 700 }}>No Assessment Records Available</h3>
+            <p style={{ margin: 0, fontSize: "13px" }}>You have not completed any evaluations or tests yet.</p>
           </div>
-          <div className="sm2-report-mini">
-            <label>Latest Score</label>
-            <strong>{smAssessmentHistory[0]?.totalScore}/{smAssessmentHistory[0]?.isOnlineExam ? 25 : 100}</strong>
-          </div>
-          <div className="sm2-report-mini">
-            <label>Average TI Score</label>
-            <strong>{
-              (() => {
-                const regs = smAssessmentHistory.filter(h => !h.isOnlineExam);
-                return regs.length ? `${Math.round(regs.reduce((s, a) => s + a.totalScore, 0) / regs.length)}/100` : "—";
-              })()
-            }</strong>
-          </div>
-          <div className="sm2-report-mini">
-            <label>Latest Assessment</label>
-            <strong style={{color: getCatColor(smAssessmentHistory[0]?.category)}}>
-              {smAssessmentHistory[0]?.isOnlineExam ? "Online CBT" : `Category ${smAssessmentHistory[0]?.category}`}
-            </strong>
-          </div>
-        </div>
+        ) : (
+          <>
+            {/* Summary strip */}
+            <div className="sm2-myassess-summary">
+              <div className="sm2-report-mini">
+                <label>Total Assessments</label>
+                <strong>{smAssessmentHistory.length}</strong>
+              </div>
+              <div className="sm2-report-mini">
+                <label>Latest Score</label>
+                <strong>{smAssessmentHistory[0]?.totalScore}/{smAssessmentHistory[0]?.isOnlineExam ? 25 : 100}</strong>
+              </div>
+              <div className="sm2-report-mini">
+                <label>Average TI Score</label>
+                <strong>{
+                  (() => {
+                    const regs = smAssessmentHistory.filter(h => !h.isOnlineExam);
+                    return regs.length ? `${Math.round(regs.reduce((s, a) => s + a.totalScore, 0) / regs.length)}/100` : "—";
+                  })()
+                }</strong>
+              </div>
+              <div className="sm2-report-mini">
+                <label>Latest Assessment</label>
+                <strong style={{color: getCatColor(smAssessmentHistory[0]?.category)}}>
+                  {smAssessmentHistory[0]?.isOnlineExam ? "Online CBT" : `Category ${smAssessmentHistory[0]?.category}`}
+                </strong>
+              </div>
+            </div>
 
-        {/* List */}
-        <div className="sm2-myassess-list">
-          <div className="sm2-myassess-head">
-            {["Period","Date","Score Scale","Category","Assessed By","Status",""].map(h =>
-              <span key={h}>{h}</span>)}
-          </div>
-          {smAssessmentHistory.map(sc => {
-            const cat = sc.category;
-            return (
-              <button key={sc.id} className="sm2-myassess-row" onClick={() => setMyAssessSelected(sc)}>
-                <span title={`Cycle: ${sc.period}\nDuration: ${formatQuarterPeriod(sc.period)}`}>
-                  <strong>{formatQuarterPeriod(sc.period)}</strong>
-                </span>
-                <span>{sc.date}</span>
-                <span><strong>{sc.totalScore}/{sc.isOnlineExam ? 25 : 100}</strong></span>
-                <span>
-                  <span className="sm2-badge" style={{background:getCatBg(cat),color:getCatColor(cat)}}>
-                    {sc.isOnlineExam ? "CBT Exam" : `Cat. ${cat}`}
-                  </span>
-                </span>
-                <span style={{fontSize:11,color:"#64748b"}}>{sc.assessedBy}</span>
-                <span>
-                  <span className={`sm2-status-pill sm2-status-${sc.approvalStatus.toLowerCase()}`}>{sc.approvalStatus}</span>
-                </span>
-                <span style={{color:"#2563eb",fontSize:12,fontWeight:600}}>View Form</span>
-              </button>
-            );
-          })}
-        </div>
+            {/* List */}
+            <div className="sm2-myassess-list">
+              <div className="sm2-myassess-head">
+                {["Period","Date","Score Scale","Category","Assessed By","Status",""].map(h =>
+                  <span key={h}>{h}</span>)}
+              </div>
+              {smAssessmentHistory.map(sc => {
+                const cat = sc.category;
+                return (
+                  <button key={sc.id} className="sm2-myassess-row" onClick={() => setMyAssessSelected(sc)}>
+                    <span title={`Cycle: ${sc.period}\nDuration: ${formatQuarterPeriod(sc.period)}`}>
+                      <strong>{formatQuarterPeriod(sc.period)}</strong>
+                    </span>
+                    <span>{sc.date}</span>
+                    <span><strong>{sc.totalScore}/{sc.isOnlineExam ? 25 : 100}</strong></span>
+                    <span>
+                      <span className="sm2-badge" style={{background:getCatBg(cat),color:getCatColor(cat)}}>
+                        {sc.isOnlineExam ? "CBT Exam" : `Cat. ${cat}`}
+                      </span>
+                    </span>
+                    <span style={{fontSize:11,color:"#64748b"}}>{sc.assessedBy}</span>
+                    <span>
+                      <span className={`sm2-status-pill sm2-status-${sc.approvalStatus.toLowerCase()}`}>{sc.approvalStatus}</span>
+                    </span>
+                    <span style={{color:"#2563eb",fontSize:12,fontWeight:600}}>View Form</span>
+                  </button>
+                );
+              })}
+            </div>
+          </>
+        )}
       </section>
     );
 }

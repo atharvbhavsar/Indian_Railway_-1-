@@ -153,7 +153,9 @@ function StationMasterModule({ user, onLogout }) {
     testResponses,
     toggleYN,
     viewingPm,
-    viewingStaff
+    viewingStaff,
+    stationSms,
+    assignedTi
   } = state;
 
   /* ════ RENDERERS ════ */
@@ -178,7 +180,7 @@ function StationMasterModule({ user, onLogout }) {
       setFsEndDate={setFsEndDate}
       filteredFsPointsmen={filteredFsPointsmen}
       dynamicMonthlyTrend={dynamicMonthlyTrend}
-      pmAssessmentHistory={pmAssessmentHistory}
+      pmAssessmentHistory={[]}
       pointsmen={pointsmen}
       smId={smId}
       drafts={drafts}
@@ -186,6 +188,9 @@ function StationMasterModule({ user, onLogout }) {
       setViewingStaff={setViewingStaff}
       setActiveTab={setActiveTab}
       openPmDetail={openPmDetail}
+      user={user}
+      stationSms={stationSms}
+      assignedTi={assignedTi}
     />
   );
 
@@ -194,7 +199,7 @@ function StationMasterModule({ user, onLogout }) {
     <StationMasterPointsmanDetail
       smName={smName}
       smId={smId}
-      smProfile={smProfile}
+      smProfile={user}
     />
   );
 
@@ -207,7 +212,7 @@ function StationMasterModule({ user, onLogout }) {
       pmF={pmF}
       setPmF={setPmF}
       filteredPm={filteredPm}
-      smProfile={smProfile}
+      smProfile={user}
       openPmEdit={openPmEdit}
       openPmShift={openPmShift}
       removePm={removePm}
@@ -219,7 +224,7 @@ function StationMasterModule({ user, onLogout }) {
     <StationMasterPointsmenDetailAlt
       s={s}
       setViewingPm={setViewingPm}
-      smProfile={smProfile}
+      smProfile={user}
     />
   );
 
@@ -227,7 +232,7 @@ function StationMasterModule({ user, onLogout }) {
     <StationMasterPointsmanModal
       pmModal={pmModal}
       setPmModal={setPmModal}
-      smProfile={smProfile}
+      smProfile={user}
       savePmModal={savePmModal}
     />
   );
@@ -237,8 +242,8 @@ function StationMasterModule({ user, onLogout }) {
     <StationMasterPointsmanView
       pm={pm}
       setPageMode={setPageMode}
-      smProfile={smProfile}
-      pmAssessmentHistory={pmAssessmentHistory}
+      smProfile={user}
+      pmAssessmentHistory={[]}
       setInspectRecord={setInspectRecord}
     />
   );
@@ -268,9 +273,9 @@ function StationMasterModule({ user, onLogout }) {
       myAssessSelected={myAssessSelected}
       setMyAssessSelected={setMyAssessSelected}
       smMcqTest={smMcqTest}
-      smSelfAssessment={smSelfAssessment}
+      smSelfAssessment={null}
       testAssigned={testAssigned}
-      smAssessmentHistory={smAssessmentHistory}
+      smAssessmentHistory={history}
       startTestAttempt={startTestAttempt}
     />
   );
@@ -320,7 +325,7 @@ function StationMasterModule({ user, onLogout }) {
       repF={repF}
       setRepF={setRepF}
       pointsmen={pointsmen}
-      smProfile={smProfile}
+      smProfile={user}
     />
   );
 
@@ -549,8 +554,8 @@ function StationMasterModule({ user, onLogout }) {
                               <div className="sm2-fs-card-name">{p.name}</div>
                               <div className="sm2-fs-card-id">{p.hrmsId}</div>
                             </div>
-                            <span className="sm2-fs-card-cat" style={{ background: CAT_BG[cat], color: CAT_COLOR[cat] }}>
-                              Cat. {cat}
+                            <span className="sm2-fs-card-cat" style={{ background: CAT_BG[cat] || "#f1f5f9", color: CAT_COLOR[cat] || "#64748b" }}>
+                              {cat === "Untested" ? "Untested" : `Cat. ${cat}`}
                             </span>
                           </div>
                           <div className="sm2-fs-card-meta-row">

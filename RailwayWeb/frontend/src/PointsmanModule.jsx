@@ -295,7 +295,7 @@ function PointsmanModule({ user, onLogout }) {
               currentCategory: profRec.category || "A",
               department: "Operations",
               reportingOfficer: profRec.reporting_sm || "— (Station Master)",
-              joiningDate: profRec.date_of_joining || "2018-06-15"
+              joiningDate: profRec.date_of_joining || profRec.joining_date || "2018-06-15"
             });
 
             // 2. Fetch test history attempts from DB
@@ -1097,10 +1097,12 @@ function PointsmanModule({ user, onLogout }) {
                 <Gauge size={14} />
                 <span>Avg {averageScore}</span>
               </div>
-              <div className="pm-hkpi" style={{ color: getCategoryColor(latestCategory) }}>
-                <ShieldCheck size={14} />
-                <span>Cat. {latestCategory}</span>
-              </div>
+              {latestCategory !== "Untested" && (
+                <div className="pm-hkpi" style={{ color: getCategoryColor(latestCategory) }}>
+                  <ShieldCheck size={14} />
+                  <span>Cat. {latestCategory}</span>
+                </div>
+              )}
             </div>
           </div>
 
