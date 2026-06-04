@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useAomState } from './hooks/useAomState.jsx';
 import { MONTHLY_TREND, ASSESSMENT_MONTHLY, COMPLIANCE, CAT_COLORS, RISK_COLORS, STATUS_COLORS, generate96Stations, DASHBOARD_96_STATIONS, stationProgressData, categoryData, sidebarItems, summaryCards, designationOptions, departmentOptions, userTypeOptions, reportingOfficerOptions, aomReadOnlyProfile, initialUserFormData, initialFilterData, stationZoneOptions, stationDivisionOptions, stationCategoryOptions, stationTypeOptions, initialStationFormData, initialStationFilterData, initialStations, tiCategoryOptions, tiAssessmentStatusOptions, initialTrafficInspectors, hrmsTiDirectory, initialTiFormData, stationAverageScoreData, initialPendingAssessments, initialApprovedAssessments, initialReportRows, assessmentCriteria } from './constants/aomMockData';
+import { TI_SM_CRITERIA } from './constants/trafficInspectorConstants';
 import { 
   Activity, AlertCircle, AlertTriangle, ArrowRightLeft, ArrowLeft, BarChart3, Building2, BusFront, 
   ClipboardCheck, Eye, ExternalLink, Filter, Cog, FileCheck, FileDown, FileText, FileBarChart2, 
@@ -4450,6 +4451,33 @@ function AOmModule({ user, onLogout }) {
                   );
                 })}
               </div>
+
+              {/* Detailed TI Responses (if available for SM) */}
+              {aomApprovalTab === "SM" && aomSelectedItem.tiAnswers && Object.values(aomSelectedItem.tiAnswers).some(arr => arr && arr.length > 0) && (
+                <div style={{ marginTop: "24px", background: "#f8fafc", padding: "16px", borderRadius: "12px", border: "1px solid #e2e8f0" }}>
+                  <h4 style={{ margin: "0 0 16px", fontSize: "13px", color: "#334155", textTransform: "uppercase", letterSpacing: "0.5px" }}>TI Evaluation Details (Y/N Answers)</h4>
+                  <div style={{ display: "grid", gap: "16px" }}>
+                    {TI_SM_CRITERIA.map(sec => {
+                      const answers = aomSelectedItem.tiAnswers[sec.key] || [];
+                      if (answers.length === 0) return null;
+                      return (
+                        <div key={sec.key} style={{ background: "#ffffff", padding: "12px", borderRadius: "8px", border: "1px solid #cbd5e1" }}>
+                          <h5 style={{ margin: "0 0 10px", fontSize: "13px", color: "#0f172a", fontWeight: "700" }}>{sec.label}</h5>
+                          <ul style={{ margin: 0, paddingLeft: "20px", fontSize: "12px", color: "#475569" }}>
+                            {sec.criteria.map((crit, i) => (
+                              <li key={i} style={{ marginBottom: "6px" }}>
+                                {crit}: <strong style={{ color: answers[i] === "Yes" ? "#16a34a" : answers[i] === "No" ? "#dc2626" : "#94a3b8" }}>
+                                  {answers[i] || "Not Answered"}
+                                </strong>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
 
               {/* Live score — same ti2-live-score as TI */}
               <div className="ti2-live-score">

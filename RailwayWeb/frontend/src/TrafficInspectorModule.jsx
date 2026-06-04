@@ -3027,30 +3027,9 @@ export default function TrafficInspectorModule({ user, onLogout }) {
                       </div>
                     </div>
                     
-                    <div style={{ display: "flex", gap: "12px" }}>
-                      <button 
-                        type="button"
-                        style={{
-                          padding: "8px 16px",
-                          borderRadius: "8px",
-                          fontSize: "13px",
-                          fontWeight: "700",
-                          cursor: "pointer",
-                          border: "none",
-                          background: isActivated ? "#fef2f2" : "#2563eb",
-                          color: isActivated ? "#dc2626" : "#ffffff",
-                          boxShadow: "0 2px 4px rgba(0,0,0,0.05)"
-                        }}
-                        onClick={() => {
-                          const nextVal = !isActivated;
-                          localStorage.setItem(`sm_test_activated_${sm?.hrmsId}`, nextVal ? "true" : "false");
-                          setSMField(activeSmId, "automaticTraining", f.automaticTraining);
-                        }}
-                      >
-                        {isActivated ? "Deactivate Safety Competency Exam" : "Activate Safety Competency Exam"}
-                      </button>
-
-
+                    <div style={{ display: "flex", gap: "12px", marginBottom: "16px" }}>
+                      {/* Activation is now exclusively done via 'Send Access' button on the table list */}
+                      <span style={{ fontSize: "12px", color: "#64748b", fontStyle: "italic" }}>Activation controlled from Dashboard table.</span>
                     </div>
 
                     <div className="sm2-mcq-meta-grid">
@@ -3193,7 +3172,7 @@ export default function TrafficInspectorModule({ user, onLogout }) {
                 }}>Save as Draft</button>
                 <button className="sm2-primary-btn" style={{ padding: "10px 20px", borderRadius: "8px", fontWeight: "700", border: "none", background: "#2563eb", color: "#ffffff", display: "flex", alignItems: "center", gap: "6px", cursor: "pointer" }} onClick={() => {
                   setSMField(activeSmId, "knowledgeMarks", String(knowledge));
-                  submitSMAssessment(activeSmId);
+                  submitSMAssessment(activeSmId, String(knowledge));
                 }}>
                   <CheckCircle2 size={14}/> Submit for AOM Approval
                 </button>

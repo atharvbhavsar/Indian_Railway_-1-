@@ -149,7 +149,8 @@ export const authService = {
       reportingSm: ep?.reporting_sm || "—",
       shift: ep?.shift || "—",
       workLocation: ep?.work_location || "—",
-      jurisdiction: ep?.jurisdiction || "—"
+      jurisdiction: ep?.jurisdiction || "—",
+      linkedStations: data.ROLE?.role_name === "Traffic Inspector" ? (ep?.jurisdiction || "") : ""
     };
   },
   

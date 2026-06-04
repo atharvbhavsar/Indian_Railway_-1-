@@ -83,8 +83,10 @@ export function useStationMasterState(user, onLogout) {
       const ti = mapped.find(x => {
         const isTi = x.role === "ti" || x.role === "Traffic Inspector";
         if (!isTi) return false;
-        if (userStation) {
-          return (x.station || "").toLowerCase().trim() === userStation.toLowerCase().trim();
+        const rawStations = x.linkedStations || x.jurisdiction || "";
+        if (userStation && rawStations && rawStations !== "—") {
+          const tiStList = rawStations.split(",").map(s => s.trim().toLowerCase());
+          return tiStList.includes(userStation.toLowerCase().trim());
         }
         return false;
       });
@@ -114,6 +116,45 @@ export function useStationMasterState(user, onLogout) {
                 totalMarks: a.TEST_ATTEMPT?.[0]?.total_marks || 100
               }));
             setSubmittedAssessments(dbSubmitted);
+
+            // Also fetch SM's OWN assessment history
+            if (user?.userId) {
+              const { data: myAssessList } = await supabase
+                .from("ASSESSMENT")
+                .select(`
+                  *,
+                  TEST_ATTEMPT (*),
+                  APPROVAL (remarks, approval_date, USERS!approved_by (full_name))
+                `)
+                .eq("employee_id", user.userId)
+                .eq("assessment_type", "Station Master Assessment");
+
+              if (myAssessList && myAssessList.length > 0) {
+                const mappedHistory = myAssessList.map(a => {
+                  const ta = a.TEST_ATTEMPT?.[0];
+                  const answers = ta?.answers || {};
+                  return {
+                    id: a.assessment_id,
+                    date: a.assessment_date ? new Date(a.assessment_date).toISOString().slice(0, 10) : new Date(a.created_at).toISOString().slice(0, 10),
+                    period: "Current",
+                    assessedBy: "Traffic Inspector",
+                    totalScore: ta?.obtained_marks || 0,
+                    category: ta?.category || "A",
+                    approvalStatus: a.status,
+                    tiRemarks: answers.remarks || "",
+                    sections: answers.sections || [],
+                    isOnlineExam: false
+                  };
+                });
+                
+                // Merge with any locally stored ones not in DB (like current unsubmitted CBT)
+                const localStr = localStorage.getItem(`sm_history_${smId}`);
+                const localHist = localStr ? JSON.parse(localStr) : [];
+                const mergedHist = [...mappedHistory, ...localHist.filter(lh => lh.isOnlineExam && !mappedHistory.some(mh => mh.date === lh.date))];
+                
+                setHistory(mergedHist.sort((a,b) => new Date(b.date) - new Date(a.date)));
+              }
+            }
           }
         } catch (dbErr) {
           console.error("Failed to fetch submitted assessments:", dbErr);
@@ -294,15 +335,37 @@ export function useStationMasterState(user, onLogout) {
     return saved ? JSON.parse(saved) : null;
   });
 
-  // MCQ Test Assignment State
+  // MCQ Test Assignment State — defaults to "Not Assigned" (LOCKED)
+  // Only becomes "Assigned" when the TI explicitly sets sm_test_activated_{smId}=true
   const [testAssigned, setTestAssigned] = useState(() => {
     const saved = localStorage.getItem(`sm_test_assigned_${smId}`);
-    if (saved === null) {
-      localStorage.setItem(`sm_test_assigned_${smId}`, "Assigned");
-      return "Assigned";
-    }
-    return saved;
+    return saved || "Not Assigned";
   });
+
+  // Poll localStorage every 2 seconds to detect TI activation
+  useEffect(() => {
+    const syncActivation = () => {
+      const activated = localStorage.getItem(`sm_test_activated_${smId}`) === "true";
+      const completed = localStorage.getItem(`sm_test_assigned_${smId}`) === "Completed";
+      if (completed) return; // already done, no more changes needed
+      if (activated) {
+        setTestAssigned("Assigned");
+        localStorage.setItem(`sm_test_assigned_${smId}`, "Assigned");
+      } else {
+        const current = localStorage.getItem(`sm_test_assigned_${smId}`);
+        if (!current || current === "Not Assigned") {
+          setTestAssigned("Not Assigned");
+        }
+      }
+    };
+    syncActivation(); // run immediately
+    const interval = setInterval(syncActivation, 2000);
+    window.addEventListener("storage", syncActivation);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("storage", syncActivation);
+    };
+  }, [smId]);
 
   // Active MCQ Attempt States
   const [activeQIdx, setActiveQIdx] = useState(0);

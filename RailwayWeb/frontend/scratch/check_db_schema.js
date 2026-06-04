@@ -16,13 +16,17 @@ const supabaseAnonKey = vars.VITE_SUPABASE_ANON_KEY;
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 async function check() {
-  // Let's query one record or fetch table structure using a simple select limit 1
-  const { data: assess, error: err1 } = await supabase.from("ASSESSMENT").select("*").limit(1);
-  console.log("ASSESSMENT structure:", assess);
+  const { data: ti, error: err1 } = await supabase.from("TRAFFIC_INSPECTOR").select("*").limit(1);
+  if (ti && ti.length > 0) {
+    console.log("TRAFFIC_INSPECTOR columns:", Object.keys(ti[0]));
+    console.log("TRAFFIC_INSPECTOR row:", ti[0]);
+  }
   if (err1) console.error(err1);
 
-  const { data: attempts, error: err2 } = await supabase.from("TEST_ATTEMPT").select("*").limit(1);
-  console.log("TEST_ATTEMPT structure:", attempts);
+  const { data: ep, error: err2 } = await supabase.from("EMPLOYEE_PROFILE").select("*").limit(1);
+  if (ep && ep.length > 0) {
+    console.log("EMPLOYEE_PROFILE columns:", Object.keys(ep[0]));
+  }
   if (err2) console.error(err2);
 }
 check();

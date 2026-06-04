@@ -479,45 +479,27 @@ export function useAomState(user, onLogout) {
     const rec = aomCurrentList.find(x => x.id === id);
     if (!rec) return;
     setAomSelectedId(id);
-    // Build editable sections from the TI form data if available
-    const savedForms = aomApprovalTab === "SM"
-      ? (localStorage.getItem("ti_sm_forms") ? JSON.parse(localStorage.getItem("ti_sm_forms")) : {})
-      : (localStorage.getItem("ti_tm_forms") ? JSON.parse(localStorage.getItem("ti_tm_forms")) : {});
-    const form = savedForms[id];
 
     let builtSecs = [];
-    if (rec.sections && rec.sections.length > 0) {
-      builtSecs = rec.sections.map(s => ({ ...s }));
+    // Priority 1: Use real sections stored from Supabase TEST_ATTEMPT answers
+    if (rec.sections && rec.sections.length > 0 && rec.sections.some(s => (s.marks ?? s.score) > 0)) {
+      builtSecs = rec.sections.map(s => ({
+        title: s.title,
+        score: s.marks !== undefined ? s.marks : (s.score || 0),
+        max: s.outOf !== undefined ? s.outOf : (s.max || 25)
+      }));
     } else if (aomApprovalTab === "SM") {
-      // Station Master criteria
-      const stationMgmtScore = (form?.stationMgmt || []).filter(v => v === "Yes").length * 5;
-      const safetyScore = (form?.safety || []).filter(v => v === "Yes").length * 4;
-      const staffSupervisionScore = (form?.staffSupervision || []).filter(v => v === "Yes").length * 3;
-      const documentationScore = (form?.documentation || []).filter(v => v === "Yes").length * 3;
-      const emergencyScore = (form?.emergency || []).filter(v => v === "Yes").length * 5;
-      const knowledgeScore = parseInt(form?.knowledgeMarks) || 0;
-
-      // If form doesn't exist (mock record), distribute total score proportionally
-      if (!form) {
-        const total = rec.score || 80;
-        builtSecs = [
-          { title: "Station Management", score: Math.round(total * 0.25), max: 25 },
-          { title: "Safety & Compliance", score: Math.round(total * 0.20), max: 20 },
-          { title: "Staff Supervision", score: Math.round(total * 0.15), max: 15 },
-          { title: "Documentation & Reporting", score: Math.round(total * 0.15), max: 15 },
-          { title: "Emergency Handling", score: Math.round(total * 0.25), max: 25 },
-          { title: "Written Exam (Knowledge)", score: Math.round(total * 0.20), max: 25 }
-        ];
-      } else {
-        builtSecs = [
-          { title: "Station Management", score: stationMgmtScore, max: 25 },
-          { title: "Safety & Compliance", score: safetyScore, max: 20 },
-          { title: "Staff Supervision", score: staffSupervisionScore, max: 15 },
-          { title: "Documentation & Reporting", score: documentationScore, max: 15 },
-          { title: "Emergency Handling", score: emergencyScore, max: 25 },
-          { title: "Written Exam (Knowledge)", score: knowledgeScore, max: 25 }
-        ];
-      }
+      // Fallback: distribute proportionally (no real section data available)
+      const total = rec.score || 0;
+      builtSecs = [
+        { title: "Knowledge of Rules (MCQ)", score: Math.round(total * 0.25), max: 25 },
+        { title: "Knowledge of Rules", score: Math.round(total * 0.15), max: 15 },
+        { title: "Alertness and Observance of Rules", score: Math.round(total * 0.15), max: 15 },
+        { title: "Safety Record", score: Math.round(total * 0.15), max: 15 },
+        { title: "Leadership and Management", score: Math.round(total * 0.10), max: 10 },
+        { title: "Discipline", score: Math.round(total * 0.10), max: 10 },
+        { title: "Appearance and Neatness", score: Math.round(total * 0.10), max: 10 }
+      ];
     } else {
       // Train Manager criteria
       const trainSafetyScore = (form?.trainSafety || []).filter(v => v === "Yes").length * 5;
@@ -6498,6 +6480,31 @@ export function useAomState(user, onLogout) {
           const score = a.TEST_ATTEMPT?.[0]?.obtained_marks || 0;
           const cat = a.TEST_ATTEMPT?.[0]?.category || "A";
           const subDate = a.assessment_date ? new Date(a.assessment_date).toISOString().slice(0, 10) : "";
+          // Read actual section breakdown stored by TI
+          const answers = a.TEST_ATTEMPT?.[0]?.answers || {};
+          const storedSections = answers.sections || [];
+          const mcqScore = answers.mcqScore || 0;
+
+          // Build sections: MCQ first, then TI evaluation sections
+          let sections = [];
+          if (storedSections.length > 0) {
+            sections = [
+              { title: "Knowledge of Rules (MCQ)", marks: mcqScore, outOf: 25 },
+              ...storedSections
+            ];
+          } else {
+            // Fallback proportional
+            sections = [
+              { title: "Knowledge of Rules (MCQ)", marks: Math.round(score * 0.25), outOf: 25 },
+              { title: "Knowledge of Rules", marks: Math.round(score * 0.15), outOf: 15 },
+              { title: "Alertness and Observance of Rules", marks: Math.round(score * 0.15), outOf: 15 },
+              { title: "Safety Record", marks: Math.round(score * 0.15), outOf: 15 },
+              { title: "Leadership and Management", marks: Math.round(score * 0.10), outOf: 10 },
+              { title: "Discipline", marks: Math.round(score * 0.10), outOf: 10 },
+              { title: "Appearance and Neatness", marks: Math.round(score * 0.10), outOf: 10 }
+            ];
+          }
+
           return {
             id: a.assessment_id,
             name: a.employee?.full_name || "",
@@ -6507,17 +6514,22 @@ export function useAomState(user, onLogout) {
             status: a.status === 'Pending' ? 'Submitted' : a.status,
             score: score,
             category: cat,
-            pmeStatus: "Fit",
-            refStatus: "Cleared",
-            sections: [
-              { title: "Station Management", score: Math.round(score * 0.25), max: 25 },
-              { title: "Safety & Compliance", score: Math.round(score * 0.20), max: 20 },
-              { title: "Staff Supervision", score: Math.round(score * 0.15), max: 15 },
-              { title: "Documentation & Reporting", score: Math.round(score * 0.15), max: 15 },
-              { title: "Emergency Handling", score: Math.round(score * 0.25), max: 25 },
-              { title: "Written Exam (Knowledge)", score: Math.round(score * 0.20), max: 25 }
-            ],
-            auditTrail: a.APPROVAL ? [{ action: "Approved", by: a.APPROVAL.USERS?.full_name || "AOM", date: new Date(a.APPROVAL.approval_date).toISOString().slice(0,10), remark: a.APPROVAL.remarks }] : []
+            pmeStatus: answers.pmeStatus || "Fit",
+            refStatus: answers.refStatus || "Cleared",
+            remarks: answers.remarks || "",
+            alcoholicStatus: answers.alcoholicStatus || "",
+            sections,
+            // TI Y/N answers for AOM display
+            tiAnswers: {
+              knowledgeOfRules: answers.knowledgeOfRules || [],
+              alertness: answers.alertness || [],
+              safetyRecord: answers.safetyRecord || [],
+              leadership: answers.leadership || [],
+              discipline: answers.discipline || [],
+              appearance: answers.appearance || []
+            },
+            aomRemarks: a.APPROVAL?.remarks || "",
+            auditTrail: a.APPROVAL ? [{ action: "Reviewed", by: a.APPROVAL.USERS?.full_name || "AOM", date: a.APPROVAL.approval_date ? new Date(a.APPROVAL.approval_date).toISOString().slice(0,10) : "", remark: a.APPROVAL.remarks }] : []
           };
         });
         setAomSMList(smMapped);

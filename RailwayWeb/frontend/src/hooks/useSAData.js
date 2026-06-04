@@ -57,6 +57,7 @@ export function useSAData() {
       workLocation: modalData.workLocation || "—",
       shift: modalData.shift || "—",
       jurisdiction: modalData.jurisdiction || "—",
+      linkedStations: modalData.linkedStations || "",
       reportingAom: "—"
     };
 

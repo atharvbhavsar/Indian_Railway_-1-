@@ -85,6 +85,7 @@ export const saDataService = {
             workLocation: ep.work_location || "—",
             shift: ep.shift || "—",
             jurisdiction: ep.jurisdiction || "—",
+            linkedStations: superAdminRole === "ti" ? (ep.jurisdiction || "") : "",
             reportingAom: "—"
           };
         });
@@ -170,7 +171,7 @@ export const saDataService = {
           reportingSm: modalData.reportingSm || "",
           workLocation: modalData.workLocation || "",
           shift: modalData.shift || "",
-          jurisdiction: modalData.jurisdiction || "",
+          jurisdiction: roleName === "Traffic Inspector" ? (modalData.linkedStations || modalData.jurisdiction || "") : (modalData.jurisdiction || ""),
           category: modalData.cat || (mode === "add" ? "Untested" : "A")
         };
         const res = await dbService.saveUser(payload, mode);

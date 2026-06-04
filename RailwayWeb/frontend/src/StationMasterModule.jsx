@@ -277,6 +277,7 @@ function StationMasterModule({ user, onLogout }) {
       testAssigned={testAssigned}
       smAssessmentHistory={history}
       startTestAttempt={startTestAttempt}
+      smId={smId}
     />
   );
 

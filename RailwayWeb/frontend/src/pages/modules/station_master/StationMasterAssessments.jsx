@@ -1,6 +1,6 @@
 import React from 'react';
 import { 
-  FileBarChart2, ShieldCheck, CheckCircle2, AlertTriangle, PlayCircle, Target, ArrowRight, BookOpen
+  FileBarChart2, ShieldCheck, CheckCircle2, AlertTriangle, PlayCircle, Target, ArrowRight, BookOpen, Clock
 } from 'lucide-react';
 import { getCat, getCatColor, getCatBg, riskLevel, riskColor, formatQuarterPeriod, getPerformanceSummaryText } from '../../../utils/scoreCalculator';
 import { smTestQuestions } from '../../../data/mockStationMasterData';
@@ -13,7 +13,8 @@ export function StationMasterAssessments(props) {
     smSelfAssessment,
     testAssigned,
     smAssessmentHistory,
-    startTestAttempt
+    startTestAttempt,
+    smId
   } = props;
 
     /* Scorecard detail view */
@@ -137,24 +138,79 @@ export function StationMasterAssessments(props) {
       );
     }
 
-    const testActive = testAssigned === "Assigned" && (!smMcqTest || !smMcqTest.completed);
+    const isActivated = localStorage.getItem(`sm_test_activated_${smId}`) === "true";
+    const isCompleted = testAssigned === "Completed" || (smMcqTest && smMcqTest.completed);
+    const hasHistory = smAssessmentHistory && smAssessmentHistory.length > 0;
 
     /* History list */
     return (
       <section className="sm2-card">
         {/* MCQ Assessment Assignment Banner */}
-        {testActive ? (
-          <div style={{
-            background:"linear-gradient(135deg, #fffbeb 0%, #fff7ed 100%)",
-            border:"1.5px solid #fed7aa",
-            borderRadius:12,
-            padding:20,
-            marginBottom:24,
-            boxShadow:"0 4px 6px -1px rgba(0,0,0,0.05)"
-          }}>
-            <div style={{display:"flex", gap:16, alignItems:"start"}}>
+        {isActivated && !isCompleted ? (
+            <div style={{
+              background:"linear-gradient(135deg, #fffbeb 0%, #fff7ed 100%)",
+              border:"1.5px solid #fed7aa",
+              borderRadius:12,
+              padding:20,
+              marginBottom:24,
+              boxShadow:"0 4px 6px -1px rgba(0,0,0,0.05)"
+            }}>
+              <div style={{display:"flex", gap:16, alignItems:"start"}}>
+                <div style={{
+                  background:"#ffedd5",
+                  borderRadius:50,
+                  width:42,
+                  height:42,
+                  display:"flex",
+                  alignItems:"center",
+                  justifyContent:"center",
+                  flexShrink:0
+                }}>
+                  <ShieldCheck size={22} color="#ea580c"/>
+                </div>
+                <div style={{flex:1}}>
+                  <h3 style={{margin:"0 0 6px", fontSize:16, fontWeight:700, color:"#c2410c"}}>
+                    ⚠️ Pending Competency Assessment
+                  </h3>
+                  <p style={{margin:"0 0 14px", fontSize:13, color:"#9a3412", lineHeight:1.4}}>
+                    Your supervisor (Traffic Inspector) has scheduled a periodic safety &amp; competency assessment for you. You must complete the 25-question MCQ exam.
+                  </p>
+                  <button
+                    onClick={startTestAttempt}
+                    style={{
+                      background:"#ea580c",
+                      color:"#ffffff",
+                      border:"none",
+                      padding:"10px 20px",
+                      borderRadius:8,
+                      fontSize:13.5,
+                      fontWeight:700,
+                      cursor:"pointer",
+                      boxShadow:"0 4px 6px rgba(234, 88, 12, 0.2)",
+                      display:"flex",
+                      alignItems:"center",
+                      gap:8
+                    }}
+                  >
+                    Start 25 MCQ Online Assessment
+                  </button>
+                </div>
+              </div>
+            </div>
+        ) : !isActivated && !hasHistory && !isCompleted ? (
+            <div style={{
+              background:"#f8fafc",
+              border:"2px dashed #cbd5e1",
+              borderRadius:12,
+              padding:20,
+              marginBottom:24,
+              boxShadow:"0 4px 6px -1px rgba(0,0,0,0.05)",
+              display:"flex",
+              gap:16,
+              alignItems:"start"
+            }}>
               <div style={{
-                background:"#ffedd5",
+                background:"#e2e8f0",
                 borderRadius:50,
                 width:42,
                 height:42,
@@ -163,37 +219,17 @@ export function StationMasterAssessments(props) {
                 justifyContent:"center",
                 flexShrink:0
               }}>
-                <ShieldCheck size={22} color="#ea580c"/>
+                <span style={{fontSize: 20}}>🔒</span>
               </div>
               <div style={{flex:1}}>
-                <h3 style={{margin:"0 0 6px", fontSize:16, fontWeight:700, color:"#c2410c"}}>
-                  ⚠️ Pending Competency Assessment
+                <h3 style={{margin:"0 0 6px", fontSize:16, fontWeight:700, color:"#475569"}}>
+                  Competency Exam Locked
                 </h3>
-                <p style={{margin:"0 0 14px", fontSize:13, color:"#9a3412", lineHeight:1.4}}>
-                  Your supervisor (Traffic Inspector) has scheduled a periodic safety &amp; competency assessment for you. You must complete the 25-question MCQ exam.
+                <p style={{margin:0, fontSize:13, color:"#64748b", lineHeight:1.4}}>
+                  Your periodic safety and competency evaluation is locked. Please request your Traffic Inspector to activate your test so you can attempt it.
                 </p>
-                <button
-                  onClick={startTestAttempt}
-                  style={{
-                    background:"#ea580c",
-                    color:"#ffffff",
-                    border:"none",
-                    padding:"10px 20px",
-                    borderRadius:8,
-                    fontSize:13.5,
-                    fontWeight:700,
-                    cursor:"pointer",
-                    boxShadow:"0 4px 6px rgba(234, 88, 12, 0.2)",
-                    display:"flex",
-                    alignItems:"center",
-                    gap:8
-                  }}
-                >
-                  Start 25 MCQ Online Assessment
-                </button>
               </div>
             </div>
-          </div>
         ) : (
           <div style={{
             background:"#f0fdf4",
@@ -217,12 +253,18 @@ export function StationMasterAssessments(props) {
             <div style={{display:"flex", gap:16, fontSize:12, textAlign:"right"}}>
               <div>
                 <span style={{color:"#166534", display:"block"}}>Last Exam Score</span>
-                <strong style={{color:"#14532d", fontSize:13}}>{smMcqTest ? `${smMcqTest.correctCount}/25 (${smMcqTest.percentage}%)` : `${smAssessmentHistory[0]?.sections.find(s=>s.title.includes("MCQ"))?.marks || 22}/25 (88%)`}</strong>
+                <strong style={{color:"#14532d", fontSize:13}}>
+                  {smMcqTest ? `${smMcqTest.correctCount}/25 (${smMcqTest.percentage}%)` : (hasHistory ? `${smAssessmentHistory[0].sections?.find(s=>s.title.includes("MCQ"))?.marks || 0}/25` : "N/A")}
+                </strong>
               </div>
-              <div style={{borderLeft:"1px solid #bbf7d0", paddingLeft:16}}>
-                <span style={{color:"#166534", display:"block"}}>Next Due Date</span>
-                <strong style={{color:"#14532d", fontSize:13}}>25 Sep 2026</strong>
-              </div>
+              {hasHistory && (
+                <div style={{borderLeft:"1px solid #bbf7d0", paddingLeft:16}}>
+                  <span style={{color:"#166534", display:"block"}}>Next Due Date</span>
+                  <strong style={{color:"#14532d", fontSize:14}}>
+                    {new Date(new Date(smAssessmentHistory[0].date).setMonth(new Date(smAssessmentHistory[0].date).getMonth() + 6)).toLocaleDateString('en-GB', {day: 'numeric', month: 'short', year: 'numeric'})}
+                  </strong>
+                </div>
+              )}
             </div>
           </div>
         )}

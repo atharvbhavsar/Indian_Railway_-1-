@@ -19,8 +19,8 @@ export function SAStaffModal({ modal, setModal, stations, staff, saveModal }) {
   const isStationDisabled = (stName) => assignedStations.includes(stName) && (modal.mode === 'add' || modal.data.station !== stName);
 
   const assignedTiStations = staff?.filter(s => (s.role === 'ti' || s.role === 'Traffic Inspector') && (modal.mode === 'add' || s.id !== modal.data.id)).reduce((acc, s) => {
-    if (s.jurisdiction) {
-       acc.push(...s.jurisdiction.split(",").map(x => x.trim()).filter(Boolean));
+    if (s.linkedStations) {
+       acc.push(...s.linkedStations.split(",").map(x => x.trim()).filter(Boolean));
     }
     return acc;
   }, []);
@@ -30,7 +30,7 @@ export function SAStaffModal({ modal, setModal, stations, staff, saveModal }) {
     let newArr = [...selectedTiStations];
     if (newArr.includes(stName)) newArr = newArr.filter(n => n !== stName);
     else newArr.push(stName);
-    setModal(p => ({ ...p, data: { ...p.data, linkedStations: newArr.join(", "), jurisdiction: newArr.join(", ") } }));
+    setModal(p => ({ ...p, data: { ...p.data, linkedStations: newArr.join(", ") } }));
   };
 
   return (

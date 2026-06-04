@@ -86,7 +86,15 @@ export function useTrafficInspectorState(user, onLogout) {
     try {
       const u = await saDataService.fetchUsers();
       const st = await saDataService.fetchStations(u);
-      setStations(st);
+      
+      const rawStations = user?.linkedStations || user?.jurisdiction || "";
+      const tiStations = rawStations && rawStations !== "—" ? rawStations.split(",").map(s => s.trim().toLowerCase()) : [];
+      
+      const filteredStations = tiStations.length > 0 
+        ? st.filter(s => tiStations.includes(s.name.toLowerCase())) 
+        : [];
+      setStations(filteredStations);
+
       const mapped = u.map(x => {
         let fullRole = "Pointsman";
         if (x.role === "sm") fullRole = "Station Master";
@@ -108,7 +116,11 @@ export function useTrafficInspectorState(user, onLogout) {
           doj: x.lastDate || "2026-01-01"
         };
       });
-      setUsers(mapped);
+
+      const filteredMapped = tiStations.length > 0
+        ? mapped.filter(x => x.stationName && tiStations.includes(x.stationName.toLowerCase()))
+        : [];
+      setUsers(filteredMapped);
 
       // Now query assessments from database
       const { data: assessList, error: assessError } = await supabase
@@ -144,7 +156,13 @@ export function useTrafficInspectorState(user, onLogout) {
       if (!assessError && assessList) {
         // 1. Pointsmen Assessments (pmList)
         const pms = assessList.filter(a => a.assessment_type === "Pointsman Checklist" || a.assessment_type === "Pointsman Evaluation" || a.assessment_type === "Checklist Evaluation");
-        const pmMapped = pms.map(a => {
+        const pmMapped = pms
+          .filter(a => {
+            if (tiStations.length === 0) return false;
+            const sName = a.employee?.EMPLOYEE_PROFILE?.STATION?.station_name || "";
+            return tiStations.includes(sName.toLowerCase());
+          })
+          .map(a => {
           const score = a.TEST_ATTEMPT?.[0]?.obtained_marks || 0;
           const subDate = a.assessment_date ? new Date(a.assessment_date).toISOString().slice(0, 10) : "";
           return {
@@ -1031,10 +1049,20 @@ export function useTrafficInspectorState(user, onLogout) {
   };
 
   const handleSendExamAccess = (id) => {
+    const sm = smList.find(s => s.id === id);
+    // Set localStorage flags so SM portal detects activation immediately
+    if (sm?.hrmsId) {
+      localStorage.setItem(`sm_test_activated_${sm.hrmsId}`, "true");
+      const existing = localStorage.getItem(`sm_test_assigned_${sm.hrmsId}`);
+      if (!existing || existing === "Not Assigned") {
+        localStorage.setItem(`sm_test_assigned_${sm.hrmsId}`, "Assigned");
+      }
+      window.dispatchEvent(new Event("storage"));
+    }
     setSmList(prev => prev.map(s => s.id === id ? { ...s, status: "Exam Sent" } : s));
-    setStatusMsg("Exam access link sent successfully to the Station Master.");
-    addAuditLog("Sent Exam Access", `Exam sent to SM: ${smList.find(s => s.id === id)?.name}`);
-    triggerNotification("success", `Exam access granted to SM ${smList.find(s => s.id === id)?.name}`);
+    setStatusMsg(`Exam access sent to ${sm?.name || "Station Master"}. They can now attempt the MCQ test.`);
+    addAuditLog("Sent Exam Access", `Exam activated for SM: ${sm?.name} (${sm?.hrmsId})`);
+    triggerNotification("success", `Exam unlocked for SM ${sm?.name}. They must complete 25 MCQ questions.`);
   };
 
   const toggleSMYN = (id,key,idx,val) => {
@@ -1047,20 +1075,38 @@ export function useTrafficInspectorState(user, onLogout) {
 
   const setSMField = (id,key,val) => { if(smLocked[id])return; setSmForms(p=>({...p,[id]:{...p[id],[key]:val}})); };
 
-  const submitSMAssessment = async id => {
+  const submitSMAssessment = async (id, knowledgeMarksOverride) => {
     const f = smForms[id];
     if (!f?.alcoholicStatus){ setStatusMsg("Alcoholic/Non-Alcoholic status is mandatory."); return; }
-    const {total} = computeSMScore(f, TI_SM_CRITERIA);
+
+    // Validate all 6 TI sections are fully answered
+    const unanswered = TI_SM_CRITERIA.filter(sec =>
+      !(f[sec.key]?.every(v => v === "Yes" || v === "No"))
+    ).map(sec => sec.label);
+    if (unanswered.length > 0) {
+      setStatusMsg(`Please answer all questions in: ${unanswered.join(", ")}`);
+      return;
+    }
+    // Use the override if provided (prevents React state batching race condition)
+    const fToSubmit = knowledgeMarksOverride !== undefined ? { ...f, knowledgeMarks: knowledgeMarksOverride } : f;
+    const {total} = computeSMScore(fToSubmit, TI_SM_CRITERIA);
     
-    const isAlcoholic = f.alcoholicStatus === "Alcoholic";
+    const isAlcoholic = fToSubmit.alcoholicStatus === "Alcoholic";
     const cat = isAlcoholic ? "D" : getCat(total);
-    const targetUser = users.find(u => u.id === id);
+    const targetUser = users.find(u => u.id === id || u.user_id === id);
+
+    // Build sections breakdown for permanent audit record
+    const sectionBreakdown = TI_SM_CRITERIA.map(sec => ({
+      title: sec.label,
+      marks: fToSubmit[sec.key]?.filter(v => v === "Yes").length * sec.weight || 0,
+      outOf: sec.count * sec.weight
+    }));
 
     try {
       const { data: newAssess, error: assessError } = await supabase
         .from("ASSESSMENT")
         .insert([{
-          employee_id: targetUser.user_id,
+          employee_id: targetUser?.user_id || id,
           conducted_by: user.userId,
           assessment_type: "Station Master Assessment",
           status: "Pending",
@@ -1078,21 +1124,35 @@ export function useTrafficInspectorState(user, onLogout) {
         percentage: total,
         category: cat,
         answers: {
-          alcoholicStatus: f.alcoholicStatus,
-          pmeStatus: f.pmeStatus,
-          refStatus: f.refStatus,
-          stationMgmt: f.stationMgmt,
-          safety: f.safety,
-          staffSupervision: f.staffSupervision,
-          documentation: f.documentation,
-          emergency: f.emergency,
-          knowledgeMarks: f.knowledgeMarks
+          alcoholicStatus: fToSubmit.alcoholicStatus,
+          pmeStatus: fToSubmit.pmeStatus,
+          refStatus: fToSubmit.refStatus,
+          counselling: fToSubmit.counselling,
+          automaticTraining: fToSubmit.automaticTraining,
+          remarks: fToSubmit.remarks,
+          mcqScore: parseInt(fToSubmit.knowledgeMarks) || 0,
+          sections: sectionBreakdown,
+          // Store full YN responses for each section
+          knowledgeOfRules: fToSubmit.knowledgeOfRules,
+          alertness: fToSubmit.alertness,
+          safetyRecord: fToSubmit.safetyRecord,
+          leadership: fToSubmit.leadership,
+          discipline: fToSubmit.discipline,
+          appearance: fToSubmit.appearance,
+          knowledgeMarks: fToSubmit.knowledgeMarks
         }
       });
 
+      // Clear activation flags so SM can't re-attempt
+      const smHrmsId = targetUser?.hrmsId || targetUser?.id;
+      if (smHrmsId) {
+        localStorage.removeItem(`sm_test_activated_${smHrmsId}`);
+        localStorage.setItem(`sm_test_assigned_${smHrmsId}`, "Completed");
+      }
+
       setStatusMsg("SM assessment submitted successfully. Pending AOM approval.");
-      addAuditLog("Submitted SM Assessment", `SM: ${targetUser?.name || ""}, Grand Score: ${total}`);
-      triggerNotification("success", `Field evaluation logged for SM ${targetUser?.name || ""}.`);
+      addAuditLog("Submitted SM Assessment", `SM: ${targetUser?.name || ""}, Grand Score: ${total}/100, Category: ${cat}`);
+      triggerNotification("success", `Assessment for SM ${targetUser?.name || ""} submitted. Category: ${cat}. Awaiting AOM approval.`);
       setActiveSmId(null);
       await fetchLiveDatabaseData();
     } catch (err) {

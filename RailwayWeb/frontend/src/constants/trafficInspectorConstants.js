@@ -86,16 +86,18 @@ export const MONTHLY = [];
 export const INIT_PM_ASSESSMENTS = [];
 
 export const TI_SM_CRITERIA = [
-  { key: "stationMgmt",  label: "Station Management",          weight: 5, count: 5,
-    criteria: ["Efficient train handling", "Accurate scheduling", "Staff deployment", "Complaint resolution", "Log maintenance"] },
-  { key: "safety",       label: "Safety & Compliance",         weight: 4, count: 5,
-    criteria: ["Safety protocols followed", "Incident reporting timely", "Emergency drill conducted", "Hazard identification", "PPE enforced"] },
-  { key: "staffSupervision", label: "Staff Supervision",       weight: 3, count: 5,
-    criteria: ["Regular briefings conducted", "Feedback provided to staff", "Leave management", "Timekeeping enforced", "Staff morale maintained"] },
-  { key: "documentation", label: "Documentation & Reporting",   weight: 3, count: 5,
-    criteria: ["Daily log accurate", "Monthly report submitted", "Incident records maintained", "Assessment documents filed", "Handover notes complete"] },
-  { key: "emergency",    label: "Emergency Handling",          weight: 5, count: 5,
-    criteria: ["Responded to emergencies promptly", "Coordinated with control office", "Passenger management during disruption", "Track clear protocol followed", "Post-incident review done"] },
+  { key: "knowledgeOfRules",  label: "Knowledge of Rules",              weight: 3, count: 5,
+    criteria: ["Block section working rules", "Signal aspect interpretations", "Station working rules (SWR) knowledge", "Emergency rule provisions", "Special instructions awareness"] },
+  { key: "alertness",         label: "Alertness and Observance of Rules", weight: 3, count: 5,
+    criteria: ["Active monitoring of train movements", "Platform and yard vigilance", "Timely signal observations", "Point position verification before movements", "Quick response to deviations"] },
+  { key: "safetyRecord",      label: "Safety Record",                   weight: 3, count: 5,
+    criteria: ["No accidents or incidents in period", "Safety-related complaints addressed", "Compliance with safety circulars", "Near-miss incidents reported", "Safety drills conducted"] },
+  { key: "leadership",        label: "Leadership and Management",       weight: 2, count: 5,
+    criteria: ["Staff motivation and team leadership", "Effective duty roster management", "Training and guidance of subordinates", "Conflict resolution capability", "Decision-making under pressure"] },
+  { key: "discipline",        label: "Discipline",                      weight: 2, count: 5,
+    criteria: ["Punctuality and attendance record", "Adherence to uniform and conduct norms", "Compliance with official communication channels", "Respect for hierarchy and chain of command", "Absence of disciplinary proceedings"] },
+  { key: "appearance",        label: "Appearance and Neatness",         weight: 2, count: 5,
+    criteria: ["Proper uniform worn at all times", "Station cleanliness maintained", "Registers and records kept neatly", "Notice boards updated and presentable", "Office area well-organized"] },
 ];
 
 export const TI_TM_CRITERIA = [
@@ -159,11 +161,12 @@ export const TI_QUIZ = [
 export const INIT_TI_ASSESS_HISTORY = [];
 
 export const defaultSMForm = () => ({
-  stationMgmt:      Array(5).fill(null),
-  safety:           Array(5).fill(null),
-  staffSupervision: Array(5).fill(null),
-  documentation:    Array(5).fill(null),
-  emergency:        Array(5).fill(null),
+  knowledgeOfRules: Array(5).fill(null),
+  alertness:        Array(5).fill(null),
+  safetyRecord:     Array(5).fill(null),
+  leadership:       Array(5).fill(null),
+  discipline:       Array(5).fill(null),
+  appearance:       Array(5).fill(null),
   knowledgeMarks: "", alcoholicStatus: "", pmeStatus: "Fit",
   refStatus: "Cleared", counselling: "Not Required",
   automaticTraining: "Not Required", remarks: ""
