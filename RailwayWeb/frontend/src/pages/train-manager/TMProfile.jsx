@@ -65,7 +65,7 @@ export function TMProfile({
               ["Employee ID / HRMS ID", employeeId],
               ["Designation", user.role || "Train Manager"],
               ["Mobile Number", user.mobile || "—"],
-              ["Email ID", user.email || `${employeeId.toLowerCase()}@rail.in`],
+              ["Email ID", user.email || `${(employeeId || "").toLowerCase()}@rail.in`],
               ["Account Status", "Active"],
               ["Current Zone", user.zone || "Central Railway"],
               ["Current Division", user.division || "Nagpur"],

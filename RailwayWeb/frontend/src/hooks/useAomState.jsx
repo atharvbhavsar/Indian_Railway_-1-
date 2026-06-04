@@ -451,9 +451,10 @@ export function useAomState(user, onLogout) {
   const [aomRejectMode, setAomRejectMode]             = useState({});
   const [aomApprovalNotice, setAomApprovalNotice]     = useState("");
   const [aomSMList, setAomSMList]                     = useState([]);
+  const [aomSSList, setAomSSList]                     = useState([]);
   const [aomTMList, setAomTMList]                     = useState([]);
 
-  // Refresh SM/TM lists from database whenever Approvals page is active
+  // Refresh SM/SS/TM lists from database whenever Approvals page is active
   useEffect(() => {
     if (activePage === "Approvals") {
       fetchLiveDatabaseData();
@@ -464,7 +465,7 @@ export function useAomState(user, onLogout) {
   const aomCatBg    = { A: "#dcfce7", B: "#dbeafe", C: "#fef3c7", D: "#fee2e2" };
   const aomGetCat   = s => s >= 80 ? "A" : s >= 50 ? "B" : s >= 26 ? "C" : "D";
 
-  const aomCurrentList = aomApprovalTab === "SM" ? aomSMList : aomTMList;
+  const aomCurrentList = aomApprovalTab === "SM" ? aomSMList : (aomApprovalTab === "SS" ? aomSSList : aomTMList);
   const aomSelectedItem = aomSelectedId ? aomCurrentList.find(x => x.id === aomSelectedId) || null : null;
 
   const aomFilteredList = aomCurrentList.filter(item => {
@@ -593,7 +594,7 @@ export function useAomState(user, onLogout) {
       }
 
       if (mode !== "reject") {
-        const currentList = aomApprovalTab === "SM" ? aomSMList : aomTMList;
+        const currentList = aomApprovalTab === "SM" ? aomSMList : (aomApprovalTab === "SS" ? aomSSList : aomTMList);
         const targetAssess = currentList.find(x => x.id === id);
         const secs = aomEditSections[id] || [];
         const total = secs.reduce((s, x) => s + x.score, 0);
@@ -611,6 +612,22 @@ export function useAomState(user, onLogout) {
               current_score: total,
               category: aomGetCat(total)
             }).eq("user_id", emp.user_id);
+          }
+        }
+
+        // Trigger Category D auto-protocol if score is Category D
+        if (total < 50 || aomGetCat(total) === 'D') {
+          try {
+            const { data: aData } = await supabase
+              .from("ASSESSMENT")
+              .select("conducted_by, employee_id")
+              .eq("assessment_id", id)
+              .single();
+            const condBy = aData?.conducted_by || user.userId;
+            const empId = aData?.employee_id || targetAssess?.hrmsId;
+            await assessmentService.triggerCategoryDProtocol(empId, id, total, 'D', condBy);
+          } catch (dErr) {
+            console.error("Failed to trigger Category D protocol during AOM finalize:", dErr);
           }
         }
       }
@@ -6535,6 +6552,35 @@ export function useAomState(user, onLogout) {
         });
         setAomTMList(tmMapped);
 
+        // Map SS assessments
+        const sss = (assessList || []).filter(a => a.assessment_type === "Station Superintendent Assessment");
+        const ssMapped = sss.map(a => {
+          const score = a.TEST_ATTEMPT?.[0]?.obtained_marks || 0;
+          const cat = a.TEST_ATTEMPT?.[0]?.category || "A";
+          const subDate = a.assessment_date ? new Date(a.assessment_date).toISOString().slice(0, 10) : "";
+          return {
+            id: a.assessment_id,
+            name: a.employee?.full_name || "",
+            hrmsId: a.employee?.hrms_id || "",
+            station: a.employee?.EMPLOYEE_PROFILE?.STATION?.station_name || "—",
+            submissionDate: subDate,
+            status: a.status === 'Pending' ? 'Submitted' : a.status,
+            score: score,
+            category: cat,
+            pmeStatus: "Fit",
+            refStatus: "Cleared",
+            sections: [
+              { title: "Station Safety", score: Math.round(score * 0.30), max: 30 },
+              { title: "Rule Compliance", score: Math.round(score * 0.25), max: 25 },
+              { title: "Incident Management", score: Math.round(score * 0.20), max: 20 },
+              { title: "Communication Standards", score: Math.round(score * 0.15), max: 15 },
+              { title: "Documentation Audit", score: Math.round(score * 0.10), max: 10 }
+            ],
+            auditTrail: a.APPROVAL ? [{ action: "Approved", by: a.APPROVAL.USERS?.full_name || "AOM", date: new Date(a.APPROVAL.approval_date).toISOString().slice(0,10), remark: a.APPROVAL.remarks }] : []
+          };
+        });
+        setAomSSList(ssMapped);
+
         // Map pending assessments for AOM Console (status is 'Pending')
         const pendingMapped = (assessList || []).filter(a => a.status === "Pending").map(a => {
           const roleName = a.employee?.ROLE?.role_name === 'sm' ? 'Station Master' :
@@ -7017,6 +7063,7 @@ export function useAomState(user, onLogout) {
     renderTiModal,
     renderAddStationModal,
     aomSMList,
+    aomSSList,
     aomTMList,
     aomGetCat
   };

@@ -62,7 +62,7 @@ export default function SSProfile({
                 ["Employee ID / HRMS ID", employeeId],
                 ["Designation", stationSuperintendentProfile.designation],
                 ["Mobile Number", stationSuperintendentProfile.mobileNumber],
-                ["Email ID", `${employeeId.toLowerCase()}@rail.in`],
+                ["Email ID", `${(employeeId || "").toLowerCase()}@rail.in`],
                 ["Account Status", "Active"],
                 ["Current Zone", "Central Railway"],
                 ["Current Division", "Nagpur"],

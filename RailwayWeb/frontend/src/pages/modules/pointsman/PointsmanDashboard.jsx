@@ -6,6 +6,7 @@ import { CategoryDistributionChart } from "../../../components/charts/CategoryDi
 
 export function PointsmanDashboard({ 
   latestScore, 
+  latestOutOf,
   averageScore, 
   latestCategory, 
   historyLength, 
@@ -22,7 +23,7 @@ export function PointsmanDashboard({
           </div>
           <div>
             <label>Latest Score</label>
-            <strong>{latestScore !== null ? `${latestScore}/100` : "—"}</strong>
+            <strong>{latestScore !== null ? `${latestScore}/${latestOutOf}` : "—"}</strong>
           </div>
         </article>
 
@@ -32,7 +33,7 @@ export function PointsmanDashboard({
           </div>
           <div>
             <label>Average Score</label>
-            <strong>{averageScore}/100</strong>
+            <strong>{Math.round(averageScore)}%</strong>
           </div>
         </article>
 
@@ -42,8 +43,8 @@ export function PointsmanDashboard({
           </div>
           <div>
             <label>Current Category</label>
-            <strong style={{ color: getCategoryColor(latestCategory) }}>
-              {latestCategory !== "—" ? `Category ${latestCategory}` : "—"}
+            <strong style={{ color: latestCategory === "Pending" ? "#d97706" : getCategoryColor(latestCategory) }}>
+              {latestCategory === "Pending" ? "Eval Pending" : (latestCategory !== "—" ? `Category ${latestCategory}` : "—")}
             </strong>
           </div>
         </article>

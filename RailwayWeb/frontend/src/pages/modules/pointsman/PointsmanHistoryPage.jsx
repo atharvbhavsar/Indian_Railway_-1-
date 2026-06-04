@@ -14,9 +14,10 @@ export function PointsmanHistoryPage({
   const totalAssessments = history.length;
   const latestScore = history.length ? history[0].totalScore : null;
   const averageScore = history.length
-    ? Math.round(history.reduce((s, i) => s + i.totalScore, 0) / history.length)
+    ? Math.round(history.reduce((s, i) => s + (i.isOnlineExam ? (i.totalScore / 25) * 100 : i.totalScore), 0) / history.length)
     : 0;
-  const latestCategory = latestScore !== null ? getCategory(latestScore) : "—";
+  const latestPct = history.length ? (history[0].isOnlineExam ? (latestScore / 25) * 100 : latestScore) : 0;
+  const latestCategory = (history.length && history[0].category) ? history[0].category : (latestScore !== null ? getCategory(latestPct) : "—");
 
   // Paginated history list
   const itemsPerPage = 5;
@@ -50,7 +51,7 @@ export function PointsmanHistoryPage({
           </div>
           <div>
             <div style={{ fontSize: "10.5px", color: "#64748b", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.4px" }}>Latest Score</div>
-            <div style={{ fontSize: "18px", fontWeight: "800", color: "#0f172a", marginTop: "2px" }}>{latestScore !== null ? `${latestScore}/100` : "—"}</div>
+            <div style={{ fontSize: "18px", fontWeight: "800", color: "#0f172a", marginTop: "2px" }}>{latestScore !== null ? `${latestScore}/${history[0]?.isOnlineExam ? 25 : 100}` : "—"}</div>
           </div>
         </div>
 
@@ -60,7 +61,7 @@ export function PointsmanHistoryPage({
           </div>
           <div>
             <div style={{ fontSize: "10.5px", color: "#64748b", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.4px" }}>Average Score</div>
-            <div style={{ fontSize: "18px", fontWeight: "800", color: "#0f172a", marginTop: "2px" }}>{averageScore}/100</div>
+            <div style={{ fontSize: "18px", fontWeight: "800", color: "#0f172a", marginTop: "2px" }}>{averageScore}%</div>
           </div>
         </div>
 
@@ -129,32 +130,24 @@ export function PointsmanHistoryPage({
             <tbody>
               {paginatedHistory.map((record, index) => {
                 const absoluteIdx = filteredHistory.length - (startIndex + index);
-                const cat = getCategory(record.totalScore);
+                const cat = record.category || getCategory(record.isOnlineExam ? (record.totalScore / 25) * 100 : record.totalScore);
                 return (
                   <tr key={record.id} className="sdom-table-row-hover" style={{ borderBottom: "1px solid #f1f5f9", transition: "background 0.15s ease" }}>
                     <td style={{ padding: "14px 18px", fontWeight: "700", color: "#1e3a8a" }}>#{absoluteIdx}</td>
                     <td style={{ padding: "14px 18px", fontWeight: "600", color: "#334155" }}>{record.assessmentPeriod}</td>
                     <td style={{ padding: "14px 18px", color: "#64748b" }}>{record.date}</td>
-                    <td style={{ padding: "14px 18px", fontWeight: "800", color: "#0f172a" }}>{record.totalScore} / 100</td>
+                    <td style={{ padding: "14px 18px", fontWeight: "800", color: "#0f172a" }}>{record.totalScore} / {record.isOnlineExam ? 25 : 100}</td>
                     <td style={{ padding: "14px 18px" }}>
-                      <span 
-                        style={{ 
-                          background: getCategoryBg(cat), 
-                          color: getCategoryColor(cat), 
-                          fontWeight: "800", 
-                          fontSize: "12px", 
-                          padding: "4px 10px", 
-                          borderRadius: "6px",
-                          textTransform: "uppercase" 
-                        }}
-                      >
-                        Cat. {cat}
-                      </span>
+                      {record.approvalStatus === "Pending" ? (
+                        <span style={{ background: "#fef3c7", color: "#d97706", fontWeight: "800", fontSize: "12px", padding: "4px 10px", borderRadius: "6px", textTransform: "uppercase" }}>Eval Pending</span>
+                      ) : (
+                        <span style={{ background: getCategoryBg(cat), color: getCategoryColor(cat), fontWeight: "800", fontSize: "12px", padding: "4px 10px", borderRadius: "6px", textTransform: "uppercase" }}>Cat. {cat}</span>
+                      )}
                     </td>
-                    <td style={{ padding: "14px 18px", color: "#334155", fontWeight: "500" }}>S. Deshmukh (SM)</td>
+                    <td style={{ padding: "14px 18px", color: "#334155", fontWeight: "500" }}>{record.assessedBy || "S. Deshmukh (SM)"}</td>
                     <td style={{ padding: "14px 18px" }}>
-                      <span style={{ background: "#dcfce7", color: "#15803d", fontWeight: "700", fontSize: "11px", padding: "4px 8px", borderRadius: "20px" }}>
-                        Approved
+                      <span style={{ background: record.approvalStatus === "Pending" ? "#fef3c7" : "#dcfce7", color: record.approvalStatus === "Pending" ? "#d97706" : "#15803d", fontWeight: "700", fontSize: "11px", padding: "4px 8px", borderRadius: "20px", textTransform: "uppercase" }}>
+                        {record.approvalStatus || "Approved"}
                       </span>
                     </td>
                     <td style={{ padding: "14px 18px", textAlign: "right" }}>

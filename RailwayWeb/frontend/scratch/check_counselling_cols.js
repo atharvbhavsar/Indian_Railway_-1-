@@ -16,7 +16,11 @@ const supabaseAnonKey = vars.VITE_SUPABASE_ANON_KEY;
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 async function check() {
-  const { data, error } = await supabase.from("COUNSELLING_RECORD").insert([{ invalid_col_xyz: 123 }]);
-  console.log("Error status:", error);
+  const { data, error } = await supabase.from("COUNSELLING_RECORD").select("*").limit(1);
+  if (error) {
+    console.error("Error fetching COUNSELLING_RECORD:", error);
+  } else {
+    console.log("COUNSELLING_RECORD data:", data);
+  }
 }
 check();

@@ -25,7 +25,7 @@ export const SHIFTS = {
 // 3. Competency Assessment Grading Matrix
 export const GRADES = {
   A: { id: "A", label: "Category A", color: "#16a34a", bg: "#f0fdf4", minScore: 80, desc: "Mastery - Active Duty Cleared" },
-  B: { id: "B", label: "Category B", color: "#2563eb", bg: "#eff6ff", minScore: 60, desc: "Satisfactory - Under Supervision" },
+  B: { id: "B", label: "Category B", color: "#2563eb", bg: "#eff6ff", minScore: 50, desc: "Satisfactory - Under Supervision" },
   C: { id: "C", label: "Category C", color: "#d97706", bg: "#fffbeb", minScore: 26, desc: "Needs Training - Restricted Yard Duty" },
   D: { id: "D", label: "Category D", color: "#dc2626", bg: "#fef2f2", minScore: 0,  desc: "Suspended - Overdue Clearance" }
 };

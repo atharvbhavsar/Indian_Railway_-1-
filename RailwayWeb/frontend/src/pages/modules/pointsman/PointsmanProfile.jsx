@@ -7,6 +7,7 @@ export function PointsmanProfile({
   profile,
   latestCategory,
   latestScore,
+  latestOutOf,
   employeeId
 }) {
   const personalScoreData = [...history].reverse().map(h => ({
@@ -23,14 +24,18 @@ export function PointsmanProfile({
           <div style={{ fontSize: "1.8rem", fontWeight: 800, marginBottom: 4 }}>{fullName}</div>
           <div style={{ fontSize: "0.9rem", color: "rgba(255,255,255,0.7)" }}>{profile.designation} &bull; {profile.stationName} &bull; Central Railway</div>
           <div style={{ marginTop: 12, display: "flex", gap: 10 }}>
-            <span className="sdom-badge sdom-badge-success">Category {latestCategory}</span>
+            {latestCategory === "Pending" ? (
+              <span className="sdom-badge" style={{background: "#fef3c7", color: "#d97706"}}>Evaluation Pending</span>
+            ) : (
+              <span className="sdom-badge sdom-badge-success">Category {latestCategory}</span>
+            )}
             <span className="sdom-badge sdom-badge-success">Low Risk</span>
             <span className="sdom-badge sdom-badge-success">Active</span>
           </div>
         </div>
         <div className="sdom-station-header-stats">
           <div className="sdom-station-header-stat">
-            <span className="val">{latestScore !== null ? latestScore : "—"}</span>
+            <span className="val">{latestScore !== null ? `${latestScore}/${latestOutOf}` : "—"}</span>
             <span className="lbl">Latest Score</span>
           </div>
           <div style={{ width: 1, height: 60, background: "rgba(255,255,255,0.15)" }}/>
@@ -56,7 +61,7 @@ export function PointsmanProfile({
               ["Employee ID / HRMS ID", employeeId],
               ["Designation", profile.designation],
               ["Mobile Number", profile.mobileNumber],
-              ["Email ID", `${employeeId.toLowerCase()}@rail.in`],
+              ["Email ID", `${(employeeId || "").toLowerCase()}@rail.in`],
               ["Account Status", "Active"],
               ["Current Zone", "Central Railway"],
               ["Current Division", "Nagpur"],

@@ -2202,7 +2202,7 @@ export default function TrafficInspectorModule({ user, onLogout }) {
                     <div className="pm-rq-header">
                       <span className="pm-rq-number">Question {qIndex + 1}</span>
                       {isCorrect ? (
-                        <span className="pm-rq-badge success">Correct (+4 Marks)</span>
+                        <span className="pm-rq-badge success">Correct (+1 Marks)</span>
                       ) : (
                         <span className="pm-rq-badge danger">Incorrect (0 Marks)</span>
                       )}
@@ -2671,13 +2671,13 @@ export default function TrafficInspectorModule({ user, onLogout }) {
     if (selectedPM) {
       const secs = editSections[selectedPM.id]||selectedPM.originalSections;
       const liveTotal = secs.reduce((s,x)=>s+x.score,0);
-      const liveCat   = getCat(liveTotal);
+      const liveCat   = selectedPM.category === "D" ? "D" : getCat(liveTotal);
       const locked    = selectedPM.status!=="Pending";
       const reject    = rejectMode[selectedPM.id]||false;
 
       const pme = selectedPM.meta?.pmeStatus || "Fit";
       const ref = selectedPM.meta?.refStatus || "Cleared";
-      const alc = selectedPM.meta?.alcoholicStatus || "Non-Alcoholic";
+      const alc = selectedPM.category === "D" ? "Alcoholic" : (selectedPM.meta?.alcoholicStatus || "Non-Alcoholic");
 
       return (
         <div className="ti2-card animate-fade-in">
@@ -2852,7 +2852,7 @@ export default function TrafficInspectorModule({ user, onLogout }) {
           {filteredPM.length === 0 && <p className="ti2-empty">No records in this category.</p>}
           {filteredPM.map(p => {
             const total = (p.finalSections||p.originalSections).reduce((s,x)=>s+x.score,0);
-            const cat   = getCat(total);
+            const cat   = p.category || getCat(total);
             return (
               <div key={p.id} className="ti2-pm-row ti2-pm-data-row">
                 <span><strong>{p.pointsmanName}</strong></span>

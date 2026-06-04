@@ -319,7 +319,7 @@ export function TMMyAssessment({
                   <div className="pm-rq-header">
                     <span className="pm-rq-number">Question {qIndex + 1}</span>
                     {isCorrect ? (
-                      <span className="pm-rq-badge success">Correct (+4 Marks)</span>
+                      <span className="pm-rq-badge success">Correct (+1 Marks)</span>
                     ) : (
                       <span className="pm-rq-badge danger">Incorrect (0 Marks)</span>
                     )}

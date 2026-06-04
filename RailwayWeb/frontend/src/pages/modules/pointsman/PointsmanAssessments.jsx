@@ -12,7 +12,8 @@ export function PointsmanAssessments({
   pmMcqTest,
   startTestAttempt,
   history,
-  formatQuarterPeriod
+  formatQuarterPeriod,
+  employeeId
 }) {
   /* Scorecard detail view */
   if (myAssessSelected) {
@@ -25,6 +26,7 @@ export function PointsmanAssessments({
     );
   }
 
+  const isTestActivated = localStorage.getItem("pm_test_activated_" + employeeId) === "true";
   const testActive = testAssigned === "Assigned" && (!pmMcqTest || !pmMcqTest.completed);
 
   /* History list */
@@ -32,17 +34,20 @@ export function PointsmanAssessments({
     <section className="sm2-card">
       {/* MCQ Assessment Assignment Banner */}
       {testActive ? (
-        <div style={{
-          background:"linear-gradient(135deg, #fffbeb 0%, #fff7ed 100%)",
-          border:"1.5px solid #fed7aa",
-          borderRadius:12,
-          padding:20,
-          marginBottom:24,
-          boxShadow:"0 4px 6px -1px rgba(0,0,0,0.05)"
-        }}>
-          <div style={{display:"flex", gap:16, alignItems:"start"}}>
+        !isTestActivated ? (
+          <div style={{
+            background:"#f8fafc",
+            border:"2px dashed #cbd5e1",
+            borderRadius:12,
+            padding:20,
+            marginBottom:24,
+            boxShadow:"0 4px 6px -1px rgba(0,0,0,0.05)",
+            display:"flex",
+            gap:16,
+            alignItems:"start"
+          }}>
             <div style={{
-              background:"#ffedd5",
+              background:"#e2e8f0",
               borderRadius:50,
               width:42,
               height:42,
@@ -51,37 +56,69 @@ export function PointsmanAssessments({
               justifyContent:"center",
               flexShrink:0
             }}>
-              <ShieldCheck size={22} color="#ea580c"/>
+              <span style={{fontSize: 20}}>🔒</span>
             </div>
             <div style={{flex:1}}>
-              <h3 style={{margin:"0 0 6px", fontSize:16, fontWeight:700, color:"#c2410c"}}>
-                ⚠️ Pending Competency Assessment
+              <h3 style={{margin:"0 0 6px", fontSize:16, fontWeight:700, color:"#475569"}}>
+                Competency Exam Locked
               </h3>
-              <p style={{margin:"0 0 14px", fontSize:13, color:"#9a3412", lineHeight:1.4}}>
-                Your supervisor (Station Master) has scheduled a periodic safety &amp; competency assessment for you. You must complete the 25-question MCQ exam.
+              <p style={{margin:0, fontSize:13, color:"#64748b", lineHeight:1.4}}>
+                Your periodic safety and competency evaluation is locked. Please request your Station Master to activate your test so you can attempt it.
               </p>
-              <button
-                onClick={startTestAttempt}
-                style={{
-                  background:"#ea580c",
-                  color:"#ffffff",
-                  border:"none",
-                  padding:"10px 20px",
-                  borderRadius:8,
-                  fontSize:13.5,
-                  fontWeight:700,
-                  cursor:"pointer",
-                  boxShadow:"0 4px 6px rgba(234, 88, 12, 0.2)",
-                  display:"flex",
-                  alignItems:"center",
-                  gap:8
-                }}
-              >
-                Start 25 MCQ Online Assessment
-              </button>
             </div>
           </div>
-        </div>
+        ) : (
+          <div style={{
+            background:"linear-gradient(135deg, #fffbeb 0%, #fff7ed 100%)",
+            border:"1.5px solid #fed7aa",
+            borderRadius:12,
+            padding:20,
+            marginBottom:24,
+            boxShadow:"0 4px 6px -1px rgba(0,0,0,0.05)"
+          }}>
+            <div style={{display:"flex", gap:16, alignItems:"start"}}>
+              <div style={{
+                background:"#ffedd5",
+                borderRadius:50,
+                width:42,
+                height:42,
+                display:"flex",
+                alignItems:"center",
+                justifyContent:"center",
+                flexShrink:0
+              }}>
+                <ShieldCheck size={22} color="#ea580c"/>
+              </div>
+              <div style={{flex:1}}>
+                <h3 style={{margin:"0 0 6px", fontSize:16, fontWeight:700, color:"#ea580c"}}>
+                  ⚠️ Pending Competency Assessment
+                </h3>
+                <p style={{margin:"0 0 14px", fontSize:13, color:"#9a3412", lineHeight:1.4}}>
+                  Your supervisor (Station Master) has scheduled a periodic safety &amp; competency assessment for you. You must complete the 25-question MCQ exam.
+                </p>
+                <button
+                  onClick={startTestAttempt}
+                  style={{
+                    background:"#ea580c",
+                    color:"#ffffff",
+                    border:"none",
+                    padding:"10px 20px",
+                    borderRadius:8,
+                    fontSize:13.5,
+                    fontWeight:700,
+                    cursor:"pointer",
+                    boxShadow:"0 4px 6px rgba(234, 88, 12, 0.2)",
+                    display:"flex",
+                    alignItems:"center",
+                    gap:8
+                  }}
+                >
+                  Start 25 MCQ Online Assessment
+                </button>
+              </div>
+            </div>
+          </div>
+        )
       ) : (
         <div style={{
           background:"#f0fdf4",
@@ -109,7 +146,20 @@ export function PointsmanAssessments({
             </div>
             <div style={{borderLeft:"1px solid #bbf7d0", paddingLeft:16}}>
               <span style={{color:"#166534", display:"block"}}>Next Due Date</span>
-              <strong style={{color:"#14532d", fontSize:13}}>25 Sep 2026</strong>
+              <strong style={{color:"#14532d", fontSize:13}}>
+                {(() => {
+                  const latest = history.find(h => !h.approvalStatus || ["Approved", "Completed", "EVALUATED"].includes(h.approvalStatus));
+                  if (!latest) return "Pending Evaluation";
+                  const pct = latest.isOnlineExam ? (latest.totalScore / 25) * 100 : latest.totalScore;
+                  const cat = latest.category || getCategory(pct);
+                  let m = 6;
+                  if (cat === "C") m = 3;
+                  if (cat === "D") m = 1;
+                  const d = new Date(latest.date);
+                  d.setMonth(d.getMonth() + m);
+                  return d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+                })()}
+              </strong>
             </div>
           </div>
         </div>
@@ -139,8 +189,8 @@ export function PointsmanAssessments({
         </div>
         <div className="sm2-report-mini">
           <label>Latest Assessment</label>
-          <strong style={{color: getCategoryColor(getCategory(history[0]?.totalScore || 0))}}>
-            {history[0]?.isOnlineExam ? "Online CBT" : `Category ${getCategory(history[0]?.totalScore || 0)}`}
+          <strong style={{color: getCategoryColor(history[0]?.category || getCategory(history[0]?.totalScore || 0))}}>
+            {history[0]?.isOnlineExam ? "Online CBT" : `Category ${history[0]?.category || getCategory(history[0]?.totalScore || 0)}`}
           </strong>
         </div>
       </div>
@@ -152,7 +202,7 @@ export function PointsmanAssessments({
             <span key={h}>{h}</span>)}
         </div>
         {history.map(sc => {
-          const cat = getCategory(sc.totalScore);
+          const cat = sc.category || getCategory(sc.totalScore);
           return (
             <button key={sc.id} className="sm2-myassess-row" onClick={() => setMyAssessSelected(sc)}>
               <span title={`Cycle: ${sc.assessmentPeriod}\nDuration: ${formatQuarterPeriod(sc.assessmentPeriod)}`}>
@@ -161,9 +211,13 @@ export function PointsmanAssessments({
               <span>{sc.date}</span>
               <span><strong>{sc.totalScore}/{sc.isOnlineExam ? 25 : 100}</strong></span>
               <span>
-                <span className="sm2-badge" style={{background:getCategoryBg(cat),color:getCategoryColor(cat)}}>
-                  {sc.isOnlineExam ? "CBT Exam" : `Cat. ${cat}`}
-                </span>
+                {sc.approvalStatus === "Pending" ? (
+                  <span className="sm2-badge" style={{background: "#fef3c7", color: "#d97706"}}>Evaluation Pending</span>
+                ) : (
+                  <span className="sm2-badge" style={{background:getCategoryBg(cat),color:getCategoryColor(cat)}}>
+                    {sc.isOnlineExam ? "CBT Exam" : `Category ${cat}`}
+                  </span>
+                )}
               </span>
               <span style={{fontSize:11,color:"#64748b"}}>{sc.assessedBy || "S. Deshmukh (SM)"}</span>
               <span>

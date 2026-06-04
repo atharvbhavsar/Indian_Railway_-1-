@@ -29,7 +29,7 @@ export function StationMasterAssessForm(props) {
       const isActivated = localStorage.getItem(`pm_test_activated_${assessTarget.hrmsId}`) === "true";
 
       const { knowledge, ynTotal, total: liveTotal } = computeScore(assessForm);
-      const liveCat = getCat(liveTotal);
+      const liveCat = assessForm.alcoholicStatus === "Alcoholic" ? "D" : getCat(liveTotal);
 
       return (
         <section className="sm2-card">
@@ -350,19 +350,35 @@ export function StationMasterAssessForm(props) {
             {drafts.map(d => {
               const mcqDataStr = localStorage.getItem(`pm_mcq_test_${d.hrmsId}`);
               const mcqData = mcqDataStr ? JSON.parse(mcqDataStr) : null;
+              
+              const dbSubmission = submittedAssessments ? submittedAssessments.find(s => s.pmId === d.hrmsId) : null;
+              const isApproved = dbSubmission && dbSubmission.status === 'Approved';
+              const isPending = dbSubmission && dbSubmission.status === 'Pending';
+              
               const isCompleted = mcqData && mcqData.completed;
               const isActivated = localStorage.getItem(`pm_test_activated_${d.hrmsId}`) === "true";
 
               return (
-                <div key={d.pointsmanId} className="sm2-assess-row" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px", background: "#fff", border: "1px solid #e2e8f0", borderRadius: "10px", marginBottom: "12px" }}>
-                  <div>
-                    <strong style={{ fontSize: "15px", color: "#0f172a" }}>{d.name}</strong>
-                    <span style={{ display: "block", fontSize: "12px", color: "#64748b", marginTop: "2px" }}>{d.hrmsId}</span>
+                <div key={d.hrmsId} className="sm2-assess-row" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px", background: "#fff", border: "1px solid #e2e8f0", borderRadius: "10px", marginBottom: "12px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                    <div style={{ width: 40, height: 40, borderRadius: "50%", background: "#e2e8f0", color: "#475569", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: "bold" }}>
+                      {d.name.charAt(0)}
+                    </div>
+                    <div>
+                      <strong style={{ fontSize: "15px", color: "#0f172a" }}>{d.name}</strong>
+                      <span style={{ display: "block", fontSize: "12px", color: "#64748b", marginTop: "2px" }}>{d.role} • {d.hrmsId}</span>
+                    </div>
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
-                    <span style={{ fontSize: "13px", color: "#64748b" }}>Last assessed: {d.lastDate}</span>
-                    
-                    {isCompleted ? (
+                    {isApproved ? (
+                      <span className="sdom-badge sdom-badge-success" style={{ background: "#dcfce7", color: "#166534" }}>
+                        Approved ({dbSubmission?.score || 0}/100)
+                      </span>
+                    ) : isPending ? (
+                      <span className="sdom-badge sdom-badge-info" style={{ background: "#e0f2fe", color: "#0369a1" }}>
+                        Pending Approval
+                      </span>
+                    ) : isCompleted ? (
                       <span className="sdom-badge sdom-badge-success">
                         MCQ Completed ({mcqData.correctCount}/25)
                       </span>
@@ -377,7 +393,7 @@ export function StationMasterAssessForm(props) {
                     )}
 
                     <div style={{ display: "flex", gap: "8px" }}>
-                      {!isCompleted && (
+                      {!isCompleted && !isApproved && !isPending && (
                         <button 
                           className="sm2-ghost-btn-sm" 
                           style={{
@@ -405,13 +421,14 @@ export function StationMasterAssessForm(props) {
                       
                       <button 
                         className="sm2-primary-btn-sm" 
+                        disabled={isApproved || isPending}
                         style={{
                           padding: "6px 12px",
                           borderRadius: "6px",
                           fontSize: "12px",
                           fontWeight: "700",
-                          cursor: "pointer",
-                          background: "#2563eb",
+                          cursor: (isApproved || isPending) ? "not-allowed" : "pointer",
+                          background: (isApproved || isPending) ? "#94a3b8" : "#2563eb",
                           color: "#fff",
                           border: "none"
                         }}
@@ -430,16 +447,23 @@ export function StationMasterAssessForm(props) {
         {submittedAssessments.length > 0 && (
           <div style={{marginTop:24}}>
             <h4 style={{margin:"0 0 12px",fontSize:12,color:"#64748b",textTransform:"uppercase",letterSpacing:"0.6px"}}>Submitted This Session</h4>
-            {submittedAssessments.map(r => (
-              <div key={r.id} className="sm2-submitted-row">
-                <div><strong>{r.name}</strong><span>{r.hrmsId}</span></div>
-                <div style={{display:"flex",gap:8,alignItems:"center"}}>
-                  <span className="sm2-badge" style={{background:getCatBg(r.grade),color:getCatColor(r.grade)}}>Cat. {r.grade}</span>
-                  <strong>{r.total}/100</strong>
-                  <span className={`sm2-status-pill sm2-status-${r.approvalStatus.toLowerCase()}`}>{r.approvalStatus}</span>
+            {submittedAssessments.map((r, i) => {
+              const pmData = drafts ? drafts.find(p => p.hrmsId === r.pmId) : null;
+              const name = pmData ? pmData.name : "Pointsman";
+              const grade = r.score >= 80 ? "A" : r.score >= 60 ? "B" : r.score >= 50 ? "C" : "D";
+              const statusStr = r.status || "Pending";
+              
+              return (
+                <div key={i} className="sm2-submitted-row">
+                  <div><strong>{name}</strong><span>{r.pmId}</span></div>
+                  <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                    <span className="sm2-badge" style={{background:getCatBg(grade),color:getCatColor(grade)}}>Cat. {grade}</span>
+                    <strong>{r.score}/{r.totalMarks || 100}</strong>
+                    <span className={`sm2-status-pill sm2-status-${statusStr.toLowerCase()}`}>{statusStr}</span>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </section>

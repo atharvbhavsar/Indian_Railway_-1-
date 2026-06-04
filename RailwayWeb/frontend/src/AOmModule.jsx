@@ -54,6 +54,7 @@ function AOmModule({ user, onLogout }) {
     aomFilteredList,
     aomOpenReview,
     aomSMList,
+    aomSSList,
     aomTMList,
     aomGetCat,
     aomUpdateSec,
@@ -4395,6 +4396,8 @@ function AOmModule({ user, onLogout }) {
 
           const savedForms = aomApprovalTab === "SM"
             ? (localStorage.getItem("ti_sm_forms") ? JSON.parse(localStorage.getItem("ti_sm_forms")) : {})
+            : aomApprovalTab === "SS"
+            ? (localStorage.getItem("ti_ss_forms") ? JSON.parse(localStorage.getItem("ti_ss_forms")) : {})
             : (localStorage.getItem("ti_tm_forms") ? JSON.parse(localStorage.getItem("ti_tm_forms")) : {});
           const form = savedForms[aomSelectedItem.id] || {};
           const pme  = form.pmeStatus || aomSelectedItem.pmeStatus || (aomSelectedItem.meta?.pmeStatus) || "Fit";
@@ -4407,7 +4410,7 @@ function AOmModule({ user, onLogout }) {
                 <div>
                   <h2>Review — {aomSelectedItem.name} ({aomSelectedItem.hrmsId})</h2>
                   <p style={{margin:"2px 0 0",fontSize:12,color:"#64748b"}}>
-                    {aomSelectedItem.station} · {aomApprovalTab === "SM" ? "Station Master" : "Train Manager"} · Assessed on {aomSelectedItem.lastDate}
+                    {aomSelectedItem.station} · {aomApprovalTab === "SM" ? "Station Master" : aomApprovalTab === "SS" ? "Station Superintendent" : "Train Manager"} · Assessed on {aomSelectedItem.submissionDate || aomSelectedItem.lastDate}
                   </p>
                 </div>
                 <button className="ti2-link-btn" onClick={() => setAomSelectedId(null)}>← Back</button>
@@ -4415,7 +4418,7 @@ function AOmModule({ user, onLogout }) {
 
               {/* Info meta — same ti2-review-meta grid as TI */}
               <div className="ti2-review-meta">
-                <div><label>{aomApprovalTab === "SM" ? "Station Master" : "Train Manager"}</label><strong>{aomSelectedItem.name}</strong></div>
+                <div><label>{aomApprovalTab === "SM" ? "Station Master" : aomApprovalTab === "SS" ? "Station Superintendent" : "Train Manager"}</label><strong>{aomSelectedItem.name}</strong></div>
                 <div><label>HRMS ID</label><strong>{aomSelectedItem.hrmsId}</strong></div>
                 <div><label>Station</label><strong>{aomSelectedItem.station}</strong></div>
                 <div><label>PME Status</label><strong className={pme==="Fit"?"ti2-green":"ti2-red"}>{pme}</strong></div>
@@ -4532,19 +4535,19 @@ function AOmModule({ user, onLogout }) {
         return (
           <div className="ti2-card animate-fade-in">
             <div className="ti2-card-hdr">
-              <h2>Approvals — {aomApprovalTab === "SM" ? "Station Masters" : "Train Managers"}</h2>
+              <h2>Approvals — {aomApprovalTab === "SM" ? "Station Masters" : aomApprovalTab === "SS" ? "Station Superintendents" : "Train Managers"}</h2>
             </div>
-            <p className="ti2-subtitle">Review and approve {aomApprovalTab === "SM" ? "Station Master" : "Train Manager"} assessments submitted by Traffic Inspectors.</p>
+            <p className="ti2-subtitle">Review and approve {aomApprovalTab === "SM" ? "Station Master" : aomApprovalTab === "SS" ? "Station Superintendent" : "Train Manager"} assessments submitted by Traffic Inspectors.</p>
 
             {/* Role switch — mirrors TI's ti2-tabs style */}
             <div className="ti2-tabs" style={{marginBottom:4}}>
-              {["SM","TM"].map(role => (
+              {["SM","SS","TM"].map(role => (
                 <button key={role}
                   className={`ti2-tab ${aomApprovalTab === role ? "active" : ""}`}
                   onClick={() => { setAomApprovalTab(role); setAomSelectedId(null); setAomReviewTab("Pending"); setAomReviewSearch(""); setAomReviewStation("All"); }}>
-                  {role === "SM" ? "Station Masters" : "Train Managers"}
+                  {role === "SM" ? "Station Masters" : role === "SS" ? "Station Superintendents" : "Train Managers"}
                   <span className="ti2-tab-count">
-                    {(role === "SM" ? aomSMList : aomTMList).filter(p => p.status === "Submitted").length}
+                    {(role === "SM" ? aomSMList : role === "SS" ? aomSSList : aomTMList).filter(p => p.status === "Submitted").length}
                   </span>
                 </button>
               ))}
@@ -4565,7 +4568,7 @@ function AOmModule({ user, onLogout }) {
             <div className="ti2-filter-row">
               <div className="ti2-search-box">
                 <Search size={13}/>
-                <input placeholder={`Search ${aomApprovalTab === "SM" ? "station master" : "train manager"}…`}
+                <input placeholder={`Search ${aomApprovalTab === "SM" ? "station master" : aomApprovalTab === "SS" ? "station superintendent" : "train manager"}…`}
                   value={aomReviewSearch} onChange={e => setAomReviewSearch(e.target.value)}/>
               </div>
               <select className="ti2-select" value={aomReviewStation} onChange={e => setAomReviewStation(e.target.value)}>

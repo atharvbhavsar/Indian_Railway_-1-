@@ -16,7 +16,7 @@ export function PointsmanScorecardPage({
     );
   }
 
-  const cat = getCategory(selectedRecord.totalScore);
+  const cat = selectedRecord.category || getCategory(selectedRecord.totalScore);
 
   return (
     <div className="ti2-card animate-fade-in" style={{ padding: "24px", maxHeight: "calc(100vh - 120px)", overflowY: "auto" }}>
@@ -28,7 +28,7 @@ export function PointsmanScorecardPage({
       <div className="pm-scorecard-hero" style={{ background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: "12px", padding: "20px", display: "flex", alignItems: "center", gap: "24px", marginBottom: "24px" }}>
         <div className="pm-sc-score-circle" style={{ width: "90px", height: "90px", borderRadius: "50%", border: `6px solid ${getCategoryColor(cat)}`, display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", flexShrink: 0, background: "#fff" }}>
           <strong style={{ fontSize: "24px", color: getCategoryColor(cat), fontWeight: "800" }}>{selectedRecord.totalScore}</strong>
-          <span style={{ fontSize: "10px", color: "#64748b", fontWeight: "600", marginTop: "-2px" }}>/100</span>
+          <span style={{ fontSize: "10px", color: "#64748b", fontWeight: "600", marginTop: "-2px" }}>/{selectedRecord.isOnlineExam ? 25 : 100}</span>
         </div>
         <div>
           <span className="pm-cat-badge-lg" style={{ background: getCategoryBg(cat), color: getCategoryColor(cat), display: "inline-block", padding: "4px 10px", borderRadius: "999px", fontSize: "12px", fontWeight: "700", marginBottom: "6px" }}>
@@ -85,7 +85,7 @@ export function PointsmanScorecardPage({
                 <div className="pm-rq-header">
                   <span className="pm-rq-number">Question {qIndex + 1}</span>
                   {isCorrect ? (
-                    <span className="pm-rq-badge success">Correct (+4 Marks)</span>
+                    <span className="pm-rq-badge success">Correct (+1 Marks)</span>
                   ) : (
                     <span className="pm-rq-badge danger">Incorrect (0 Marks)</span>
                   )}

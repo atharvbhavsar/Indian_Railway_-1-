@@ -5,6 +5,7 @@ import {
   smTestQuestions 
 } from '../../data/mockStationMasterData';
 import { saDataService } from '../../services/saDataService';
+import { supabase, isSupabaseConfigured } from "../../supabaseClient";
 
 export function useStationMasterState(user, onLogout) {
 
@@ -63,7 +64,7 @@ export function useStationMasterState(user, onLogout) {
         const isPm = x.role === "pointsmen" || x.role === "Pointsman" || x.designation?.toLowerCase().includes("pointsman");
         if (!isPm) return false;
         if (userStation) {
-          return x.station?.toLowerCase().trim() === userStation.toLowerCase().trim();
+          return (x.station || "").toLowerCase().trim() === userStation.toLowerCase().trim();
         }
         return true;
       });
@@ -73,7 +74,7 @@ export function useStationMasterState(user, onLogout) {
         const isSm = x.role === "sm" || x.role === "Station Master";
         if (!isSm) return false;
         if (userStation) {
-          return x.station?.toLowerCase().trim() === userStation.toLowerCase().trim();
+          return (x.station || "").toLowerCase().trim() === userStation.toLowerCase().trim();
         }
         return true;
       });
@@ -83,11 +84,46 @@ export function useStationMasterState(user, onLogout) {
         const isTi = x.role === "ti" || x.role === "Traffic Inspector";
         if (!isTi) return false;
         if (userStation) {
-          return x.station?.toLowerCase().trim() === userStation.toLowerCase().trim();
+          return (x.station || "").toLowerCase().trim() === userStation.toLowerCase().trim();
         }
         return false;
       });
       setAssignedTi(ti || null);
+
+      // Fetch submitted assessments from Supabase
+      let dbSubmitted = [];
+      if (isSupabaseConfigured) {
+        try {
+          const { data: assessList } = await supabase
+            .from("ASSESSMENT")
+            .select(`
+              *,
+              employee:USERS!employee_id (hrms_id),
+              TEST_ATTEMPT (obtained_marks, total_marks)
+            `)
+            .in("status", ["Submitted", "Approved", "Completed", "EVALUATED"]);
+          
+          if (assessList) {
+            dbSubmitted = assessList
+              .filter(a => a.employee?.hrms_id && (a.assessment_type === "Pointsman Checklist" || a.assessment_type === "Pointsman Evaluation" || a.assessment_type === "Checklist Evaluation"))
+              .filter(a => filtered.some(p => p.hrmsId === a.employee.hrms_id))
+              .map(a => ({
+                pmId: a.employee.hrms_id,
+                date: a.assessment_date ? new Date(a.assessment_date).toISOString().slice(0, 10) : new Date(a.created_at).toISOString().slice(0,10),
+                score: a.TEST_ATTEMPT?.[0]?.obtained_marks || 0,
+                totalMarks: a.TEST_ATTEMPT?.[0]?.total_marks || 100
+              }));
+            setSubmittedAssessments(dbSubmitted);
+          }
+        } catch (dbErr) {
+          console.error("Failed to fetch submitted assessments:", dbErr);
+        }
+      }
+
+      // We want the Station Master to see ALL pointsmen so they can activate/deactivate tests
+      // and check current statuses.
+      const initialDrafts = filtered;
+      setDrafts(initialDrafts);
 
     } catch (err) {
       console.error("Error fetching live db data:", err);
@@ -442,17 +478,61 @@ export function useStationMasterState(user, onLogout) {
     return { ynScore: total, knowledge: km, total: total + km };
   };
 
-  const submitAssessment = async (pm, scoreObj) => {
+  const submitAssessment = async (isDraftParam) => {
+    let isDraft = false;
+    let pm = assessTarget;
+    let scoreObj = computeScore(assessForm);
+
+    if (typeof isDraftParam === "boolean") {
+      isDraft = isDraftParam;
+    } else if (isDraftParam && typeof isDraftParam === "object") {
+      pm = isDraftParam;
+    }
+
+    if (!pm) {
+      console.error("No Pointsman selected for assessment.");
+      return;
+    }
+
+    if (!isDraft) {
+      let allAnswered = true;
+      YN_SECTIONS.forEach(s => {
+        if (assessForm[s.key].includes(null) || assessForm[s.key].includes(undefined) || assessForm[s.key].includes("")) {
+          allAnswered = false;
+        }
+      });
+      if (
+        !allAnswered || 
+        !assessForm.alcoholicStatus || 
+        !assessForm.pmeStatus || 
+        !assessForm.refStatus || 
+        !assessForm.automaticTraining || 
+        !assessForm.counselling || 
+        !assessForm.dateOfAppointment || 
+        !assessForm.workingSince || 
+        !assessForm.remarks.trim()
+      ) {
+        alert("Please answer all checklist questions and complete all additional details (Alcoholic Status, PME Status, REF Status, Automatic Training, Counselling, Date of Appointment, Working Since, and Remarks) before submitting.");
+        return;
+      }
+    }
+
     const today = new Date().toISOString().slice(0,10);
     const scoreVal = scoreObj.total;
+    let computedCat = getCat(scoreVal);
+    
+    if (assessForm.alcoholicStatus === "Alcoholic") {
+      computedCat = "D";
+    }
+
     const updatedPointsmen = pointsmen.map(p => {
       if (p.hrmsId === pm.hrmsId) {
         return {
           ...p,
           lastScore: scoreVal,
-          cat: getCat(scoreVal),
-          risk: scoreVal >= 80 ? "Low" : scoreVal >= 60 ? "Medium" : "High",
-          totalAssessments: p.totalAssessments + 1,
+          cat: computedCat,
+          risk: computedCat === "D" ? "High" : (scoreVal >= 80 ? "Low" : scoreVal >= 60 ? "Medium" : "High"),
+          totalAssessments: (p.totalAssessments || 0) + 1,
           lastAssessDate: today
         };
       }
@@ -464,30 +544,144 @@ export function useStationMasterState(user, onLogout) {
     // Save update to Supabase!
     try {
       const dbPm = updatedPointsmen.find(p => p.hrmsId === pm.hrmsId);
-      const modalData = {
-        id: dbPm.hrmsId,
-        name: dbPm.name,
-        contact: dbPm.contact,
-        email: dbPm.email,
-        role: "Pointsman",
-        station: dbPm.station,
-        division: dbPm.division,
-        lastDate: dbPm.doj,
-        score: dbPm.lastScore,
-        cat: dbPm.cat,
-        reportingSm: dbPm.reportingSm,
-        workLocation: dbPm.workLocation,
-        shift: dbPm.shift,
-        jurisdiction: dbPm.jurisdiction
-      };
-      await saDataService.saveUser(modalData, "edit");
+      if (dbPm) {
+        const modalData = {
+          id: dbPm.hrmsId,
+          name: dbPm.name,
+          contact: dbPm.contact,
+          email: dbPm.email,
+          role: "Pointsman",
+          station: dbPm.station,
+          division: dbPm.division,
+          lastDate: dbPm.doj,
+          score: dbPm.lastScore,
+          cat: dbPm.cat,
+          reportingSm: dbPm.reportingSm,
+          workLocation: dbPm.workLocation,
+          shift: dbPm.shift,
+          jurisdiction: dbPm.jurisdiction
+        };
+        await saDataService.saveUser(modalData, "edit");
+      }
     } catch (e) {
       console.error("Failed to save submitted assessment to DB:", e);
     }
 
-    setSubmittedAssessments(prev => [...prev, { pmId: pm.hrmsId, date: today, score: scoreVal }]);
+    // Save to ASSESSMENT and TEST_ATTEMPT table in Supabase
+    if (isSupabaseConfigured) {
+      try {
+        // Resolve Pointsman UUID from their hrmsId
+        const { data: pmUser, error: pmErr } = await supabase
+          .from("USERS")
+          .select("user_id")
+          .eq("hrms_id", pm.hrmsId)
+          .single();
+        
+        if (pmErr || !pmUser) {
+          throw new Error(`Failed to resolve Pointsman UUID for HRMS ID ${pm.hrmsId}`);
+        }
+
+        // Resolve Station Master UUID
+        const { data: smUser } = await supabase
+          .from("USERS")
+          .select("user_id")
+          .eq("hrms_id", smId)
+          .single();
+
+        const smUserUuid = smUser?.user_id || user?.userId;
+
+        const assessmentType = "Checklist Evaluation"; // Matches what TI filters for pointsmen!
+        const assessmentStatus = isDraft ? "Draft" : "Pending";
+        
+        // Check if there is an existing draft/available assessment to update, or insert new
+        const { data: existingAssess } = await supabase
+          .from("ASSESSMENT")
+          .select("assessment_id")
+          .eq("employee_id", pmUser.user_id)
+          .in("assessment_type", ["Checklist Evaluation", "Pointsman Evaluation", "Pointsman Periodic Assessment"])
+          .in("status", ["Draft", "AVAILABLE", "LOCKED", "IN_PROGRESS", "Pending", "Submitted"])
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        let assessmentId = existingAssess?.assessment_id;
+
+        if (assessmentId) {
+          await supabase
+            .from("ASSESSMENT")
+            .update({
+              status: assessmentStatus,
+              conducted_by: smUserUuid,
+              assessment_date: today,
+              assessment_type: assessmentType
+            })
+            .eq("assessment_id", assessmentId);
+        } else {
+          const { data: newAssess, error: newAssessErr } = await supabase
+            .from("ASSESSMENT")
+            .insert([{
+              employee_id: pmUser.user_id,
+              conducted_by: smUserUuid,
+              assessment_type: assessmentType,
+              status: assessmentStatus,
+              assessment_date: today
+            }])
+            .select()
+            .single();
+
+          if (newAssessErr) throw newAssessErr;
+          assessmentId = newAssess.assessment_id;
+        }
+
+        // Insert or update the TEST_ATTEMPT
+        const { data: existingAttempt } = await supabase
+          .from("TEST_ATTEMPT")
+          .select("attempt_id")
+          .eq("assessment_id", assessmentId)
+          .maybeSingle();
+
+        if (existingAttempt) {
+          await supabase
+            .from("TEST_ATTEMPT")
+            .update({
+              total_marks: 100,
+              obtained_marks: scoreVal,
+              percentage: scoreVal,
+              category: computedCat,
+              submitted_at: new Date().toISOString()
+            })
+            .eq("attempt_id", existingAttempt.attempt_id);
+        } else {
+          const { error: attemptErr } = await supabase
+            .from("TEST_ATTEMPT")
+            .insert([{
+              assessment_id: assessmentId,
+              employee_id: pmUser.user_id,
+              total_marks: 100,
+              obtained_marks: scoreVal,
+              percentage: scoreVal,
+              category: computedCat,
+              submitted_at: new Date().toISOString()
+            }]);
+          
+          if (attemptErr) throw attemptErr;
+        }
+
+        console.log(`Successfully saved assessment and test attempt to Supabase with status ${assessmentStatus}`);
+      } catch (err) {
+        console.error("Failed to save assessment to database:", err);
+      }
+    }
+
+    if (!isDraft) {
+      setSubmittedAssessments(prev => [...prev, { pmId: pm.hrmsId, date: today, score: scoreVal }]);
+      setDrafts(prev => prev.filter(d => d.hrmsId !== pm.hrmsId));
+      setStatusMsg(`Assessment submitted successfully for ${pm.name}. Total Score: ${scoreVal}/100.`);
+    } else {
+      setStatusMsg(`Assessment draft saved for ${pm.name}.`);
+    }
+
     setPageMode("default");
-    setStatusMsg(`Assessment submitted successfully for ${pm.name}. Total Score: ${scoreVal}/100.`);
   };
 
   return {

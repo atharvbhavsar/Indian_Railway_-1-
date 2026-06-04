@@ -158,6 +158,7 @@ export function useTrafficInspectorState(user, onLogout) {
             originalSections: constructSections(score, 100, "PM"),
             finalSections: a.status === "Approved" ? constructSections(score, 100, "PM") : undefined,
             finalScore: score,
+            category: a.TEST_ATTEMPT?.[0]?.category || getCat(score),
             tiRemarks: a.APPROVAL?.remarks || "",
             tiModified: false,
             approvalDate: a.APPROVAL?.approval_date ? new Date(a.APPROVAL.approval_date).toISOString().slice(0, 10) : "",
@@ -936,12 +937,28 @@ export function useTrafficInspectorState(user, onLogout) {
         const secs = editSections[id] || targetAssess.originalSections;
         const total = secs.reduce((s, x) => s + x.score, 0);
 
+        // Fetch existing attempt to check if SM marked as Category D (Alcoholic)
+        let finalCat = getCat(total);
+        try {
+          const { data: existingAttempt } = await supabase
+            .from("TEST_ATTEMPT")
+            .select("category")
+            .eq("assessment_id", id)
+            .maybeSingle();
+          if (existingAttempt?.category === "D") {
+            finalCat = "D";
+          }
+        } catch (catErr) {
+          console.error("Error reading existing attempt category:", catErr);
+        }
+
         await supabase
           .from("TEST_ATTEMPT")
           .update({
+            total_marks: 100,
             obtained_marks: total,
             percentage: total,
-            category: getCat(total)
+            category: finalCat
           })
           .eq("assessment_id", id);
 
@@ -952,9 +969,25 @@ export function useTrafficInspectorState(user, onLogout) {
               .from("EMPLOYEE_PROFILE")
               .update({
                 current_score: total,
-                category: getCat(total)
+                category: finalCat
               })
               .eq("user_id", emp.user_id);
+          }
+        }
+
+        // Trigger Category D protocol if finalized score is Category D
+        if (total < 50 || getCat(total) === 'D') {
+          try {
+            const { data: aData } = await supabase
+              .from("ASSESSMENT")
+              .select("conducted_by, employee_id")
+              .eq("assessment_id", id)
+              .single();
+            const condBy = aData?.conducted_by || user.userId;
+            const empId = aData?.employee_id || targetAssess?.hrmsId;
+            await assessmentService.triggerCategoryDProtocol(empId, id, total, 'D', condBy);
+          } catch (dErr) {
+            console.error("Failed to trigger Category D protocol during TI PM finalize:", dErr);
           }
         }
       }

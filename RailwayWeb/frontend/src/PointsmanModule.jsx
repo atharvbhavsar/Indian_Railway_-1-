@@ -305,10 +305,18 @@ function PointsmanModule({ user, onLogout }) {
                 const dateStr = att.started_at ? att.started_at.split("T")[0] : new Date().toISOString().split("T")[0];
                 const periodStr = att.ASSESSMENT?.assessment_date || "April 2026";
                 const nameStr = att.ASSESSMENT?.assessment_type || "Pointsman Periodic Assessment";
-                const totalScore = Math.round(att.obtained_marks || att.percentage);
+                const isOnline = att.total_marks === 25 || nameStr.includes("MCQ");
+                const totalScore = att.obtained_marks !== null && att.obtained_marks !== undefined 
+                  ? att.obtained_marks 
+                  : Math.round(((att.percentage || 0) / 100) * (att.total_marks || 100));
                 
+                let rawStatus = att.ASSESSMENT?.status || "Approved";
+                if (["Draft", "Pending", "Submitted", "IN_PROGRESS"].includes(rawStatus)) {
+                  rawStatus = "Pending";
+                }
+
                 // Segment marks into beautiful segments
-                const baseMarks = Math.round((totalScore / 100) * 20);
+                const baseMarks = Math.round((totalScore / (isOnline ? 25 : 100)) * 20);
                 const sections = [
                   { title: "Signal Rules", marks: Math.min(20, baseMarks + (Math.random() > 0.5 ? 1 : -1)), outOf: 20 },
                   { title: "Track Handling", marks: Math.min(20, baseMarks + (Math.random() > 0.5 ? 1 : -1)), outOf: 20 },
@@ -327,6 +335,9 @@ function PointsmanModule({ user, onLogout }) {
                   name: nameStr,
                   assessmentPeriod: periodStr,
                   totalScore: totalScore,
+                  isOnlineExam: isOnline,
+                  approvalStatus: rawStatus,
+                  category: att.category,
                   sections: sections,
                   responses: generateMockResponses(totalScore)
                 };
@@ -359,6 +370,8 @@ function PointsmanModule({ user, onLogout }) {
         }
       }
       loadDbData();
+      const intervalId = setInterval(loadDbData, 5000);
+      return () => clearInterval(intervalId);
     }
   }, [employeeId]);
 
@@ -398,10 +411,11 @@ function PointsmanModule({ user, onLogout }) {
     return () => clearInterval(timer);
   }, [isAssessmentTimerRunning, assessmentTimeLeft]);
   /* ─── Derived metrics ─── */
-  const latestScore = history.length ? history[0].totalScore : null;
-  const latestCategory = latestScore !== null ? getCategory(latestScore) : "—";
+  const latestEvaluated = history.find(h => !h.approvalStatus || h.approvalStatus !== "Pending");
+  const latestScore = latestEvaluated ? latestEvaluated.totalScore : null;
+  const latestCategory = latestEvaluated ? (latestEvaluated.category || getCategory(latestEvaluated.isOnlineExam ? (latestScore/25)*100 : latestScore)) : "—";
   const averageScore = history.length
-    ? Math.round(history.reduce((s, i) => s + i.totalScore, 0) / history.length)
+    ? history.reduce((s, i) => s + (i.isOnlineExam ? (i.totalScore/25)*100 : i.totalScore), 0) / history.length
     : 0;
   const answeredCount = responses.filter(v => v !== null).length;
   const completionRate = Math.round((answeredCount / 25) * 100);
@@ -433,7 +447,7 @@ function PointsmanModule({ user, onLogout }) {
 
   const pieData = useMemo(() => {
     const counts = { A: 0, B: 0, C: 0, D: 0 };
-    history.forEach(r => { counts[getCategory(r.totalScore)]++; });
+    history.forEach(r => { counts[r.category || getCategory(r.totalScore)]++; });
     const total = history.length || 1;
     return Object.entries(counts)
       .filter(([, c]) => c > 0)
@@ -521,7 +535,7 @@ function PointsmanModule({ user, onLogout }) {
       assessmentPeriod: "Q2 2026",
       name: TEST_NAME,
       assessedBy: "Online Self-Exam",
-      totalScore: correctCount * 4,
+      totalScore: correctCount,
       sections: [
         { title: "Signal Rules",          marks: 0, outOf: 20 },
         { title: "Track Handling",         marks: 0, outOf: 20 },
@@ -530,7 +544,7 @@ function PointsmanModule({ user, onLogout }) {
         { title: "Operational Judgement",  marks: 0, outOf: 20 }
       ],
       responses: [...pmTestResponses],
-      approvalStatus: "Completed",
+      approvalStatus: "Pending",
       isOnlineExam: true
     };
     const newHistory = [record, ...history];
@@ -540,10 +554,10 @@ function PointsmanModule({ user, onLogout }) {
     if (isSupabaseConfigured && dbUserRecordId) {
       dbService.submitTestAttempt({
         employee_id: dbUserRecordId,
-        obtained_marks: correctCount * 4,
+        obtained_marks: correctCount,
         percentage: percentage,
         category: percentage >= 80 ? "A" : percentage >= 50 ? "B" : percentage >= 26 ? "C" : "D",
-        total_marks: 100
+        total_marks: 25
       });
     }
 
@@ -586,7 +600,7 @@ function PointsmanModule({ user, onLogout }) {
     const sec = [0, 0, 0, 0, 0];
     responses.forEach((r, i) => {
       const si = Math.floor(i / 5);
-      if (r === testQuestions[i].answer) { correct++; sec[si] += 4; }
+      if (r === testQuestions[i].answer) { correct++; sec[si] += 1; }
     });
     const sections = [
       "Signal Rules", 
@@ -594,8 +608,8 @@ function PointsmanModule({ user, onLogout }) {
       "Communication", 
       "Safety Response", 
       "Operational Judgement"
-    ].map((title, i) => ({ title, marks: sec[i], outOf: 20 }));
-    return { totalScore: correct * 4, sections };
+    ].map((title, i) => ({ title, marks: sec[i], outOf: 5 }));
+    return { totalScore: correct, sections };
   };
 
   const submitTest = (isAutoSubmit = false) => {
@@ -609,7 +623,9 @@ function PointsmanModule({ user, onLogout }) {
       assessmentPeriod: activeTest ? activeTest.period : "April 2026",
       totalScore,
       sections,
-      responses: [...responses]
+      responses: [...responses],
+      approvalStatus: "Pending",
+      isOnlineExam: true
     };
     const newHistory = [record, ...history];
     setHistory(newHistory);
@@ -619,7 +635,7 @@ function PointsmanModule({ user, onLogout }) {
     localStorage.setItem(`pm_current_test_${employeeId}`, JSON.stringify(null));
 
     // Save MCQ result for Station Master
-    const correctCount = Math.round(totalScore / 4);
+    const correctCount = totalScore;
     const percentage = Math.round((correctCount / 25) * 100);
     const mcqResult = {
       completed: true,
@@ -638,16 +654,16 @@ function PointsmanModule({ user, onLogout }) {
       dbService.submitTestAttempt({
         employee_id: dbUserRecordId,
         obtained_marks: totalScore,
-        percentage: totalScore,
-        category: getCategory(totalScore),
-        total_marks: 100
+        percentage: percentage,
+        category: getCategory(percentage),
+        total_marks: 25
       });
     }
     
     const label = isAutoSubmit ? "Auto-submitted (Time Expired)" : "Submitted Successfully";
     setStatusText(`Assessment evaluation completed! ${label}.`);
-    logActivity("Assessment", `Submitted test with score ${totalScore}% (Cat. ${getCategory(totalScore)})`);
-    triggerNotification("success", `Assessment complete! Score: ${totalScore}/100. Grade: Category ${getCategory(totalScore)}`);
+    logActivity("Assessment", `Submitted test with score ${totalScore}/25 (Cat. ${getCategory(percentage)})`);
+    triggerNotification("success", `Assessment complete! Score: ${totalScore}/25. Grade: Category ${getCategory(percentage)}`);
   };
 
   /* ─── Secure Session Actions ─── */
@@ -809,6 +825,7 @@ function PointsmanModule({ user, onLogout }) {
   const renderDashboardPage = () => (
     <PointsmanDashboard 
       latestScore={latestScore}
+      latestOutOf={latestEvaluated ? (latestEvaluated.isOnlineExam ? 25 : 100) : 100}
       averageScore={averageScore}
       latestCategory={latestCategory}
       historyLength={history.length}
@@ -827,6 +844,7 @@ function PointsmanModule({ user, onLogout }) {
       profile={profile}
       latestCategory={latestCategory}
       latestScore={latestScore}
+      latestOutOf={latestEvaluated ? (latestEvaluated.isOnlineExam ? 25 : 100) : 100}
       employeeId={employeeId}
     />
   );
@@ -847,6 +865,7 @@ function PointsmanModule({ user, onLogout }) {
       startTestAttempt={startTestAttempt}
       history={history}
       formatQuarterPeriod={formatQuarterPeriod}
+      employeeId={employeeId}
     />
   );
 
@@ -963,9 +982,12 @@ function PointsmanModule({ user, onLogout }) {
   /* ─── Content dispatcher ─── */
   const renderBodyContent = () => {
     if (screenMode === "takeTest") return renderTakeTest();
+    if (screenMode === "attempt") return renderAttemptPage();
+    if (screenMode === "scorecard") return renderScorecardPage();
     if (activeNav === "dashboard") return renderDashboardPage();
     if (activeNav === "profile") return renderProfilePage();
     if (activeNav === "myAssessment") return renderMyAssessment();
+    if (activeNav === "current") return renderCurrentTestsPage();
     if (activeNav === "safety") return renderSafetyPage();
     return renderDashboardPage();
   };
@@ -1095,7 +1117,7 @@ function PointsmanModule({ user, onLogout }) {
               </div>
               <div className="pm-hkpi">
                 <Gauge size={14} />
-                <span>Avg {averageScore}</span>
+                <span>Avg {Math.round(averageScore)}%</span>
               </div>
               {latestCategory !== "Untested" && (
                 <div className="pm-hkpi" style={{ color: getCategoryColor(latestCategory) }}>
