@@ -1252,7 +1252,22 @@ export function useAomState(user, onLogout) {
     const effectiveAnswers = answersByAssessment[target.id] || buildPrefilledAnswers(target.title);
     const tab = resolveAssessmentTab(target.title);
     const isMultiSection = tab === "TI" || tab === "SS";
-    const score = calculateAssessmentScore(effectiveAnswers, isMultiSection, target.quizMarks);
+    
+    let effectiveQuizMarks = target.quizMarks;
+    if (effectiveQuizMarks === null || effectiveQuizMarks === undefined) {
+      const hrmsId = target.hrmsId || target.employeeId || target.id;
+      const offlineSs = JSON.parse(sessionStorage.getItem(`ss_mcq_test_${hrmsId}`) || localStorage.getItem(`ss_mcq_test_${hrmsId}`) || "null");
+      const offlineSm = JSON.parse(sessionStorage.getItem(`sm_mcq_test_${hrmsId}`) || localStorage.getItem(`sm_mcq_test_${hrmsId}`) || "null");
+      const offlineTm = JSON.parse(sessionStorage.getItem(`tm_mcq_test_${hrmsId}`) || localStorage.getItem(`tm_mcq_test_${hrmsId}`) || "null");
+      const offlinePm = JSON.parse(sessionStorage.getItem(`pm_mcq_test_${hrmsId}`) || localStorage.getItem(`pm_mcq_test_${hrmsId}`) || "null");
+      
+      if (offlineSs && offlineSs.correctCount !== undefined) effectiveQuizMarks = offlineSs.correctCount;
+      else if (offlineSm && offlineSm.correctCount !== undefined) effectiveQuizMarks = offlineSm.correctCount;
+      else if (offlineTm && offlineTm.correctCount !== undefined) effectiveQuizMarks = offlineTm.correctCount;
+      else if (offlinePm && offlinePm.correctCount !== undefined) effectiveQuizMarks = offlinePm.correctCount;
+    }
+    
+    const score = calculateAssessmentScore(effectiveAnswers, isMultiSection, effectiveQuizMarks);
     let grade = score >= 90 ? "A" : score >= 80 ? "B" : "C";
     if (effectiveAnswers.alcoholicStatus === "Alcoholic") {
       grade = "D";
@@ -1467,7 +1482,24 @@ export function useAomState(user, onLogout) {
     // Validate checklist questions
     let requiredKeys = [];
     if (isMultiSection) {
-      requiredKeys.push("knowledgeOfRules");
+      // Extract offline quizMarks if target.quizMarks is null
+      let effectiveQuizMarks = target.quizMarks;
+      if (effectiveQuizMarks === null || effectiveQuizMarks === undefined) {
+        const hrmsId = target.hrmsId || target.employeeId || target.id;
+        const offlineSs = JSON.parse(sessionStorage.getItem(`ss_mcq_test_${hrmsId}`) || localStorage.getItem(`ss_mcq_test_${hrmsId}`) || "null");
+        const offlineSm = JSON.parse(sessionStorage.getItem(`sm_mcq_test_${hrmsId}`) || localStorage.getItem(`sm_mcq_test_${hrmsId}`) || "null");
+        const offlineTm = JSON.parse(sessionStorage.getItem(`tm_mcq_test_${hrmsId}`) || localStorage.getItem(`tm_mcq_test_${hrmsId}`) || "null");
+        const offlinePm = JSON.parse(sessionStorage.getItem(`pm_mcq_test_${hrmsId}`) || localStorage.getItem(`pm_mcq_test_${hrmsId}`) || "null");
+        if (offlineSs && offlineSs.correctCount !== undefined) effectiveQuizMarks = offlineSs.correctCount;
+        else if (offlineSm && offlineSm.correctCount !== undefined) effectiveQuizMarks = offlineSm.correctCount;
+        else if (offlineTm && offlineTm.correctCount !== undefined) effectiveQuizMarks = offlineTm.correctCount;
+        else if (offlinePm && offlinePm.correctCount !== undefined) effectiveQuizMarks = offlinePm.correctCount;
+      }
+
+      // For SS/TI, Knowledge of Rules is filled by CBT unless effectiveQuizMarks is null
+      if (effectiveQuizMarks === null || effectiveQuizMarks === undefined) {
+        requiredKeys.push("knowledgeOfRules");
+      }
       const criteriaList = [
         "alertnessAndObservation",
         "safetyRecord",
@@ -6865,25 +6897,35 @@ export function useAomState(user, onLogout) {
         });
         setAomSSList(ssMapped);
 
+        // Helper to resolve role name consistently
+        const resolveRoleDisplayName = (dbRole) => {
+          const lower = (dbRole || "").toLowerCase().trim();
+          if (lower === "sm" || lower === "station master") return "Station Master";
+          if (lower === "tm" || lower === "train manager") return "Train Manager";
+          if (lower === "ss" || lower === "station superintendent") return "Station Superintendent";
+          if (lower === "pointsmen" || lower === "pointsman") return "Pointsman";
+          return "Traffic Inspector";
+        };
+
         // Map pending/submitted assessments for AOM Console
         const pendingMapped = (assessList || []).filter(a => a.status === "Pending" || a.status === "Submitted" || a.status === "AVAILABLE").map(a => {
-          const roleName = a.employee?.ROLE?.role_name === 'sm' ? 'Station Master' :
-            a.employee?.ROLE?.role_name === 'tm' ? 'Train Manager' :
-              a.employee?.ROLE?.role_name === 'ss' ? 'Station Superintendent' :
-                a.employee?.ROLE?.role_name === 'pointsmen' ? 'Pointsman' : 'Traffic Inspector';
+          const roleName = resolveRoleDisplayName(a.employee?.ROLE?.role_name);
           const divName = a.employee?.EMPLOYEE_PROFILE?.STATION?.DIVISION?.division_name || "Nagpur";
           const hasAttempt = a.TEST_ATTEMPT && a.TEST_ATTEMPT.length > 0;
-          // quizMarks is the MCQ score percentage (0-100) set by TI after taking the exam
+          // quizMarks: use obtained_marks from DB TEST_ATTEMPT — the real source of truth
           const quizMarks = hasAttempt ? (a.TEST_ATTEMPT[0].obtained_marks ?? null) : null;
+          // If there's already a test attempt, treat this as submitted regardless of ASSESSMENT.status
+          const isSubmitted = a.status === 'Submitted' || hasAttempt;
           return {
             id: a.assessment_id,
             employeeId: a.employee_id,
             hrmsId: a.employee?.hrms_id || a.employee_id,
             title: `${roleName} - ${a.employee?.hrms_id || a.employee_id}`,
-            statusLabel: a.status === 'Submitted' ? "Awaiting AOM Grading" : "Pending Approval",
+            statusLabel: isSubmitted ? "Awaiting AOM Grading" : "Pending Approval",
             assessedByLine: `Assessed by: ${a.conducted_by_user?.full_name || "AOM"} - on ${a.assessment_date ? new Date(a.assessment_date).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10)}`,
             employeeLine: `Employee: ${a.employee?.full_name || ""} | Division: ${divName}`,
-            actionType: a.status === 'Submitted' ? "approval" : "exam_sent",
+            // If exam has been attempted, actionType = 'approval' so AOM sees "Submitted" not "Exam Sent"
+            actionType: isSubmitted ? "approval" : "exam_sent",
             quizMarks: quizMarks
           };
         });
@@ -6891,10 +6933,7 @@ export function useAomState(user, onLogout) {
 
         // Map approved assessments for AOM Console (status is 'Approved')
         const approvedMapped = (assessList || []).filter(a => a.status === "Approved").map(a => {
-          const roleName = a.employee?.ROLE?.role_name === 'sm' ? 'Station Master' :
-            a.employee?.ROLE?.role_name === 'tm' ? 'Train Manager' :
-              a.employee?.ROLE?.role_name === 'ss' ? 'Station Superintendent' :
-                a.employee?.ROLE?.role_name === 'pointsmen' ? 'Pointsman' : 'Traffic Inspector';
+          const roleName = resolveRoleDisplayName(a.employee?.ROLE?.role_name);
           const score = a.TEST_ATTEMPT?.[0]?.obtained_marks || 0;
           const cat = a.TEST_ATTEMPT?.[0]?.category || "A";
           return {
@@ -6910,10 +6949,7 @@ export function useAomState(user, onLogout) {
 
         // Map reportRows from assessList
         const reportsMapped = (assessList || []).map(a => {
-          const roleName = a.employee?.ROLE?.role_name === 'sm' ? 'Station Master' :
-            a.employee?.ROLE?.role_name === 'tm' ? 'Train Manager' :
-              a.employee?.ROLE?.role_name === 'ss' ? 'Station Superintendent' :
-                a.employee?.ROLE?.role_name === 'pointsmen' ? 'Pointsman' : 'Traffic Inspector';
+          const roleName = resolveRoleDisplayName(a.employee?.ROLE?.role_name);
           const score = a.TEST_ATTEMPT?.[0]?.obtained_marks || 0;
           const cat = a.TEST_ATTEMPT?.[0]?.category || "A";
           return {

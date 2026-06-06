@@ -2760,27 +2760,51 @@ function AOmModule({ user, onLogout }) {
           approvedAssessments.find((item) => item.id === openAssessmentId) || null;
 
         if (activeAssessment) {
-          // Render Level 3: Structured Evaluation Form View!
-          const activeAnswers = answersByAssessment[activeAssessment.id] || buildPrefilledAnswers(activeAssessment.title);
-          const liveScore = calculateAssessmentScore(activeAnswers, true, activeAssessment.quizMarks);
 
-          // Map to TI employee info
-          const tiEmployee = trafficInspectors.find(t => t.employeeId === activeAssessment.id);
-          const name = tiEmployee ? tiEmployee.name : (activeAssessment.employeeLine?.match(/Employee:\s*([^|]+)/i)?.[1]?.trim() || "Traffic Inspector");
-          const hrmsId = activeAssessment.id;
+
+          // Map to employee info
+          const designation = activeAssessment.title ? activeAssessment.title.split(" - ")[0] : "Employee";
+          const hrmsId = activeAssessment.hrmsId || activeAssessment.employeeId || activeAssessment.id;
+          const employeeUUID = activeAssessment.employeeId || activeAssessment.id;
+          const tiEmployee = trafficInspectors.find(t => t.employeeId === hrmsId || t.employeeId === activeAssessment.id);
+          const name = tiEmployee ? tiEmployee.name : (activeAssessment.employeeLine?.match(/Employee:\s*([^|]+)/i)?.[1]?.trim() || designation);
           const division = tiEmployee ? tiEmployee.division : (activeAssessment.employeeLine?.match(/Division:\s*(.+)/i)?.[1]?.trim() || "Nagpur");
 
           const isApproved = approvedAssessments.some(a => a.id === activeAssessment.id);
           const locked = isApproved;
 
+          // ── Resolve effective MCQ marks: DB is source of truth; sessionStorage is fallback ──
+          // SS saves sessionStorage keyed by employeeUUID (not hrmsId), so check both
+          const resolveOfflineMcq = (prefix, keyA, keyB) => {
+            const tryKey = (k) => { try { const v = sessionStorage.getItem(`${prefix}_${k}`) || localStorage.getItem(`${prefix}_${k}`); return v ? JSON.parse(v) : null; } catch { return null; } };
+            return tryKey(keyA) || tryKey(keyB) || null;
+          };
+          
+          let effectiveQuizMarks = activeAssessment.quizMarks; // DB TEST_ATTEMPT.obtained_marks — primary source
+          if (effectiveQuizMarks === null || effectiveQuizMarks === undefined) {
+            const offlineSs = resolveOfflineMcq("ss_mcq_test", hrmsId, employeeUUID);
+            const offlineSm = resolveOfflineMcq("sm_mcq_test", hrmsId, employeeUUID);
+            const offlineTm = resolveOfflineMcq("tm_mcq_test", hrmsId, employeeUUID);
+            const offlinePm = resolveOfflineMcq("pm_mcq_test", hrmsId, employeeUUID);
+            if (offlineSs?.correctCount !== undefined) effectiveQuizMarks = offlineSs.correctCount;
+            else if (offlineSm?.correctCount !== undefined) effectiveQuizMarks = offlineSm.correctCount;
+            else if (offlineTm?.correctCount !== undefined) effectiveQuizMarks = offlineTm.correctCount;
+            else if (offlinePm?.correctCount !== undefined) effectiveQuizMarks = offlinePm.correctCount;
+          }
+
+          const activeAnswers = answersByAssessment[activeAssessment.id] || buildPrefilledAnswers(activeAssessment.title);
+          const liveScore = calculateAssessmentScore(activeAnswers, true, effectiveQuizMarks);
+
           let ynScore = 0;
-          assessmentCriteria.forEach(sec => {
-            if (sec.key !== "knowledgeOfRules") {
-              ynScore += getTiSectionScore(sec.key, activeAnswers);
-            }
-          });
+          assessmentCriteria.forEach(sec => { if (sec.key !== "knowledgeOfRules") ynScore += getTiSectionScore(sec.key, activeAnswers); });
           const isAlcoholic = activeAnswers.alcoholicStatus === "Alcoholic";
           const liveCat = isAlcoholic ? "D" : (liveScore >= 90 ? "A" : liveScore >= 80 ? "B" : "C");
+
+          const isActivated = true; // Implicitly true since the AOM assigned it
+          const realMcqScore = (effectiveQuizMarks !== null && effectiveQuizMarks !== undefined) ? Number(effectiveQuizMarks) : 0;
+          const mcqPercentage = Math.round((realMcqScore / 25) * 100);
+          const isMcqCompleted = effectiveQuizMarks !== null && effectiveQuizMarks !== undefined;
+          const knowledge = realMcqScore;
 
           const CAT_B = { A: "#dcfce7", B: "#eff6ff", C: "#fff7ed", D: "#fef2f2" };
           const CAT_C = { A: "#16a34a", B: "#2563eb", C: "#ea580c", D: "#dc2626" };
@@ -2823,14 +2847,6 @@ function AOmModule({ user, onLogout }) {
             ]
           };
 
-          const isActivated = true; // Implicitly true since the AOM assigned it
-          const realMcqScore = activeAssessment.quizMarks !== null && activeAssessment.quizMarks !== undefined 
-            ? Number(activeAssessment.quizMarks) 
-            : (activeAnswers?.knowledgeOfRules === "yes" ? 25 : 0);
-          const mcqPercentage = Math.round((realMcqScore / 25) * 100);
-          const isMcqCompleted = (activeAssessment.quizMarks !== null && activeAssessment.quizMarks !== undefined) || activeAnswers?.knowledgeOfRules === "yes";
-          const knowledge = realMcqScore;
-
           return (
             <section className="sm2-card animate-fade-in" style={{ padding: "24px" }}>
               {/* Header */}
@@ -2864,7 +2880,7 @@ function AOmModule({ user, onLogout }) {
                   <span className="sm2-assess-sec-num">01</span>
                   <div>
                     <strong>Knowledge of Rules (MCQ-based)</strong>
-                    <span className="sm2-assess-sec-meta">Auto-calculated from Traffic Inspector Online Competency Test</span>
+                    <span className="sm2-assess-sec-meta">Auto-calculated from {designation} Online Competency Test</span>
                   </div>
                   <span className="sm2-assess-live-marks">{knowledge} / 25</span>
                 </div>
@@ -2947,12 +2963,12 @@ function AOmModule({ user, onLogout }) {
                         <div className="sm2-mcq-pending-message" style={{ display: "flex", gap: "12px", background: isActivated ? "#fffbeb" : "#fef2f2", border: isActivated ? "1px solid #fef3c7" : "1px solid #fee2e2", padding: "16px", borderRadius: "8px" }}>
                           <AlertTriangle size={24} color={isActivated ? "#d97706" : "#dc2626"} style={{ marginTop: 2, flexShrink: 0 }} />
                           <div>
-                            <h4 style={{ margin: "0 0 4px", fontSize: 14, color: isActivated ? "#b45309" : "#991b1b" }}>{isActivated ? "Awaiting Traffic Inspector Attempt" : "Competency Exam Locked"}</h4>
+                            <h4 style={{ margin: "0 0 4px", fontSize: 14, color: isActivated ? "#b45309" : "#991b1b" }}>{isActivated ? `Awaiting ${designation} Attempt` : "Competency Exam Locked"}</h4>
                             <p style={{ margin: 0, fontSize: 12.5, lineHeight: 1.5, color: isActivated ? "#d97706" : "#dc2626" }}>
                               {isActivated ? (
-                                <span>The Traffic Inspector safety competency trial is active. Request TI (<strong>{name}</strong>) to log into their portal and attempt the 25 safety questions to automatically sync scores.</span>
+                                <span>The {designation} safety competency trial is active. Request {designation} (<strong>{name}</strong>) to log into their portal and attempt the 25 safety questions to automatically sync scores.</span>
                               ) : (
-                                <span>The Traffic Inspector MCQ exam is currently locked. You must click the <strong>Activate Safety Exam</strong> button below to enable the Traffic Inspector to log in and attempt the test.</span>
+                                <span>The {designation} MCQ exam is currently locked. You must click the <strong>Activate Safety Exam</strong> button below to enable the {designation} to log in and attempt the test.</span>
                               )}
                             </p>
                           </div>
@@ -3147,30 +3163,32 @@ function AOmModule({ user, onLogout }) {
           const approved = approvedAssessments.find(a => a.employeeId === emp.employeeId || a.employeeId === emp.user_id || a.id === emp.employeeId || a.hrmsId === emp.hrmsId);
 
           let status = "Pending";
-          let score = emp.lastScore || "";
-          let lastAssessed = emp.lastAssessedDate || "2026-05-30";
+          let score = "";
+          let scoreOutOf = 25; // default for MCQ pending
+          let lastAssessed = emp.lastAssessedDate || "";
 
           if (pending) {
             status = pending.actionType === "approval" ? "Submitted" : "Exam Sent";
             if (pending.quizMarks !== null && pending.quizMarks !== undefined) {
               score = pending.quizMarks;
+              scoreOutOf = 25;
             }
+            // Pull real date from assessedByLine
+            const dMatch = pending.assessedByLine?.match(/(\d{4}-\d{2}-\d{2})/);
+            if (dMatch) lastAssessed = dMatch[1];
           } else if (approved) {
             status = "Approved";
             const match = approved.score?.match(/Score:\s*(\d+)/i);
-            score = match ? parseInt(match[1]) : (emp.lastScore || 85);
+            score = match ? parseInt(match[1]) : (emp.lastScore || "");
+            scoreOutOf = 100;
             const dateMatch = approved.detail?.match(/on\s+(\d{4}-\d{2}-\d{2})/i);
-            lastAssessed = dateMatch ? dateMatch[1] : "2026-05-30";
+            if (dateMatch) lastAssessed = dateMatch[1];
           } else {
             status = emp.assessmentStatus === "Completed" ? "Approved" : (emp.assessmentStatus || "Pending");
+            if (emp.lastScore) { score = emp.lastScore; scoreOutOf = 100; }
           }
 
-          return {
-            ...emp,
-            status,
-            score,
-            lastAssessed
-          };
+          return { ...emp, status, score, scoreOutOf, lastAssessed };
         });
 
         // Roster totals
@@ -3593,7 +3611,7 @@ function AOmModule({ user, onLogout }) {
                             {item.lastAssessed || "—"}
                           </td>
                           <td style={{ padding: "14px 16px", color: "#0f172a", fontWeight: "800", fontSize: "14px" }}>
-                            {item.score ? `${item.score}/${(isTI && item.status !== "Approved") ? "25" : "100"}` : "—"}
+                            {(item.score !== "" && item.score !== null && item.score !== undefined) ? `${item.score}/${item.scoreOutOf || 25}` : "—"}
                           </td>
                           <td style={{ padding: "14px 16px" }}>
                             <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>

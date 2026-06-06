@@ -81,8 +81,8 @@ export default function SSDashboard({
             <TrendingUp size={16} />
             <h3>Assessment Performance Trend</h3>
           </div>
-          {trendData.length < 2 ? (
-            <p className="pm-empty-state">At least 2 attempts needed to show trend.</p>
+          {trendData.length === 0 ? (
+            <p className="pm-empty-state">No assessments completed yet.</p>
           ) : (
             <ResponsiveContainer width="100%" height={220}>
               <LineChart data={trendData} margin={{ top: 8, right: 16, left: -10, bottom: 0 }}>
@@ -139,21 +139,6 @@ export default function SSDashboard({
         </div>
       </div>
 
-      {/* Analytics Summary Banner */}
-      {performanceSummaryText && (
-        <div className={`pm-analytics-banner ${latestScore && latestScore < 50 ? 'pm-banner-warning' : 'pm-banner-success'}`}>
-          <div className="pm-banner-icon">
-            {latestScore && latestScore < 50 ? <AlertTriangle size={20} /> : <CheckCircle2 size={20} />}
-          </div>
-          <div className="pm-banner-content">
-            <h4>Automated Competency Analysis</h4>
-            <p>{performanceSummaryText}</p>
-          </div>
-          <button className="pm-banner-btn" onClick={() => setActiveNav("history")}>
-            View Detailed Reports
-          </button>
-        </div>
-      )}
     </div>
   );
 }

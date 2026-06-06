@@ -138,48 +138,7 @@ export const assessmentService = {
         throw new Error(`Validation Error: Out-of-bounds competency score of ${score}.`);
       }
 
-      // Try running the PostgreSQL RPC function to ensure atomic transactional integrity
-      try {
-        const rpcAnswers = answersArray.map(ans => ({
-          questionId: ans.questionId,
-          selectedOption: ans.selectedOption || "A",
-          isCorrect: ans.isCorrect !== undefined ? ans.isCorrect : true,
-          correctOption: ans.correctOption || "A",
-          marksObtained: ans.marksObtained !== undefined ? ans.marksObtained : 4
-        }));
-
-        const { data: rpcData, error: rpcError } = await supabase.rpc("submit_test_attempt_rpc", {
-          p_employee_id: resolvedEmployeeId,
-          p_assessment_id: normData.assessmentId || null,
-          p_total_marks: Number(normData.totalMarks || 100),
-          p_obtained_marks: Number(normData.obtainedMarks !== undefined ? normData.obtainedMarks : score),
-          p_percentage: Number(normData.percentage !== undefined ? normData.percentage : score),
-          p_category: normData.category || "A",
-          p_conducted_by: resolvedConductedBy || resolvedEmployeeId,
-          p_answers: rpcAnswers
-        });
-
-        if (!rpcError && rpcData) {
-          logger.info("Successfully submitted test attempt using atomic database RPC function.");
-          return { success: true, attempt: { attempt_id: rpcData.attempt_id, assessment_id: rpcData.assessment_id } };
-        }
-
-        if (rpcError) {
-          logger.warn("RPC submit_test_attempt_rpc execution failed, falling back to client-side sequence:", rpcError);
-          // If it's a validation error or constraint violation (and NOT code 42883 for function not existing), raise it
-          if (rpcError.code !== "42883") {
-            throw rpcError;
-          }
-        }
-      } catch (rpcExc) {
-        logger.error("RPC submission failed, throwing error:", rpcExc);
-        return { success: false, error: rpcExc.message };
-      }
-
-      // --- FALLBACK CLIENT-SIDE SEQUENTIAL FLOW ---
-      logger.info("Executing client-side sequential fallback transaction.");
-      
-      // Resolve assessment_id if not provided
+      // Resolve assessment_id if not provided BEFORE attempting RPC
       let assessmentId = normData.assessmentId;
       if (!assessmentId && resolvedEmployeeId) {
         const { data: activeAssessments, error: activeErr } = await supabase
@@ -199,7 +158,7 @@ export const assessmentService = {
             .insert([{
               employee_id: resolvedEmployeeId,
               conducted_by: conductedByUuid,
-              assessment_type: "Pointsman Periodic Assessment",
+              assessment_type: "Competency Assessment",
               status: "IN_PROGRESS"
             }])
             .select()
@@ -208,6 +167,53 @@ export const assessmentService = {
           assessmentId = newAssess.assessment_id;
         }
       }
+
+      // Try running the PostgreSQL RPC function to ensure atomic transactional integrity
+      // If RPC fails for ANY reason, we fall through to the client-side sequential fallback below
+      let rpcSucceeded = false;
+      try {
+        const rpcAnswers = answersArray.map(ans => ({
+          questionId: ans.questionId,
+          selectedOption: ans.selectedOption || "A",
+          isCorrect: ans.isCorrect !== undefined ? ans.isCorrect : true,
+          correctOption: ans.correctOption || "A",
+          marksObtained: ans.marksObtained !== undefined ? ans.marksObtained : 4
+        }));
+
+        const { data: rpcData, error: rpcError } = await supabase.rpc("submit_test_attempt_rpc", {
+          p_employee_id: resolvedEmployeeId,
+          p_assessment_id: assessmentId || null,
+          p_total_marks: Number(normData.totalMarks || 100),
+          p_obtained_marks: Number(normData.obtainedMarks !== undefined ? normData.obtainedMarks : score),
+          p_percentage: Number(normData.percentage !== undefined ? normData.percentage : score),
+          p_category: normData.category || "A",
+          p_conducted_by: resolvedConductedBy || resolvedEmployeeId,
+          p_answers: rpcAnswers
+        });
+
+        if (!rpcError && rpcData) {
+          logger.info("Successfully submitted test attempt using atomic database RPC function.");
+          // Update parent assessment status to Submitted
+          if (assessmentId) {
+            await supabase
+              .from("ASSESSMENT")
+              .update({ status: 'Submitted' })
+              .eq("assessment_id", assessmentId);
+          }
+          return { success: true, attempt: { attempt_id: rpcData.attempt_id, assessment_id: rpcData.assessment_id } };
+        }
+
+        if (rpcError) {
+          // Log and fall through to sequential fallback regardless of error type
+          logger.warn("RPC submit_test_attempt_rpc failed (code:", rpcError.code, "), falling back to client-side sequence:", rpcError.message);
+        }
+      } catch (rpcExc) {
+        // Any exception from the RPC call — fall through to sequential fallback
+        logger.warn("RPC submission threw an exception, falling back to client-side sequence:", rpcExc.message);
+      }
+
+      // --- FALLBACK CLIENT-SIDE SEQUENTIAL FLOW ---
+      logger.info("Executing client-side sequential fallback transaction.");
 
       const attemptPayload = {
         assessment_id: assessmentId,
