@@ -111,143 +111,18 @@ const MONTHLY = [];
 
 const INIT_PM_ASSESSMENTS = [];
 
-const TI_SM_CRITERIA = [
-  { key: "stationMgmt",  label: "Station Management",          weight: 5, count: 5,
-    criteria: ["Efficient train handling", "Accurate scheduling", "Staff deployment", "Complaint resolution", "Log maintenance"] },
-  { key: "safety",       label: "Safety & Compliance",         weight: 4, count: 5,
-    criteria: ["Safety protocols followed", "Incident reporting timely", "Emergency drill conducted", "Hazard identification", "PPE enforced"] },
-  { key: "staffSupervision", label: "Staff Supervision",       weight: 3, count: 5,
-    criteria: ["Regular briefings conducted", "Feedback provided to staff", "Leave management", "Timekeeping enforced", "Staff morale maintained"] },
-  { key: "documentation", label: "Documentation & Reporting",   weight: 3, count: 5,
-    criteria: ["Daily log accurate", "Monthly report submitted", "Incident records maintained", "Assessment documents filed", "Handover notes complete"] },
-  { key: "emergency",    label: "Emergency Handling",          weight: 5, count: 5,
-    criteria: ["Responded to emergencies promptly", "Coordinated with control office", "Passenger management during disruption", "Track clear protocol followed", "Post-incident review done"] },
-];
-
-const defaultSMForm = () => ({
-  stationMgmt:      Array(5).fill(null),
-  safety:           Array(5).fill(null),
-  staffSupervision: Array(5).fill(null),
-  documentation:    Array(5).fill(null),
-  emergency:        Array(5).fill(null),
-  knowledgeMarks: "", alcoholicStatus: "", pmeStatus: "Fit",
-  refStatus: "Cleared", counselling: "Not Required",
-  automaticTraining: "Not Required", remarks: ""
-});
-
-const computeSMScore = form => {
-  let total = 0;
-  TI_SM_CRITERIA.forEach(c => {
-    form[c.key].forEach(v => { if (v === "Yes") total += c.weight; });
-  });
-  const km = Math.min(parseInt(form.knowledgeMarks) || 0, 25);
-  return { ynScore: Math.min(total, 75), knowledge: km, total: Math.min(total, 75) + km };
-};
-
-const INIT_SM_LIST = [];
-
-const TI_TM_CRITERIA = [
-  { key: "trainSafety",  label: "Train Safety & Brake Inspection",   weight: 5, count: 5,
-    criteria: ["Brake power certificate verification", "BP/FP pressure gauge monitoring", "Tail lamp/board correctness", "Loose coupling check", "Vigilance control check"] },
-  { key: "signaling",    label: "Signaling & Whistle Compliance",    weight: 4, count: 5,
-    criteria: ["Hand signal exchange with SM", "Whistling at gate/whistle boards", "Fog signal detonator drill", "Acknowledge route aspects", "Correct flags/lamps display"] },
-  { key: "shunting",     label: "Shunting & Coupling Ops",           weight: 3, count: 5,
-    criteria: ["Coordinating shunting movement", "Screw/CBC coupling secured", "Hand brake application on sidings", "Point locking verification", "Clearance distance estimation"] },
-  { key: "documentation", label: "Train Log & Guard Certificates",  weight: 3, count: 5,
-    criteria: ["Train journal logs accurate", "Caution orders noted", "Guard's certificate issued properly", "Rough journal handovers complete", "Incident report log filled"] },
-  { key: "emergency",    label: "Emergency Train Protection",        weight: 5, count: 5,
-    criteria: ["Flashing amber tail light active", "Detonator protection at 600m/1200m", "Informing control/SM of disruption", "First-aid response coordination", "Track clearance verification"] },
-];
-
-const defaultTMForm = () => ({
-  trainSafety:      Array(5).fill(null),
-  signaling:        Array(5).fill(null),
-  shunting:         Array(5).fill(null),
-  documentation:    Array(5).fill(null),
-  emergency:        Array(5).fill(null),
-  knowledgeMarks: "", alcoholicStatus: "", pmeStatus: "Fit",
-  refStatus: "Cleared", counselling: "Not Required",
-  automaticTraining: "Not Required", remarks: ""
-});
-
-const computeTMScore = form => {
-  let total = 0;
-  TI_TM_CRITERIA.forEach(c => {
-    form[c.key]?.forEach(v => { if (v === "Yes") total += c.weight; });
-  });
-  const km = Math.min(parseInt(form.knowledgeMarks) || 0, 25);
-  return { ynScore: Math.min(total, 75), knowledge: km, total: Math.min(total, 75) + km };
-};
+import {
+  TI_SM_CRITERIA, defaultSMForm, computeSMScore,
+  TI_TM_CRITERIA, defaultTMForm, computeTMScore,
+  TI_SS_CRITERIA, defaultSSForm, computeSSScore,
+  TI_QUIZ
+} from "./constants/trafficInspectorConstants";
 
 const INIT_TM_LIST = [];
-
 const INIT_SS_LIST = [];
-
-const TI_SS_CRITERIA = [
-  { key: "stationOps",    label: "Station Operations & Supervision",   weight: 5, count: 5,
-    criteria: ["Train reception/dispatch procedures", "Station yard supervision during peak hours", "Platform safety compliance", "Crowd management protocols", "Block instrument operation"] },
-  { key: "staffMgmt",    label: "Staff Management & Discipline",       weight: 4, count: 5,
-    criteria: ["Duty roster maintenance", "Punctuality and attendance tracking", "Leave management compliance", "Uniform & conduct enforcement", "Safety briefing conduct"] },
-  { key: "records",      label: "Records & Documentation",             weight: 3, count: 5,
-    criteria: ["Station log book accuracy", "Accident/incident reporting", "Block register maintenance", "Cash and freight register audit", "Train delay reporting"] },
-  { key: "safety",       label: "Safety Compliance & Emergency",       weight: 5, count: 5,
-    criteria: ["Emergency evacuation drill conduct", "Fire equipment serviceability check", "Signal failure response protocol", "Fog signal deployment knowledge", "Coordination with control office"] },
-  { key: "infra",        label: "Infrastructure & Asset Maintenance",  weight: 3, count: 5,
-    criteria: ["Platform surface and lighting check", "Footover bridge safety assessment", "Washroom hygiene maintenance", "Waiting room orderliness", "Coach indication board accuracy"] },
-];
-
-const defaultSSForm = () => ({
-  stationOps:   Array(5).fill(null),
-  staffMgmt:    Array(5).fill(null),
-  records:      Array(5).fill(null),
-  safety:       Array(5).fill(null),
-  infra:        Array(5).fill(null),
-  knowledgeMarks: "", alcoholicStatus: "", pmeStatus: "Fit",
-  refStatus: "Cleared", counselling: "Not Required",
-  automaticTraining: "Not Required", remarks: ""
-});
-
-const computeSSScore = form => {
-  let total = 0;
-  TI_SS_CRITERIA.forEach(c => {
-    form[c.key]?.forEach(v => { if (v === "Yes") total += c.weight; });
-  });
-  const km = Math.min(parseInt(form.knowledgeMarks) || 0, 25);
-  return { ynScore: Math.min(total, 75), knowledge: km, total: Math.min(total, 75) + km };
-};
-
+const INIT_SM_LIST = [];
 const INIT_INSPECTIONS = [];
-
 const INIT_COUNSELLING = [];
-
-// Interactive quiz questions for self-assessments
-const TI_QUIZ = [
-  { q: "What whistle code must be sounded when a train is passing through a station without stopping?", opts: ["One long", "Continuous short blasts", "One long and one short", "Two short blasts"], ans: 0, explanation: "One long whistle is sounded to alert station staff, pointsmen, and level crossing gatemen of a train passing through without stopping." },
-  { q: "During track circuit failures, what token is issued to authorize train movements into block sections?", opts: ["T/369(3b)", "T/806 (Shunting Order)", "Caution Order (T/B)", "Line Clear Ticket"], ans: 0, explanation: "T/369(3b) is the written authority issued to pass a defective reception stop signal at danger, containing speed restrictions for track anomalies." },
-  { q: "Fouling mark lines indicate:", opts: ["Defective rail marker", "Safe distance clearance boundary limit", "Points switching end point", "Speed restrictions end"], ans: 1, explanation: "A fouling mark is placed at the convergence of two tracks, indicating the boundary within which vehicles must remain to avoid collision with traffic on the adjacent line." },
-  { q: "Periodic Refresher Courses (REF) for Pointsman Grade I must be completed every:", opts: ["1 Year", "2 Years", "3 Years", "5 Years"], ans: 2, explanation: "Safety refresher training for pointsmen is mandated once every 3 years to ensure operational rule compliance and hands-on skill currency." },
-  { q: "A Signal showing double yellow lights warns the driver to:", opts: ["Stop immediately", "Prepare to stop at the next signal", "Proceed at full authorized speed", "Sound whistle continuously"], ans: 1, explanation: "A double yellow aspect is an attention signal, warning the driver that they are approaching a signal showing a restrictive aspect (single yellow or red)." },
-  { q: "How often must a Traffic Inspector audit the Station log registers?", opts: ["Weekly", "Monthly", "Quarterly", "Bi-annually"], ans: 1, explanation: "As per the Safety Audit Manual, a Traffic Inspector must perform a thorough physical audit of station logs, books, and registers at least once a month." },
-  { q: "During a total failure of communications on double lines, which authority form is issued?", opts: ["T/A 602", "T/B 602", "T/C 602", "T/D 602"], ans: 1, explanation: "Form T/B 602 is the official authority issued to run trains during total failure of communication on a double line section." },
-  { q: "What whistle code indicates 'Train Parting'?", opts: ["One long, one short", "Two long, two short", "One long, one short, one long, one short", "Continuous short blasts"], ans: 2, explanation: "One long, one short, one long, one short whistle code is sounded repeatedly to warn the station staff and loco crew of mid-section train parting." },
-  { q: "A signal with double yellow aspect warns the driver to:", opts: ["Proceed at full speed", "Prepare to stop at the next signal", "Proceed with 15km/h", "Stop immediately"], ans: 1, explanation: "Prepare to stop at the next signal is indicated by a double yellow attention aspect on the distant signal." },
-  { q: "Under normal conditions, a gate signal shows what aspect when the level crossing gate is open to road traffic?", opts: ["Red", "Yellow", "Green", "Double Yellow"], ans: 0, explanation: "A gate signal will show Red (Danger) if the interlocked level crossing gate is open to road traffic, protecting the block section from vehicles." },
-  { q: "Refresher training for Pointsman Grade I must be completed every:", opts: ["1 Year", "2 Years", "3 Years", "5 Years"], ans: 2, explanation: "Standard operations manuals require Pointsmen Grade I to undergo refresher safety courses every 3 years." },
-  { q: "Periodic medical examinations (PME) for Station Masters must be completed every four years until age:", opts: ["45", "50", "55", "60"], ans: 2, explanation: "Safety-category personnel including Station Masters must undergo a periodic medical examination (PME) every 4 years up to age 55, then every 2 years." },
-  { q: "Isolation of a running line from sidings is designed to prevent:", opts: ["Over-speeding", "Collisions due to rolling stock escape", "Signal failures", "Interlocking failures"], ans: 1, explanation: "Siding isolation prevents rolling stock or stalled vehicles from accidentally escaping, rolling out, and fouling the active running lines." },
-  { q: "What whistle code is sounded when entering a tunnel?", opts: ["One long blast", "Continuous short blasts", "Two short blasts", "Continuous long whistle"], ans: 3, explanation: "Loco pilots must sound a continuous long whistle when entering and passing through a tunnel to warn any track patrolmen or engineering staff." },
-  { q: "Fuses or detonators are used to protect track defects at a distance of:", opts: ["600m and 1200m", "500m and 1000m", "800m and 2000m", "1200m and 2000m"], ans: 0, explanation: "In case of track obstruction, 3 detonators are placed: 1st at 600m, 2nd at 1200m, and the 3rd at 1210m to warn oncoming train crews." },
-  { q: "What class of station has points and signals interlocked, enabling line clear exchange?", opts: ["Class A", "Class B", "Class C", "Non-interlocked"], ans: 1, explanation: "Class B stations are standard interlocked block stations equipped with home and starter signals, authorizing Line Clear exchange." },
-  { q: "The standard shunting authority form is:", opts: ["T/369(3b)", "T/806", "T/A 901", "T/511"], ans: 1, explanation: "Form T/806 is the official shunting order, listing all authorized shunt movements, point locks, and speed restrictions." },
-  { q: "If a Station Master detects a hot axle on a passing train, they must first:", opts: ["Call the division control office", "Display danger hand signal and stop the train", "Inform the next station", "Log the event"], ans: 1, explanation: "Safety protocols dictate that the Station Master must immediately exhibit a danger hand signal to stop the train and prevent axle failure or derailment." },
-  { q: "The maximum speed under 'Caution Order' when no speed limit is specified is:", opts: ["15 km/h", "30 km/h", "45 km/h", "20 km/h"], ans: 0, explanation: "If no specific speed limit is written on a Caution Order, the standard maximum speed is restricted to 15 km/h for track inspection beats." },
-  { q: "Which class of station serves strictly as a block hut without point switches?", opts: ["Class A", "Class B", "Class C", "Class D"], ans: 2, explanation: "Class C block stations (or block huts) do not have point switches or loop lines, serving strictly as intermediate block boundaries." },
-  { q: "Who is responsible for point locking during shunting operations?", opts: ["Pointsman", "Station Master", "Cabin Master", "Train Manager"], ans: 1, explanation: "The Station Master on duty is ultimately responsible for ensuring that facing points are locked and clamped during shunting operations." },
-  { q: "A flashing red aspect on a signal indicates:", opts: ["Track circuit defect", "Proceed with caution", "Stop and proceed after 1 min", "Gate signal alert"], ans: 2, explanation: "A flashing red light or 'Danger' aspect indicates that the driver must stop the train and can proceed after waiting 1 minute by day/2 minutes by night." },
-  { q: "A trap point isolation is used to protect:", opts: ["Passenger platform lines", "Running lines from siding vehicles", "Level crossings", "Relay room locking"], ans: 1, explanation: "Trap points derail an escaping vehicle or siding vehicle to prevent it from fouling or colliding with trains running on the main line." },
-  { q: "Refresher training for Traffic Inspectors must be completed every:", opts: ["3 Years", "5 Years", "2 Years", "None"], ans: 0, explanation: "Periodic training courses for Traffic Inspectors are conducted once every 3 years to maintain proficiency in safety, engineering, and operating rules." },
-  { q: "During block instrument failure, line clear is authorized using:", opts: ["Token", "Paper Line Clear Ticket", "Cabin ticket", "Hand signal"], ans: 1, explanation: "A Paper Line Clear Ticket (PLCT) is the written authority issued to proceed when block instruments fail, ensuring absolute block safety." }
-];
 
 function generateTiMockResponses(score) {
   const correctCount = Math.round((score / 100) * 25);
@@ -319,163 +194,7 @@ const TiTooltip = ({ active, payload, label }) => {
    MAIN MODULE COMPONENT
 ═══════════════════════════════════════════ */
 
-const generateGraphCompleteData = (baseUsers, baseStations) => {
-  const stationsList = baseStations || INIT_STATIONS;
-  const usersList = [...(baseUsers || INIT_USERS)];
-  
-  const hasSS = usersList.some(u => u.role === "Station Superintendent");
-  if (!hasSS) {
-    usersList.push(...DEFAULT_SS_TM_USERS);
-  }
-
-  const names = [
-    "Rahul Sharma", "Amit Patel", "Vikram Singh", "Sanjay Dutt", "Vijay Kumar",
-    "Rohan Gupta", "Deepak Rao", "Karan Johar", "Abhishek Shah", "Manish Pandey",
-    "Suresh Raina", "Girish Karnad", "Pranav Mukherji", "Shantanu Sen", "Animesh Roy"
-  ];
-
-  const designations = {
-    "Pointsman": "Pointsman Grade I",
-    "Station Master": "Station Master",
-    "Station Superintendent": "Station Superintendent",
-    "Train Manager": "Train Manager"
-  };
-
-  const categories = ["A", "B", "C"];
-  let userCounter = 2000;
-
-  stationsList.forEach((st, sidx) => {
-    const roles = ["Pointsman", "Station Master", "Station Superintendent", "Train Manager"];
-    roles.forEach(role => {
-      const exists = usersList.some(u => u.station === st.name && u.role === role);
-      if (!exists) {
-        const id = (role === "Pointsman" ? "PM_" : role === "Station Master" ? "SM_" : role === "Station Superintendent" ? "SS_" : "TM_") + userCounter++;
-        const nameIdx = (sidx + role.length) % names.length;
-        const name = names[nameIdx] + " (" + st.code + ")";
-        const cat = categories[userCounter % categories.length];
-        
-        usersList.push({
-          id,
-          name,
-          role,
-          designation: designations[role],
-          station: st.name,
-          cat,
-          lastAssessDate: `2026-03-${10 + (userCounter % 15)}`,
-          score: 65 + (userCounter % 30),
-          pmeStatus: "Fit",
-          refStatus: "Cleared",
-          contact: `+91 98765 ${userCounter}`,
-          joiningDate: `2018-05-${12 + (userCounter % 15)}`
-        });
-      }
-    });
-  });
-
-  return usersList;
-};
-
-const generateAssessmentsForGraphs = (usersList, stationsList) => {
-  const pmAssess = [];
-  const smAssess = [];
-  const ssAssess = [];
-  const tmAssess = [];
-
-  stationsList.forEach((st, sidx) => {
-    // 1. Pointsman Assessments (1 Approved, 1 Pending for each station)
-    const stPMs = usersList.filter(u => u.station === st.name && u.role === "Pointsman");
-    stPMs.forEach((pm, pidx) => {
-      const isApproved = pidx % 2 === 0;
-      pmAssess.push({
-        id: `PA_${pm.id}`,
-        pointsmanName: pm.name,
-        hrmsId: pm.id,
-        station: st.name,
-        assessingSM: `SM at ${st.code}`,
-        submissionDate: `2026-04-${10 + pidx}`,
-        status: isApproved ? "Approved" : "Pending",
-        originalSections: [
-          { title: "Knowledge of Rules",      score: 18 + (pidx % 6), max: 25 },
-          { title: "Alertness & Observation", score: 18 + (pidx % 6), max: 25 },
-          { title: "Safety Record",           score: 10 + (pidx % 4), max: 15 },
-          { title: "Leadership & Management", score: 10 + (pidx % 4), max: 15 },
-          { title: "Discipline",              score: 7 + (pidx % 3),  max: 10 },
-          { title: "Appearance & Neatness",   score: 7 + (pidx % 3),  max: 10 },
-        ],
-        finalSections: isApproved ? [
-          { title: "Knowledge of Rules",      score: 18 + (pidx % 6), max: 25 },
-          { title: "Alertness & Observation", score: 18 + (pidx % 6), max: 25 },
-          { title: "Safety Record",           score: 10 + (pidx % 4), max: 15 },
-          { title: "Leadership & Management", score: 10 + (pidx % 4), max: 15 },
-          { title: "Discipline",              score: 7 + (pidx % 3),  max: 10 },
-          { title: "Appearance & Neatness",   score: 7 + (pidx % 3),  max: 10 },
-        ] : undefined,
-        meta: { pmeStatus: "Fit", refStatus: "Cleared", alcoholicStatus: "Non-Alcoholic" },
-        tiRemarks: isApproved ? "Field assessment approved successfully." : "",
-        tiModified: false,
-        approvalDate: isApproved ? "2026-04-12" : undefined,
-        auditTrail: isApproved ? [{ action: "Approved without modification", by: "TI R. Khan", date: "2026-04-12" }] : []
-      });
-    });
-
-    // 2. SM Assessment (1 Pending or Submitted per station)
-    const stSMs = usersList.filter(u => u.station === st.name && u.role === "Station Master");
-    stSMs.forEach((sm, smidx) => {
-      const status = smidx % 2 === 0 ? "Pending" : "Submitted";
-      smAssess.push({
-        id: `SMA_${sm.id}`,
-        name: sm.name,
-        hrmsId: sm.id,
-        station: st.name,
-        lastDate: `2026-03-${15 + smidx}`,
-        status
-      });
-    });
-
-    // 3. SS Assessment (1 Pending or Submitted per station)
-    const stSSs = usersList.filter(u => u.station === st.name && u.role === "Station Superintendent");
-    stSSs.forEach((ss, ssidx) => {
-      const status = ssidx % 2 === 0 ? "Pending" : "Submitted";
-      ssAssess.push({
-        id: `SSA_${ss.id}`,
-        name: ss.name,
-        hrmsId: ss.id,
-        station: st.name,
-        lastDate: `2026-04-${5 + ssidx}`,
-        status
-      });
-    });
-
-    // 4. TM Assessment (1 Pending or Submitted per station)
-    const stTMs = usersList.filter(u => u.station === st.name && u.role === "Train Manager");
-    stTMs.forEach((tm, tmidx) => {
-      const status = tmidx % 2 === 0 ? "Pending" : "Submitted";
-      tmAssess.push({
-        id: `TMA_${tm.id}`,
-        name: tm.name,
-        hrmsId: tm.id,
-        station: st.name,
-        lastDate: `2026-03-${20 + tmidx}`,
-        status
-      });
-    });
-  });
-
-  return { pmAssess, smAssess, ssAssess, tmAssess };
-};
-
-const POPULATED_USERS = generateGraphCompleteData(INIT_USERS, INIT_STATIONS);
-const { pmAssess: POPULATED_PM, smAssess: POPULATED_SM, ssAssess: POPULATED_SS, tmAssess: POPULATED_TM } = generateAssessmentsForGraphs(POPULATED_USERS, INIT_STATIONS);
-
 export default function TrafficInspectorModule({ user, onLogout }) {
-  // Dynamic Graph Completer V3 Migration Block
-  if (localStorage.getItem("ti_data_graph_complete_v3") !== "true") {
-    localStorage.setItem("ti_users", JSON.stringify(POPULATED_USERS));
-    localStorage.setItem("ti_sm_list", JSON.stringify(POPULATED_SM));
-    localStorage.setItem("ti_tm_list", JSON.stringify(POPULATED_TM));
-    localStorage.setItem("ti_ss_list", JSON.stringify(POPULATED_SS));
-    localStorage.setItem("ti_data_graph_complete_v3", "true");
-  }
 
   const {
     activePage, setActivePage, goTo,
@@ -574,6 +293,7 @@ export default function TrafficInspectorModule({ user, onLogout }) {
     roleF, setRoleF,
     repF, setRepF,
     fullscreenChart, setFullscreenChart,
+    recentAssessments,
 
     triggerNotification, addAuditLog, exportAlert,
     handleChartClick, handlePieClick, handleResetPopupFilters,
@@ -2143,14 +1863,20 @@ export default function TrafficInspectorModule({ user, onLogout }) {
           </div>
 
           <div className="pm-scorecard-hero" style={{ background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: "12px", padding: "20px", display: "flex", alignItems: "center", gap: "24px", marginBottom: "24px" }}>
-            <div className="pm-sc-score-circle" style={{ width: "90px", height: "90px", borderRadius: "50%", border: `6px solid ${CAT_C[cat] || "#2563eb"}`, display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", flexShrink: 0, background: "#fff" }}>
-              <strong style={{ fontSize: "24px", color: CAT_C[cat] || "#2563eb", fontWeight: "800" }}>{liveTotal}</strong>
-              <span style={{ fontSize: "10px", color: "#64748b", fontWeight: "600", marginTop: "-2px" }}>/100</span>
+            <div className="pm-sc-score-circle" style={{ width: "90px", height: "90px", borderRadius: "50%", border: `6px solid ${sc.approvalStatus === "Approved" ? (CAT_C[cat] || "#2563eb") : "#ea580c"}`, display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", flexShrink: 0, background: "#fff" }}>
+              <strong style={{ fontSize: "24px", color: sc.approvalStatus === "Approved" ? (CAT_C[cat] || "#2563eb") : "#ea580c", fontWeight: "800" }}>{liveTotal}</strong>
+              <span style={{ fontSize: "10px", color: "#64748b", fontWeight: "600", marginTop: "-2px" }}>/{sc.approvalStatus === "Approved" ? "100" : "25"}</span>
             </div>
             <div>
-              <span className="pm-cat-badge-lg" style={{ background: CAT_B[cat], color: CAT_C[cat], display: "inline-block", padding: "4px 10px", borderRadius: "999px", fontSize: "12px", fontWeight: "700", marginBottom: "6px" }}>
-                Final Category: {cat === "Untested" ? "Untested" : `Category ${cat}`}
-              </span>
+              {sc.approvalStatus === "Approved" ? (
+                <span className="pm-cat-badge-lg" style={{ background: CAT_B[cat], color: CAT_C[cat], display: "inline-block", padding: "4px 10px", borderRadius: "999px", fontSize: "12px", fontWeight: "700", marginBottom: "6px" }}>
+                  Final Category: {cat === "Untested" ? "Untested" : `Category ${cat}`}
+                </span>
+              ) : (
+                <span className="pm-cat-badge-lg" style={{ background: "#fff7ed", color: "#ea580c", display: "inline-block", padding: "4px 10px", borderRadius: "999px", fontSize: "12px", fontWeight: "700", marginBottom: "6px" }}>
+                  Awaiting AOM Grading & Approval
+                </span>
+              )}
               <p className="pm-sc-period" style={{ margin: "2px 0", fontSize: "14px", color: "#1e293b", fontWeight: "600" }}>{sc.period} - Self-Compliance Audit</p>
               <p className="pm-sc-date" style={{ margin: "2px 0 0", fontSize: "12px", color: "#64748b" }}>Attempt Completed: {sc.date} &nbsp;·&nbsp; Assessed By: {sc.assessedBy || "Area Operation Manager"}</p>
             </div>
@@ -2310,8 +2036,8 @@ export default function TrafficInspectorModule({ user, onLogout }) {
           </div>
         ) : (
           <div style={{
-            background:"#f0fdf4",
-            border:"1.5px solid #bbf7d0",
+            background:"#fef2f2",
+            border:"1.5px solid #fecaca",
             borderRadius:12,
             padding:18,
             marginBottom:24,
@@ -2319,23 +2045,23 @@ export default function TrafficInspectorModule({ user, onLogout }) {
             alignItems:"center",
             gap:14
           }}>
-            <ShieldCheck size={24} color="#16a34a"/>
+            <Lock size={24} color="#dc2626"/>
             <div style={{flex:1}}>
-              <h3 style={{margin:"0 0 2px", fontSize:14.5, fontWeight:700, color:"#14532d"}}>
-                All assessments are up to date. No pending test available.
+              <h3 style={{margin:"0 0 2px", fontSize:14.5, fontWeight:700, color:"#991b1b"}}>
+                Assessment Locked
               </h3>
-              <p style={{margin:0, fontSize:12, color:"#166534"}}>
-                Your periodic safety and competency evaluation is currently active and compliant.
+              <p style={{margin:0, fontSize:12, color:"#b91c1c"}}>
+                Your Traffic Inspector assessment is currently locked. It will be enabled once authorized by the Area Operation Manager.
               </p>
             </div>
             <div style={{display:"flex", gap:16, fontSize:12, textAlign:"right"}}>
               <div>
-                <span style={{color:"#166534", display:"block"}}>Last Exam Score</span>
-                <strong style={{color:"#14532d", fontSize:13}}>{tiAssessments[0] ? `${tiAssessments[0].totalScore}%` : "N/A"}</strong>
+                <span style={{color:"#b91c1c", display:"block"}}>Last Exam Score</span>
+                <strong style={{color:"#7f1d1d", fontSize:13}}>{tiAssessments[0] ? `${tiAssessments[0].totalScore}%` : "N/A"}</strong>
               </div>
-              <div style={{borderLeft:"1px solid #bbf7d0", paddingLeft:16}}>
-                <span style={{color:"#166534", display:"block"}}>Next Due Date</span>
-                <strong style={{color:"#14532d", fontSize:13}}>N/A</strong>
+              <div style={{borderLeft:"1px solid #fca5a5", paddingLeft:16}}>
+                <span style={{color:"#b91c1c", display:"block"}}>Next Due Date</span>
+                <strong style={{color:"#7f1d1d", fontSize:13}}>Pending Authorization</strong>
               </div>
             </div>
           </div>
@@ -2352,7 +2078,7 @@ export default function TrafficInspectorModule({ user, onLogout }) {
           </div>
           <div className="sm2-report-mini">
             <label>Latest Score</label>
-            <strong>{tiAssessments[0] ? `${tiAssessments[0].totalScore}/100` : "—"}</strong>
+            <strong>{tiAssessments[0] ? `${tiAssessments[0].totalScore}/${tiAssessments[0].approvalStatus === "Approved" ? "100" : "25"}` : "—"}</strong>
           </div>
           <div className="sm2-report-mini">
             <label>Average AOM Score</label>
@@ -2360,8 +2086,8 @@ export default function TrafficInspectorModule({ user, onLogout }) {
           </div>
           <div className="sm2-report-mini">
             <label>Latest Assessment</label>
-            <strong style={{color: CAT_C[tiAssessments[0]?.category] || "#2563eb"}}>
-              {tiAssessments[0] ? `Category ${tiAssessments[0].category}` : "—"}
+            <strong style={{color: tiAssessments[0]?.approvalStatus === "Approved" ? (CAT_C[tiAssessments[0]?.category] || "#2563eb") : "#ea580c"}}>
+              {tiAssessments[0] ? (tiAssessments[0].approvalStatus === "Approved" ? `Category ${tiAssessments[0].category}` : "Awaiting AOM") : "—"}
             </strong>
           </div>
         </div>
@@ -2374,17 +2100,22 @@ export default function TrafficInspectorModule({ user, onLogout }) {
           </div>
           {tiAssessments.map(sc => {
             const cat = sc.category;
+            const isApproved = sc.approvalStatus === "Approved";
             return (
               <button key={sc.id} className="sm2-myassess-row" onClick={() => setSelectedRecord(sc)}>
                 <span title={`Cycle: ${sc.period}\nDuration: ${formatQuarterPeriod(sc.period)}`}>
                   <strong>{formatQuarterPeriod(sc.period)}</strong>
                 </span>
                 <span>{sc.date}</span>
-                <span><strong>{sc.totalScore}/100</strong></span>
+                <span><strong>{sc.totalScore}/{isApproved ? "100" : "25"}</strong></span>
                 <span>
-                  <span className="sm2-badge" style={{background:CAT_B[cat],color:CAT_C[cat]}}>
-                    Cat. {cat}
-                  </span>
+                  {isApproved ? (
+                    <span className="sm2-badge" style={{background:CAT_B[cat],color:CAT_C[cat]}}>
+                      Cat. {cat}
+                    </span>
+                  ) : (
+                    <span style={{color: "#ea580c", fontSize: "12px", fontWeight: "600"}}>—</span>
+                  )}
                 </span>
                 <span style={{fontSize:11,color:"#64748b"}}>{sc.assessedBy}</span>
                 <span>
@@ -3054,11 +2785,17 @@ export default function TrafficInspectorModule({ user, onLogout }) {
 
           {/* ── Sections 02-06: Yes/No blocks ── */}
           {TI_SM_CRITERIA.map((sec, si) => (
-            <div key={sec.key} className="sm2-assess-section" style={{ opacity: 1 }}>
+            <div id={'section-' + sec.key} key={sec.key} className="sm2-assess-section" style={{ opacity: 1 }}>
               <div className="sm2-assess-sec-hdr">
                 <span className="sm2-assess-sec-num">{String(si+2).padStart(2,"0")}</span>
-                <div><strong>{sec.label}</strong><span className="sm2-assess-sec-meta">{sec.count} criteria · {sec.weight} marks each · Total {sec.count*sec.weight}</span></div>
-                <span className="sm2-assess-live-marks">{f[sec.key].filter(v=>v==="Yes").length*sec.weight} / {sec.count*sec.weight}</span>
+                <div>
+                  <strong>{sec.label} <span style={{color:"#dc2626"}}>*</span></strong>
+                  {!(f[sec.key] && f[sec.key].length === sec.count && f[sec.key].every(v => v === "Yes" || v === "No")) && (
+                    <span style={{ color: "#dc2626", fontSize: "11px", fontWeight: "700", marginLeft: "8px", background: "#fee2e2", padding: "2px 6px", borderRadius: "4px" }}>Incomplete</span>
+                  )}
+                  <span className="sm2-assess-sec-meta">{sec.count} criteria · {sec.weight} marks each · Total {sec.count*sec.weight}</span>
+                </div>
+                <span className="sm2-assess-live-marks\">{(f[sec.key] || []).filter(v=>v==="Yes").length*sec.weight} / {sec.count*sec.weight}</span>
               </div>
               <div className="sm2-yn-grid">
                 {sec.criteria.map((cr, idx) => (
@@ -3067,14 +2804,14 @@ export default function TrafficInspectorModule({ user, onLogout }) {
                     <div className="sm2-yn-btns">
                       <button
                         type="button" disabled={locked}
-                        className={f[sec.key][idx] === "Yes" ? "sm2-yn-btn sm2-yn-yes active" : "sm2-yn-btn sm2-yn-yes"}
+                        className={f[sec.key]?.[idx] === "Yes" ? "sm2-yn-btn sm2-yn-yes active" : "sm2-yn-btn sm2-yn-yes"}
                         style={{ cursor: locked ? "not-allowed" : "pointer" }}
                         onClick={() => toggleSMYN(activeSmId, sec.key, idx, "Yes")}>
                         Yes
                       </button>
                       <button
                         type="button" disabled={locked}
-                        className={f[sec.key][idx] === "No" ? "sm2-yn-btn sm2-yn-no active" : "sm2-yn-btn sm2-yn-no"}
+                        className={f[sec.key]?.[idx] === "No" ? "sm2-yn-btn sm2-yn-no active" : "sm2-yn-btn sm2-yn-no"}
                         style={{ cursor: locked ? "not-allowed" : "pointer" }}
                         onClick={() => toggleSMYN(activeSmId, sec.key, idx, "No")}>
                         No
@@ -3087,7 +2824,7 @@ export default function TrafficInspectorModule({ user, onLogout }) {
           ))}
 
           {/* ── Section 07: Additional Details ── */}
-          <div className="sm2-assess-section" style={{ opacity: 1 }}>
+          <div id="section-additional" className="sm2-assess-section" style={{ opacity: 1 }}>
             <div className="sm2-assess-sec-hdr">
               <span className="sm2-assess-sec-num">07</span>
               <div><strong>Additional Details</strong><span className="sm2-assess-sec-meta">Mandatory fields</span></div>
@@ -3171,6 +2908,18 @@ export default function TrafficInspectorModule({ user, onLogout }) {
                   alert("Assessment saved as draft successfully!");
                 }}>Save as Draft</button>
                 <button className="sm2-primary-btn" style={{ padding: "10px 20px", borderRadius: "8px", fontWeight: "700", border: "none", background: "#2563eb", color: "#ffffff", display: "flex", alignItems: "center", gap: "6px", cursor: "pointer" }} onClick={() => {
+                  const isFormValid = f.alcoholicStatus && TI_SM_CRITERIA.every(sec => f[sec.key] && f[sec.key].length === sec.count && f[sec.key].every(v => v === "Yes" || v === "No"));
+                  if (!isFormValid) {
+                    const missingSec = TI_SM_CRITERIA.find(sec => !(f[sec.key] && f[sec.key].length === sec.count && f[sec.key].every(v => v === "Yes" || v === "No")));
+                    if (missingSec) {
+                      alert(`Validation Error: Please complete all questions in the "${missingSec.label}" section.`);
+                      document.getElementById('section-' + missingSec.key)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    } else if (!f.alcoholicStatus) {
+                      alert(`Validation Error: Please select Alcoholic/Non-Alcoholic status.`);
+                      document.getElementById('section-additional')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+                    return;
+                  }
                   setSMField(activeSmId, "knowledgeMarks", String(knowledge));
                   submitSMAssessment(activeSmId, String(knowledge));
                 }}>
@@ -3316,36 +3065,10 @@ export default function TrafficInspectorModule({ user, onLogout }) {
                           {isActivated ? (
                             <span>The Station Superintendent safety competency trial is active. Request SS (<strong>{ss?.name}</strong>) to log into their portal and attempt the 25 safety questions to automatically sync scores.</span>
                           ) : (
-                            <span>The Station Superintendent MCQ exam is currently locked. You must click the <strong>Activate Safety Exam</strong> button below to enable the Station Superintendent to log in and attempt the test.</span>
+                            <span>The Station Superintendent MCQ exam is currently locked. The Area Operations Manager (AOM) must activate the safety exam to enable the Station Superintendent to log in and attempt the test.</span>
                           )}
                         </p>
                       </div>
-                    </div>
-                    
-                    <div style={{ display: "flex", gap: "12px" }}>
-                      <button 
-                        type="button"
-                        style={{
-                          padding: "8px 16px",
-                          borderRadius: "8px",
-                          fontSize: "13px",
-                          fontWeight: "700",
-                          cursor: "pointer",
-                          border: "none",
-                          background: isActivated ? "#fef2f2" : "#2563eb",
-                          color: isActivated ? "#dc2626" : "#ffffff",
-                          boxShadow: "0 2px 4px rgba(0,0,0,0.05)"
-                        }}
-                        onClick={() => {
-                          const nextVal = !isActivated;
-                          localStorage.setItem(`ss_test_activated_${ss?.hrmsId}`, nextVal ? "true" : "false");
-                          setSSField(activeSsId, "automaticTraining", f.automaticTraining);
-                        }}
-                      >
-                        {isActivated ? "Deactivate Safety Competency Exam" : "Activate Safety Competency Exam"}
-                      </button>
-
-
                     </div>
 
                     <div className="sm2-mcq-meta-grid">
@@ -3370,11 +3093,17 @@ export default function TrafficInspectorModule({ user, onLogout }) {
 
           {/* ── Sections 02-06: Yes/No blocks ── */}
           {TI_SS_CRITERIA.map((sec, si) => (
-            <div key={sec.key} className="sm2-assess-section" style={{ opacity: 1 }}>
+            <div id={'section-' + sec.key} key={sec.key} className="sm2-assess-section" style={{ opacity: 1 }}>
               <div className="sm2-assess-sec-hdr">
                 <span className="sm2-assess-sec-num">{String(si+2).padStart(2,"0")}</span>
-                <div><strong>{sec.label}</strong><span className="sm2-assess-sec-meta">{sec.count} criteria · {sec.weight} marks each · Total {sec.count*sec.weight}</span></div>
-                <span className="sm2-assess-live-marks">{f[sec.key]?.filter(v=>v==="Yes").length*sec.weight} / {sec.count*sec.weight}</span>
+                <div>
+                  <strong>{sec.label} <span style={{color:"#dc2626"}}>*</span></strong>
+                  {!(f[sec.key] && f[sec.key].length === sec.count && f[sec.key].every(v => v === "Yes" || v === "No")) && (
+                    <span style={{ color: "#dc2626", fontSize: "11px", fontWeight: "700", marginLeft: "8px", background: "#fee2e2", padding: "2px 6px", borderRadius: "4px" }}>Incomplete</span>
+                  )}
+                  <span className="sm2-assess-sec-meta">{sec.count} criteria · {sec.weight} marks each · Total {sec.count*sec.weight}</span>
+                </div>
+                <span className="sm2-assess-live-marks\">{(f[sec.key] || []).filter(v=>v==="Yes").length*sec.weight} / {sec.count*sec.weight}</span>
               </div>
               <div className="sm2-yn-grid">
                 {sec.criteria.map((cr, idx) => (
@@ -3403,7 +3132,7 @@ export default function TrafficInspectorModule({ user, onLogout }) {
           ))}
 
           {/* ── Section 07: Additional Details ── */}
-          <div className="sm2-assess-section" style={{ opacity: 1 }}>
+          <div id="section-additional" className="sm2-assess-section" style={{ opacity: 1 }}>
             <div className="sm2-assess-sec-hdr">
               <span className="sm2-assess-sec-num">07</span>
               <div><strong>Additional Details</strong><span className="sm2-assess-sec-meta">Mandatory fields</span></div>
@@ -3487,6 +3216,18 @@ export default function TrafficInspectorModule({ user, onLogout }) {
                   alert("Assessment saved as draft successfully!");
                 }}>Save as Draft</button>
                 <button className="sm2-primary-btn" style={{ padding: "10px 20px", borderRadius: "8px", fontWeight: "700", border: "none", background: "#2563eb", color: "#ffffff", display: "flex", alignItems: "center", gap: "6px", cursor: "pointer" }} onClick={() => {
+                  const isFormValid = f.alcoholicStatus && TI_SS_CRITERIA.every(sec => f[sec.key] && f[sec.key].length === sec.count && f[sec.key].every(v => v === "Yes" || v === "No"));
+                  if (!isFormValid) {
+                    const missingSec = TI_SS_CRITERIA.find(sec => !(f[sec.key] && f[sec.key].length === sec.count && f[sec.key].every(v => v === "Yes" || v === "No")));
+                    if (missingSec) {
+                      alert(`Validation Error: Please complete all questions in the "${missingSec.label}" section.`);
+                      document.getElementById('section-' + missingSec.key)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    } else if (!f.alcoholicStatus) {
+                      alert(`Validation Error: Please select Alcoholic/Non-Alcoholic status.`);
+                      document.getElementById('section-additional')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+                    return;
+                  }
                   setSSField(activeSsId, "knowledgeMarks", String(knowledge));
                   submitSSAssessment(activeSsId);
                 }}>
@@ -3686,11 +3427,17 @@ export default function TrafficInspectorModule({ user, onLogout }) {
 
           {/* ── Sections 02-06: Yes/No blocks ── */}
           {TI_TM_CRITERIA.map((sec, si) => (
-            <div key={sec.key} className="sm2-assess-section" style={{ opacity: 1 }}>
+            <div id={'section-' + sec.key} key={sec.key} className="sm2-assess-section" style={{ opacity: 1 }}>
               <div className="sm2-assess-sec-hdr">
                 <span className="sm2-assess-sec-num">{String(si+2).padStart(2,"0")}</span>
-                <div><strong>{sec.label}</strong><span className="sm2-assess-sec-meta">{sec.count} criteria · {sec.weight} marks each · Total {sec.count*sec.weight}</span></div>
-                <span className="sm2-assess-live-marks">{f[sec.key]?.filter(v=>v==="Yes").length*sec.weight} / {sec.count*sec.weight}</span>
+                <div>
+                  <strong>{sec.label} <span style={{color:"#dc2626"}}>*</span></strong>
+                  {!(f[sec.key] && f[sec.key].length === sec.count && f[sec.key].every(v => v === "Yes" || v === "No")) && (
+                    <span style={{ color: "#dc2626", fontSize: "11px", fontWeight: "700", marginLeft: "8px", background: "#fee2e2", padding: "2px 6px", borderRadius: "4px" }}>Incomplete</span>
+                  )}
+                  <span className="sm2-assess-sec-meta">{sec.count} criteria · {sec.weight} marks each · Total {sec.count*sec.weight}</span>
+                </div>
+                <span className="sm2-assess-live-marks\">{(f[sec.key] || []).filter(v=>v==="Yes").length*sec.weight} / {sec.count*sec.weight}</span>
               </div>
               <div className="sm2-yn-grid">
                 {sec.criteria.map((cr, idx) => (
@@ -3719,7 +3466,7 @@ export default function TrafficInspectorModule({ user, onLogout }) {
           ))}
 
           {/* ── Section 07: Additional Details ── */}
-          <div className="sm2-assess-section" style={{ opacity: 1 }}>
+          <div id="section-additional" className="sm2-assess-section" style={{ opacity: 1 }}>
             <div className="sm2-assess-sec-hdr">
               <span className="sm2-assess-sec-num">07</span>
               <div><strong>Additional Details</strong><span className="sm2-assess-sec-meta">Mandatory fields</span></div>
@@ -3803,6 +3550,18 @@ export default function TrafficInspectorModule({ user, onLogout }) {
                   alert("Assessment saved as draft successfully!");
                 }}>Save as Draft</button>
                 <button className="sm2-primary-btn" style={{ padding: "10px 20px", borderRadius: "8px", fontWeight: "700", border: "none", background: "#2563eb", color: "#ffffff", display: "flex", alignItems: "center", gap: "6px", cursor: "pointer" }} onClick={() => {
+                  const isFormValid = f.alcoholicStatus && TI_TM_CRITERIA.every(sec => f[sec.key] && f[sec.key].length === sec.count && f[sec.key].every(v => v === "Yes" || v === "No"));
+                  if (!isFormValid) {
+                    const missingSec = TI_TM_CRITERIA.find(sec => !(f[sec.key] && f[sec.key].length === sec.count && f[sec.key].every(v => v === "Yes" || v === "No")));
+                    if (missingSec) {
+                      alert(`Validation Error: Please complete all questions in the "${missingSec.label}" section.`);
+                      document.getElementById('section-' + missingSec.key)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    } else if (!f.alcoholicStatus) {
+                      alert(`Validation Error: Please select Alcoholic/Non-Alcoholic status.`);
+                      document.getElementById('section-additional')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+                    return;
+                  }
                   setTMField(activeTmId, "knowledgeMarks", String(knowledge));
                   submitTMAssessment(activeTmId);
                 }}>
@@ -3836,7 +3595,6 @@ export default function TrafficInspectorModule({ user, onLogout }) {
           colHeader: "STATION SUPERINTENDENT",
           list: ssList,
           openForm: openSSForm,
-          sendAccess: handleSendSSExamAccess,
           avatarBg: "#1e3a8a",
           roleName: "Station Superintendent",
           rolePillBg: "#f5f3ff",
@@ -4193,21 +3951,23 @@ export default function TrafficInspectorModule({ user, onLogout }) {
                           <div style={{ display: "flex", gap: "8px", alignItems: "center", justifyContext: "flex-end" }}>
                             {item.status === "Pending" && (
                               <>
-                                <button 
-                                  onClick={() => config.sendAccess(item.id)}
-                                  style={{
-                                    background: "#7c3aed",
-                                    border: "none",
-                                    color: "#ffffff",
-                                    padding: "6px 12px",
-                                    borderRadius: "8px",
-                                    cursor: "pointer",
-                                    fontWeight: "700",
-                                    fontSize: "12px"
-                                  }}
-                                >
-                                  Send Access
-                                </button>
+                                {config.sendAccess && (
+                                  <button 
+                                    onClick={() => config.sendAccess(item.id)}
+                                    style={{
+                                      background: "#7c3aed",
+                                      border: "none",
+                                      color: "#ffffff",
+                                      padding: "6px 12px",
+                                      borderRadius: "8px",
+                                      cursor: "pointer",
+                                      fontWeight: "700",
+                                      fontSize: "12px"
+                                    }}
+                                  >
+                                    Send Access
+                                  </button>
+                                )}
                                 <button 
                                   onClick={() => config.openForm(item.id)}
                                   style={{
@@ -4612,7 +4372,7 @@ export default function TrafficInspectorModule({ user, onLogout }) {
                 </tr>
               </thead>
               <tbody>
-                {[].map((row, idx) => {
+                {recentAssessments.map((row, idx) => {
                   const roleColors = {
                     "Station Master": { bg: "#eff6ff", color: "#2563eb" },
                     "Station Superintendent": { bg: "#f5f3ff", color: "#7c3aed" },
@@ -4643,7 +4403,23 @@ export default function TrafficInspectorModule({ user, onLogout }) {
                       <td style={{ padding: "14px 16px", textAlign: "right" }}>
                         <button 
                           type="button"
-                          onClick={() => alert(`Viewing details of assessment for ${row.name}...`)}
+                          onClick={() => {
+                            if (row.type?.includes("Pointsman")) {
+                              goTo("reviewPM");
+                              if (row.id) openPmReview(row.id);
+                            } else if (row.type?.includes("Station Master")) {
+                              goTo("stationMasters");
+                              if (row.employeeId) openSMForm(row.employeeId);
+                            } else if (row.type?.includes("Train Manager")) {
+                              goTo("trainManagers");
+                              if (row.employeeId) openTMForm(row.employeeId);
+                            } else if (row.type?.includes("Superintendent")) {
+                              goTo("stationSuper");
+                              if (row.employeeId) openSSForm(row.employeeId);
+                            } else {
+                              goTo("assessments");
+                            }
+                          }}
                           style={{
                             background: "#ffffff",
                             border: "1px solid #cbd5e1",

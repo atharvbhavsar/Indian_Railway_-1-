@@ -199,7 +199,8 @@ function StationMasterModule({ user, onLogout }) {
     <StationMasterPointsmanDetail
       smName={smName}
       smId={smId}
-      smProfile={user}
+      smProfile={stationSms.find(s => s.hrmsId === smId) || user}
+      history={history}
     />
   );
 

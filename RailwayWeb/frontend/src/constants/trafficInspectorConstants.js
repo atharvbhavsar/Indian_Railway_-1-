@@ -193,3 +193,30 @@ export const defaultSSForm = () => ({
   refStatus: "Cleared", counselling: "Not Required",
   automaticTraining: "Not Required", remarks: ""
 });
+
+export const computeSMScore = (form, criteria) => {
+  let total = 0;
+  criteria.forEach(c => {
+    form[c.key]?.forEach(v => { if (v === "Yes") total += c.weight; });
+  });
+  const km = Math.min(parseInt(form.knowledgeMarks) || 0, 25);
+  return { ynScore: Math.min(total, 75), knowledge: km, total: Math.min(total, 75) + km };
+};
+
+export const computeTMScore = (form, criteria) => {
+  let total = 0;
+  criteria.forEach(c => {
+    form[c.key]?.forEach(v => { if (v === "Yes") total += c.weight; });
+  });
+  const km = Math.min(parseInt(form.knowledgeMarks) || 0, 25);
+  return { ynScore: Math.min(total, 75), knowledge: km, total: Math.min(total, 75) + km };
+};
+
+export const computeSSScore = (form, criteria) => {
+  let total = 0;
+  criteria.forEach(c => {
+    form[c.key]?.forEach(v => { if (v === "Yes") total += c.weight; });
+  });
+  const km = Math.min(parseInt(form.knowledgeMarks) || 0, 25);
+  return { ynScore: Math.min(total, 75), knowledge: km, total: Math.min(total, 75) + km };
+};

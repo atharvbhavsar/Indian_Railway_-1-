@@ -53,35 +53,36 @@ const renderMyAssessment = () => {
     /* Scorecard detail view */
     if (myAssessSelected) {
       const sc = myAssessSelected;
-      const cat = getCategory(sc.totalScore);
+      const isApproved = sc.approvalStatus === "Approved";
+      const cat = isApproved ? getCategory(sc.totalScore) : "—";
       const liveTotal = sc.totalScore || 0;
-      const performanceSummary = performanceSummaryText;
+      const performanceSummary = isApproved ? performanceSummaryText : "Official feedback and final grading will be updated once approved by the AOM.";
 
       return (
         <div className="ti2-card animate-fade-in" style={{ padding: "24px", maxHeight: "calc(100vh - 120px)", overflowY: "auto" }}>
           <div className="ti2-card-hdr" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #e2e8f0", paddingBottom: "14px", marginBottom: "20px" }}>
-            <h2 style={{ display: "flex", alignItems: "center", gap: "8px", margin: 0 }}><ShieldCheck size={22} color="#16a34a"/> Detailed Evaluation Scorecard</h2>
+            <h2 style={{ display: "flex", alignItems: "center", gap: "8px", margin: 0 }}><ShieldCheck size={22} color={isApproved ? "#16a34a" : "#2563eb"}/> Detailed Evaluation Scorecard</h2>
             <button className="ti2-primary-btn" onClick={() => setMyAssessSelected(null)}>← Return to History</button>
           </div>
 
           <div className="pm-scorecard-hero" style={{ background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: "12px", padding: "20px", display: "flex", alignItems: "center", gap: "24px", marginBottom: "24px" }}>
-            <div className="pm-sc-score-circle" style={{ width: "90px", height: "90px", borderRadius: "50%", border: `6px solid ${getCategoryColor(cat) || "#2563eb"}`, display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", flexShrink: 0, background: "#fff" }}>
-              <strong style={{ fontSize: "24px", color: getCategoryColor(cat) || "#2563eb", fontWeight: "800" }}>{liveTotal}</strong>
-              <span style={{ fontSize: "10px", color: "#64748b", fontWeight: "600", marginTop: "-2px" }}>/100</span>
+            <div className="pm-sc-score-circle" style={{ width: "90px", height: "90px", borderRadius: "50%", border: `6px solid ${isApproved ? (getCategoryColor(cat) || "#2563eb") : "#6b7280"}`, display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", flexShrink: 0, background: "#fff" }}>
+              <strong style={{ fontSize: "24px", color: isApproved ? (getCategoryColor(cat) || "#2563eb") : "#3b82f6", fontWeight: "800" }}>{liveTotal}</strong>
+              <span style={{ fontSize: "10px", color: "#64748b", fontWeight: "600", marginTop: "-2px" }}>{isApproved ? "/100" : "/25"}</span>
             </div>
             <div>
-              <span className="pm-cat-badge-lg" style={{ background: getCategoryBg(cat), color: getCategoryColor(cat), display: "inline-block", padding: "4px 10px", borderRadius: "999px", fontSize: "12px", fontWeight: "700", marginBottom: "6px" }}>
-                Final Category: Category {cat}
+              <span className="pm-cat-badge-lg" style={{ background: isApproved ? getCategoryBg(cat) : "#f1f5f9", color: isApproved ? getCategoryColor(cat) : "#64748b", display: "inline-block", padding: "4px 10px", borderRadius: "999px", fontSize: "12px", fontWeight: "700", marginBottom: "6px" }}>
+                {isApproved ? `Final Category: Category ${cat}` : "Approval Status: Awaiting AOM Approval"}
               </span>
               <p className="pm-sc-period" style={{ margin: "2px 0", fontSize: "14px", color: "#1e293b", fontWeight: "600" }}>{sc.assessmentPeriod} - Self-Compliance Audit</p>
-              <p className="pm-sc-date" style={{ margin: "2px 0 0", fontSize: "12px", color: "#64748b" }}>Attempt Completed: {sc.date} &nbsp;·&nbsp; Assessed By: {sc.assessedBy || "Traffic Inspector"}</p>
+              <p className="pm-sc-date" style={{ margin: "2px 0 0", fontSize: "12px", color: "#64748b" }}>Attempt Completed: {sc.date} &nbsp;·&nbsp; Assessed By: {sc.assessedBy || "Area Operations Manager (AOM)"}</p>
             </div>
           </div>
 
           {/* Dynamic Performance Summary */}
-          <div className="pm-performance-summary-box" style={{ background: "#eff6ff", borderLeft: "4px solid #2563eb", padding: "16px", borderRadius: "8px", marginBottom: "24px" }}>
-            <h4 style={{ margin: "0 0 6px 0", fontSize: "14px", color: "#1e3a8a", display: "flex", alignItems: "center", gap: "6px" }}>📊 Official Performance Evaluation Summary</h4>
-            <p style={{ margin: 0, fontSize: "13px", color: "#1e3a8a", lineHeight: "1.5" }}>{performanceSummary || `Assessment score: ${liveTotal}/100. Periodic evaluation completed.`}</p>
+          <div className="pm-performance-summary-box" style={{ background: isApproved ? "#eff6ff" : "#f8fafc", borderLeft: `4px solid ${isApproved ? "#2563eb" : "#6b7280"}`, padding: "16px", borderRadius: "8px", marginBottom: "24px" }}>
+            <h4 style={{ margin: "0 0 6px 0", fontSize: "14px", color: isApproved ? "#1e3a8a" : "#475569", display: "flex", alignItems: "center", gap: "6px" }}>📊 Official Performance Evaluation Summary</h4>
+            <p style={{ margin: 0, fontSize: "13px", color: isApproved ? "#1e3a8a" : "#64748b", lineHeight: "1.5" }}>{performanceSummary}</p>
           </div>
 
           {/* Competency Module Breakdown */}
@@ -90,7 +91,7 @@ const renderMyAssessment = () => {
             <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
               {(sc.sections || []).map(s => {
                 const spc = Math.round((s.marks / s.outOf) * 100);
-                const barColor = spc >= 80 ? "#16a34a" : spc >= 50 ? "#2563eb" : spc >= 26 ? "#d97706" : "#dc2626";
+                const barColor = isApproved ? (spc >= 80 ? "#16a34a" : spc >= 50 ? "#2563eb" : spc >= 26 ? "#d97706" : "#dc2626") : "#3b82f6";
                 return (
                   <div key={s.title} className="pm-sc-section-row" style={{ display: "flex", alignItems: "center", gap: "14px", fontSize: "13px" }}>
                     <span className="pm-sc-section-name" style={{ width: "260px", fontWeight: "600", color: "#334155" }}>{s.title}</span>
@@ -159,13 +160,57 @@ const renderMyAssessment = () => {
       );
     }
 
-    const testActive = testAssigned === "Assigned" && (!ssMcqTest || !ssMcqTest.completed);
+    const isTestActivated = localStorage.getItem("ss_test_activated_" + employeeId) === "true";
+    const testActive = isTestActivated && testAssigned === "Assigned" && (!ssMcqTest || !ssMcqTest.completed);
 
     /* History list */
     return (
       <section className="sm2-card">
         {/* MCQ Assessment Assignment Banner */}
-        {testActive ? (
+        {!isTestActivated && (!ssMcqTest || !ssMcqTest.completed) ? (
+          <div style={{
+            background: "linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)",
+            border: "1.5px solid #cbd5e1",
+            borderRadius: 12,
+            padding: 20,
+            marginBottom: 24,
+            boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)"
+          }}>
+            <div style={{display: "flex", gap: 16, alignItems: "start"}}>
+              <div style={{
+                background: "#e2e8f0",
+                borderRadius: 50,
+                width: 42,
+                height: 42,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                flexShrink: 0
+              }}>
+                <Lock size={22} color="#64748b"/>
+              </div>
+              <div style={{flex: 1}}>
+                <h3 style={{margin: "0 0 6px", fontSize: 16, fontWeight: 700, color: "#334155"}}>
+                  🔒 Competency Assessment Locked
+                </h3>
+                <p style={{margin: "0 0 14px", fontSize: 13, color: "#475569", lineHeight: 1.4}}>
+                  Your periodic evaluation is currently locked. Please request your Area Operations Manager (AOM) to activate the assessment.
+                </p>
+                <div style={{
+                  display: "inline-block",
+                  background: "#e2e8f0",
+                  color: "#475569",
+                  padding: "8px 16px",
+                  borderRadius: 6,
+                  fontSize: 12.5,
+                  fontWeight: 600
+                }}>
+                  Locked: Contact AOM to activate your assessment
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : testActive ? (
           <div style={{
             background:"linear-gradient(135deg, #fffbeb 0%, #fff7ed 100%)",
             border:"1.5px solid #fed7aa",
@@ -239,7 +284,7 @@ const renderMyAssessment = () => {
             <div style={{display:"flex", gap:16, fontSize:12, textAlign:"right"}}>
               <div>
                 <span style={{color:"#166534", display:"block"}}>Last Exam Score</span>
-                <strong style={{color:"#14532d", fontSize:13}}>{ssMcqTest ? `${ssMcqTest.correctCount}/25 (${ssMcqTest.percentage}%)` : (history[0]?.totalScore ? `${history[0]?.totalScore}/100` : "—")}</strong>
+                <strong style={{color:"#14532d", fontSize:13}}>{ssMcqTest ? `${ssMcqTest.correctCount}/25 (${ssMcqTest.percentage}%)` : (history[0]?.approvalStatus === "Approved" ? `${history[0]?.totalScore}/100` : (history[0]?.isOnlineExam ? `${history[0]?.totalScore}/25` : "—"))}</strong>
               </div>
               <div style={{borderLeft:"1px solid #bbf7d0", paddingLeft:16}}>
                 <span style={{color:"#166534", display:"block"}}>Next Due Date</span>
@@ -250,7 +295,7 @@ const renderMyAssessment = () => {
         )}
 
         <div className="sm2-card-hdr"><h2>My Assessment History</h2></div>
-        <p className="sm2-subtitle">All assessments conducted by the Traffic Inspector for your record. Click any row to view the detailed scorecard.</p>
+        <p className="sm2-subtitle">All assessments conducted by the Area Operations Manager (AOM) for your record. Click any row to view the detailed scorecard.</p>
 
         {history.length === 0 ? (
           <div style={{ padding: "40px 20px", background: "#f8fafc", borderRadius: "12px", border: "1px dashed #cbd5e1", textAlign: "center", color: "#64748b", marginTop: "20px" }}>
@@ -268,21 +313,21 @@ const renderMyAssessment = () => {
               </div>
               <div className="sm2-report-mini">
                 <label>Latest Score</label>
-                <strong>{history[0]?.totalScore ?? "—"}/{history[0]?.isOnlineExam ? 25 : 100}</strong>
+                <strong>{history[0] ? (history[0].approvalStatus === "Approved" ? `${history[0].totalScore}/100` : (history[0].isOnlineExam ? `${history[0].totalScore}/25` : "Pending")) : "—"}</strong>
               </div>
               <div className="sm2-report-mini">
-                <label>Average TI Score</label>
+                <label>Average AOM Score</label>
                 <strong>{
                   (() => {
-                    const regs = history.filter(h => !h.isOnlineExam);
+                    const regs = history.filter(h => !h.isOnlineExam && h.approvalStatus === "Approved");
                     return regs.length ? `${Math.round(regs.reduce((s, a) => s + a.totalScore, 0) / regs.length)}/100` : "—";
                   })()
                 }</strong>
               </div>
               <div className="sm2-report-mini">
                 <label>Latest Assessment</label>
-                <strong style={{color: getCategoryColor(getCategory(history[0]?.totalScore || 0))}}>
-                  {history[0]?.isOnlineExam ? "Online CBT" : `Category ${getCategory(history[0]?.totalScore || 0)}`}
+                <strong style={{color: history[0]?.approvalStatus === "Approved" ? getCategoryColor(getCategory(history[0]?.totalScore || 0)) : "#64748b"}}>
+                  {history[0] ? (history[0].approvalStatus === "Approved" ? `Category ${getCategory(history[0].totalScore)}` : "Awaiting Grading") : "—"}
                 </strong>
               </div>
             </div>
@@ -294,17 +339,18 @@ const renderMyAssessment = () => {
                   <span key={h}>{h}</span>)}
               </div>
               {history.map(sc => {
-                const cat = getCategory(sc.totalScore);
+                const isApproved = sc.approvalStatus === "Approved";
+                const cat = isApproved ? getCategory(sc.totalScore) : "—";
                 return (
                   <button key={sc.id} className="sm2-myassess-row" onClick={() => setMyAssessSelected(sc)}>
                     <span title={`Cycle: ${sc.assessmentPeriod}\nDuration: ${formatQuarterPeriod(sc.assessmentPeriod)}`}>
                       <strong>{formatQuarterPeriod(sc.assessmentPeriod)}</strong>
                     </span>
                     <span>{sc.date}</span>
-                    <span><strong>{sc.totalScore}/{sc.isOnlineExam ? 25 : 100}</strong></span>
+                    <span><strong>{isApproved ? `${sc.totalScore}/100` : (sc.isOnlineExam ? `${sc.totalScore}/25` : "—")}</strong></span>
                     <span>
-                      <span className="sm2-badge" style={{background:getCategoryBg(cat),color:getCategoryColor(cat)}}>
-                        {sc.isOnlineExam ? "CBT Exam" : `Cat. ${cat}`}
+                      <span className="sm2-badge" style={{background: isApproved ? getCategoryBg(cat) : "#f1f5f9", color: isApproved ? getCategoryColor(cat) : "#64748b"}}>
+                        {isApproved ? `Cat. ${cat}` : "—"}
                       </span>
                     </span>
                     <span style={{fontSize:11,color:"#64748b"}}>{sc.assessedBy || "S. Deshmukh (TI)"}</span>
@@ -451,10 +497,11 @@ const renderTakeTest = () => {
 
 const renderHistoryPage = () => {
     // Top summary statistics calculated reactively:
+    const approvedHistory = history.filter(h => h.approvalStatus === "Approved");
     const totalAssessments = history.length;
-    const latestScore = history.length ? history[0].totalScore : null;
-    const averageScore = history.length
-      ? Math.round(history.reduce((s, i) => s + i.totalScore, 0) / history.length)
+    const latestScore = approvedHistory.length ? approvedHistory[0].totalScore : null;
+    const averageScore = approvedHistory.length
+      ? Math.round(approvedHistory.reduce((s, i) => s + i.totalScore, 0) / approvedHistory.length)
       : 0;
     const latestCategory = latestScore !== null ? getCategory(latestScore) : "—";
 
@@ -569,18 +616,21 @@ const renderHistoryPage = () => {
               <tbody>
                 {paginatedHistory.map((record, index) => {
                   const absoluteIdx = filteredHistory.length - (startIndex + index);
-                  const cat = getCategory(record.totalScore);
+                  const isApproved = record.approvalStatus === "Approved";
+                  const cat = isApproved ? getCategory(record.totalScore) : "—";
                   return (
                     <tr key={record.id} className="sdom-table-row-hover" style={{ borderBottom: "1px solid #f1f5f9", transition: "background 0.15s ease" }}>
                       <td style={{ padding: "14px 18px", fontWeight: "700", color: "#1e3a8a" }}>#{absoluteIdx}</td>
                       <td style={{ padding: "14px 18px", fontWeight: "600", color: "#334155" }}>{record.assessmentPeriod}</td>
                       <td style={{ padding: "14px 18px", color: "#64748b" }}>{record.date}</td>
-                      <td style={{ padding: "14px 18px", fontWeight: "800", color: "#0f172a" }}>{record.totalScore} / 100</td>
+                      <td style={{ padding: "14px 18px", fontWeight: "800", color: "#0f172a" }}>
+                        {isApproved ? `${record.totalScore} / 100` : (record.isOnlineExam ? `${record.totalScore} / 25` : "Awaiting Grading")}
+                      </td>
                       <td style={{ padding: "14px 18px" }}>
                         <span 
                           style={{ 
-                            background: getCategoryBg(cat), 
-                            color: getCategoryColor(cat), 
+                            background: isApproved ? getCategoryBg(cat) : "#f1f5f9", 
+                            color: isApproved ? getCategoryColor(cat) : "#64748b", 
                             fontWeight: "800", 
                             fontSize: "12px", 
                             padding: "4px 10px", 
@@ -588,13 +638,21 @@ const renderHistoryPage = () => {
                             textTransform: "uppercase" 
                           }}
                         >
-                          Cat. {cat}
+                          {isApproved ? `Cat. ${cat}` : "—"}
                         </span>
                       </td>
-                      <td style={{ padding: "14px 18px", color: "#334155", fontWeight: "500" }}>{record.assessedBy || "S. Deshmukh (TI)"}</td>
+                      <td style={{ padding: "14px 18px", color: "#334155", fontWeight: "500" }}>{record.assessedBy || "AOM"}</td>
                       <td style={{ padding: "14px 18px" }}>
-                        <span style={{ background: "#dcfce7", color: "#15803d", fontWeight: "700", fontSize: "11px", padding: "4px 8px", borderRadius: "20px" }}>
-                          Approved
+                        <span style={{ 
+                          background: isApproved ? "#dcfce7" : "#fffbeb", 
+                          color: isApproved ? "#15803d" : "#b45309", 
+                          fontWeight: "700", 
+                          fontSize: "11.5px", 
+                          padding: "4px 10px", 
+                          borderRadius: "20px",
+                          border: isApproved ? "1px solid #bbf7d0" : "1px solid #fef3c7"
+                        }}>
+                          {record.approvalStatus || "Pending"}
                         </span>
                       </td>
                       <td style={{ padding: "14px 18px", textAlign: "right" }}>
@@ -658,33 +716,37 @@ const renderScorecardPage = () => {
       </section>
     );
 
-    const cat = getCategory(selectedRecord.totalScore);
+    const isApproved = selectedRecord.approvalStatus === "Approved";
+    const cat = isApproved ? getCategory(selectedRecord.totalScore) : "—";
+    const circleColor = isApproved ? getCategoryColor(cat) : "#6b7280";
+    const bgBadge = isApproved ? getCategoryBg(cat) : "#f1f5f9";
+    const performanceSummary = isApproved ? performanceSummaryText : "Official feedback and final grading will be updated once approved by the AOM.";
 
     return (
       <div className="ti2-card animate-fade-in" style={{ padding: "24px", maxHeight: "calc(100vh - 120px)", overflowY: "auto" }}>
         <div className="ti2-card-hdr" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #e2e8f0", paddingBottom: "14px", marginBottom: "20px" }}>
-          <h2 style={{ display: "flex", alignItems: "center", gap: "8px", margin: 0 }}><ShieldCheck size={22} color="#16a34a"/> Detailed Evaluation Scorecard</h2>
+          <h2 style={{ display: "flex", alignItems: "center", gap: "8px", margin: 0 }}><ShieldCheck size={22} color={isApproved ? "#16a34a" : "#2563eb"}/> Detailed Evaluation Scorecard</h2>
           <button className="ti2-primary-btn" onClick={() => setScreenMode("default")}>← Return to History</button>
         </div>
 
         <div className="pm-scorecard-hero" style={{ background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: "12px", padding: "20px", display: "flex", alignItems: "center", gap: "24px", marginBottom: "24px" }}>
-          <div className="pm-sc-score-circle" style={{ width: "90px", height: "90px", borderRadius: "50%", border: `6px solid ${getCategoryColor(cat)}`, display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", flexShrink: 0, background: "#fff" }}>
-            <strong style={{ fontSize: "24px", color: getCategoryColor(cat), fontWeight: "800" }}>{selectedRecord.totalScore}</strong>
-            <span style={{ fontSize: "10px", color: "#64748b", fontWeight: "600", marginTop: "-2px" }}>/100</span>
+          <div className="pm-sc-score-circle" style={{ width: "90px", height: "90px", borderRadius: "50%", border: `6px solid ${circleColor}`, display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", flexShrink: 0, background: "#fff" }}>
+            <strong style={{ fontSize: "24px", color: isApproved ? circleColor : "#3b82f6", fontWeight: "800" }}>{selectedRecord.totalScore}</strong>
+            <span style={{ fontSize: "10px", color: "#64748b", fontWeight: "600", marginTop: "-2px" }}>{isApproved ? "/100" : "/25"}</span>
           </div>
           <div>
-            <span className="pm-cat-badge-lg" style={{ background: getCategoryBg(cat), color: getCategoryColor(cat), display: "inline-block", padding: "4px 10px", borderRadius: "999px", fontSize: "12px", fontWeight: "700", marginBottom: "6px" }}>
-              Final Category: Category {cat}
+            <span className="pm-cat-badge-lg" style={{ background: bgBadge, color: isApproved ? circleColor : "#64748b", display: "inline-block", padding: "4px 10px", borderRadius: "999px", fontSize: "12px", fontWeight: "700", marginBottom: "6px" }}>
+              {isApproved ? `Final Category: Category ${cat}` : "Approval Status: Awaiting AOM Approval"}
             </span>
             <p className="pm-sc-period" style={{ margin: "2px 0", fontSize: "14px", color: "#1e293b", fontWeight: "600" }}>{selectedRecord.assessmentPeriod} - Self-Compliance Audit</p>
-            <p className="pm-sc-date" style={{ margin: "2px 0 0", fontSize: "12px", color: "#64748b" }}>Attempt Completed: {selectedRecord.date} &nbsp;·&nbsp; Assessed By: S. Deshmukh (Traffic Inspector)</p>
+            <p className="pm-sc-date" style={{ margin: "2px 0 0", fontSize: "12px", color: "#64748b" }}>Attempt Completed: {selectedRecord.date} &nbsp;·&nbsp; Assessed By: Area Operations Manager (AOM)</p>
           </div>
         </div>
 
         {/* Dynamic Performance Summary */}
-        <div className="pm-performance-summary-box" style={{ background: "#eff6ff", borderLeft: "4px solid #2563eb", padding: "16px", borderRadius: "8px", marginBottom: "24px" }}>
-          <h4 style={{ margin: "0 0 6px 0", fontSize: "14px", color: "#1e3a8a", display: "flex", alignItems: "center", gap: "6px" }}>📊 Official Performance Evaluation Summary</h4>
-          <p style={{ margin: 0, fontSize: "13px", color: "#1e3a8a", lineHeight: "1.5" }}>{performanceSummaryText}</p>
+        <div className="pm-performance-summary-box" style={{ background: isApproved ? "#eff6ff" : "#f8fafc", borderLeft: `4px solid ${isApproved ? "#2563eb" : "#6b7280"}`, padding: "16px", borderRadius: "8px", marginBottom: "24px" }}>
+          <h4 style={{ margin: "0 0 6px 0", fontSize: "14px", color: isApproved ? "#1e3a8a" : "#475569", display: "flex", alignItems: "center", gap: "6px" }}>📊 Official Performance Evaluation Summary</h4>
+          <p style={{ margin: 0, fontSize: "13px", color: isApproved ? "#1e3a8a" : "#64748b", lineHeight: "1.5" }}>{performanceSummary}</p>
         </div>
 
         {/* Competency Module Breakdown */}
@@ -693,7 +755,7 @@ const renderScorecardPage = () => {
           <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
             {selectedRecord.sections.map(s => {
               const spc = Math.round((s.marks / s.outOf) * 100);
-              const barColor = getCategoryColor(getCategory(spc));
+              const barColor = isApproved ? getCategoryColor(getCategory(spc)) : "#3b82f6";
               return (
                 <div key={s.title} className="pm-sc-section-row" style={{ display: "flex", alignItems: "center", gap: "14px", fontSize: "13px" }}>
                   <span className="pm-sc-section-name" style={{ width: "260px", fontWeight: "600", color: "#334155" }}>{s.title}</span>
@@ -790,7 +852,7 @@ const renderCurrentTestsPage = () => {
             <div className="pm-no-test-banner" style={{ background: "#f8fafc", border: "2px dashed #cbd5e1" }}>
               <Lock size={40} color="#64748b" />
               <h3>Competency Exam Locked</h3>
-              <p>Your periodic evaluation has not been activated by the Traffic Inspector yet. Please request your Traffic Inspector to activate your test so you can attempt it.</p>
+              <p>Your periodic evaluation has not been activated by the Area Operations Manager (AOM) yet. Please request your Area Operations Manager (AOM) to activate your test so you can attempt it.</p>
             </div>
           ) : !currentTest ? (
             <div className="pm-no-test-banner">
@@ -1279,5 +1341,5 @@ const renderAttemptPage = () => {
     );
   };
 
-  return screenMode === "takeTest" ? renderAttemptPage() : renderMyAssessment();
+  return screenMode === "takeTest" ? renderAttemptPage() : screenMode === "scorecard" ? renderScorecardPage() : renderMyAssessment();
 }

@@ -370,7 +370,7 @@ function PointsmanModule({ user, onLogout }) {
         }
       }
       loadDbData();
-      const intervalId = setInterval(loadDbData, 5000);
+      const intervalId = setInterval(loadDbData, 4000);
       return () => clearInterval(intervalId);
     }
   }, [employeeId]);

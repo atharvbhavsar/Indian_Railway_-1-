@@ -125,6 +125,8 @@ function TrainManagerModule({ user, onLogout }) {
       }
     }
     loadHistory();
+    const interval = setInterval(loadHistory, 4000);
+    return () => clearInterval(interval);
   }, [employeeId]);
   
   const [statusText, setStatusText] = useState("");

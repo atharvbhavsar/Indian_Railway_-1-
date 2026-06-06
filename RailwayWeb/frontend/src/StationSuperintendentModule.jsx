@@ -51,7 +51,7 @@ import {
 } from "recharts";
 import { TEST_NAME, testQuestions } from './data/mockSSData';
 import { getCat, getUserRisk, getCategory, getCategoryColor, getCategoryBg, formatQuarterPeriod } from './utils/ssUtils';
-import { dbService } from "./supabaseClient";
+import { dbService, supabase, isSupabaseConfigured } from "./supabaseClient";
 import "./sdom.css";
 import SSDashboard from './pages/superintendent/SSDashboard';
 import SSProfile from './pages/superintendent/SSProfile';
@@ -137,8 +137,8 @@ const MONTHLY_TREND = [];
 
 
 // Helper to generate correct/incorrect response array for seeded history
-function generateMockResponses(score) {
-  const correctCount = Math.round((score / 100) * 25);
+function generateMockResponses(score, isApproved = false) {
+  const correctCount = isApproved ? Math.round((score / 100) * 25) : score;
   const arr = Array(25).fill(null);
   const indices = Array.from({ length: 25 }, (_, i) => i);
   // shuffle indices
@@ -240,6 +240,8 @@ function stopAlarmSound() {
   }
 }
 
+
+
 /* ─── Main component ─── */
 function StationSuperintendentModule({ user, onLogout }) {
   const fullName = user?.name && user.name !== "Station Superintendent User" ? user.name : stationSuperintendentProfile.name;
@@ -286,6 +288,10 @@ function StationSuperintendentModule({ user, onLogout }) {
 
   useEffect(() => {
     fetchLiveDatabaseData();
+    const interval = setInterval(() => {
+      fetchLiveDatabaseData();
+    }, 4000);
+    return () => clearInterval(interval);
   }, []);
 
   const myStations = useMemo(() => stations, [stations]);
@@ -332,20 +338,38 @@ function StationSuperintendentModule({ user, onLogout }) {
         try {
           const data = await dbService.getTestHistory(employeeId);
           if (data && data.length > 0) {
-            const mapped = data.map(attempt => ({
-              id: attempt.attempt_id,
-              date: attempt.submitted_at ? attempt.submitted_at.slice(0, 10) : new Date().toISOString().slice(0, 10),
-              assessmentPeriod: attempt.ASSESSMENT?.assessment_type || "Periodic Exam",
-              name: "CBT Exam",
-              assessedBy: "Online Exam",
-              totalScore: attempt.obtained_marks || attempt.percentage || 0,
-              sections: [
-                { title: "Competency Score", marks: attempt.obtained_marks || attempt.percentage || 0, outOf: 100 }
-              ],
-              responses: [],
-              approvalStatus: "Completed",
-              isOnlineExam: true
-            }));
+            const mapped = data.map(attempt => {
+              const score = attempt.obtained_marks !== undefined ? attempt.obtained_marks : (attempt.percentage || 0);
+              const isApproved = attempt.ASSESSMENT?.status === "Approved";
+              const isOnlineExam = attempt.total_marks === 25 || (attempt.ASSESSMENT?.assessment_type || "").includes("MCQ") || !isApproved;
+
+              const sections = isApproved ? [
+                { title: "Station Safety",          marks: Math.round(score * 0.30), outOf: 30 },
+                { title: "Rule Compliance",         marks: Math.round(score * 0.25), outOf: 25 },
+                { title: "Incident Management",     marks: Math.round(score * 0.20), outOf: 20 },
+                { title: "Communication Standards", marks: Math.round(score * 0.15), outOf: 15 },
+                { title: "Documentation Audit",     marks: Math.round(score * 0.10), outOf: 10 }
+              ] : [
+                { title: "Signal Rules",            marks: Math.min(5, Math.floor(score / 5) + (score % 5 > 0 ? 1 : 0)), outOf: 5 },
+                { title: "Track Handling",           marks: Math.min(5, Math.floor(score / 5) + (score % 5 > 1 ? 1 : 0)), outOf: 5 },
+                { title: "Communication",            marks: Math.min(5, Math.floor(score / 5) + (score % 5 > 2 ? 1 : 0)), outOf: 5 },
+                { title: "Safety Response",          marks: Math.min(5, Math.floor(score / 5) + (score % 5 > 3 ? 1 : 0)), outOf: 5 },
+                { title: "Operational Judgement",    marks: Math.max(0, score - Math.min(5, Math.floor(score / 5) + (score % 5 > 0 ? 1 : 0)) - Math.min(5, Math.floor(score / 5) + (score % 5 > 1 ? 1 : 0)) - Math.min(5, Math.floor(score / 5) + (score % 5 > 2 ? 1 : 0)) - Math.min(5, Math.floor(score / 5) + (score % 5 > 3 ? 1 : 0))), outOf: 5 }
+              ];
+
+              return {
+                id: attempt.attempt_id,
+                date: attempt.submitted_at ? attempt.submitted_at.slice(0, 10) : new Date().toISOString().slice(0, 10),
+                assessmentPeriod: attempt.ASSESSMENT?.assessment_type || "Station Superintendent Assessment",
+                name: "CBT Exam",
+                assessedBy: attempt.conducted_by || "AOM",
+                totalScore: score,
+                sections,
+                responses: generateMockResponses(score, isApproved),
+                approvalStatus: attempt.ASSESSMENT?.status || "Submitted",
+                isOnlineExam: isOnlineExam
+              };
+            });
             setHistory(mapped);
             sessionStorage.setItem(`ss_history_${employeeId}`, JSON.stringify(mapped));
           } else {
@@ -358,12 +382,15 @@ function StationSuperintendentModule({ user, onLogout }) {
       }
     }
     loadHistory();
+    const intervalId = setInterval(loadHistory, 4000);
+    return () => clearInterval(intervalId);
   }, [employeeId]);
 
   const [selectedRecord, setSelectedRecord] = useState(null);
 
   // My Assessment state (mirrors SM module)
   const [myAssessSelected, setMyAssessSelected] = useState(null);
+  const [dbAssessment, setDbAssessment] = useState(null);
   const [ssMcqTest, setSsMcqTest] = useState(() => {
     const saved = sessionStorage.getItem(`ss_mcq_test_${employeeId}`);
     return saved ? JSON.parse(saved) : null;
@@ -371,11 +398,103 @@ function StationSuperintendentModule({ user, onLogout }) {
   const [testAssigned, setTestAssigned] = useState(() => {
     const saved = sessionStorage.getItem(`ss_test_assigned_${employeeId}`);
     if (saved === null) {
-      sessionStorage.setItem(`ss_test_assigned_${employeeId}`, "Assigned");
-      return "Assigned";
+      const activated = localStorage.getItem(`ss_test_activated_${employeeId}`) === "true";
+      const defaultStatus = activated ? "Assigned" : "Not Assigned";
+      sessionStorage.setItem(`ss_test_assigned_${employeeId}`, defaultStatus);
+      return defaultStatus;
     }
     return saved;
   });
+
+  // Read assessment status from database and update local storage/states to unlock automatically
+  useEffect(() => {
+    async function checkDatabaseAssessment() {
+      if (!employeeId || !isSupabaseConfigured) return;
+      try {
+        // First resolve the employee's user_id from their HRMS ID
+        let resolvedEmployeeId = employeeId;
+        const { data: uData } = await supabase
+          .from('USERS')
+          .select('user_id')
+          .eq('hrms_id', employeeId)
+          .single();
+        if (uData?.user_id) {
+          resolvedEmployeeId = uData.user_id;
+        }
+
+        // Fetch active/pending assessments for this user
+        const { data: assessments, error } = await supabase
+          .from('ASSESSMENT')
+          .select('assessment_id, status, assessment_type, conducted_by')
+          .eq('employee_id', resolvedEmployeeId)
+          .in('status', ['Pending', 'AVAILABLE', 'LOCKED'])
+          .order('assessment_date', { ascending: false })
+          .limit(1);
+
+        if (!error && assessments && assessments.length > 0) {
+          const activeAssess = assessments[0];
+          setDbAssessment(activeAssess);
+          if (activeAssess.status === 'Pending' || activeAssess.status === 'AVAILABLE') {
+            const currentActivated = localStorage.getItem(`ss_test_activated_${employeeId}`);
+            if (currentActivated !== "true") {
+              localStorage.setItem(`ss_test_activated_${employeeId}`, "true");
+              window.dispatchEvent(new Event("storage"));
+            }
+          } else {
+            const currentActivated = localStorage.getItem(`ss_test_activated_${employeeId}`);
+            if (currentActivated !== "false") {
+              localStorage.setItem(`ss_test_activated_${employeeId}`, "false");
+              window.dispatchEvent(new Event("storage"));
+            }
+          }
+        } else {
+          setDbAssessment(null);
+          if (!error && assessments && assessments.length === 0) {
+            const currentActivated = localStorage.getItem(`ss_test_activated_${employeeId}`);
+            if (currentActivated !== "false") {
+              localStorage.setItem(`ss_test_activated_${employeeId}`, "false");
+              window.dispatchEvent(new Event("storage"));
+            }
+          }
+        }
+      } catch (err) {
+        console.error("Error checking database assessment for SS:", err);
+      }
+    }
+
+    checkDatabaseAssessment();
+    const dbInterval = setInterval(checkDatabaseAssessment, 4000);
+    return () => clearInterval(dbInterval);
+  }, [employeeId]);
+
+  // Poll localStorage/sessionStorage to detect AOM activation or revocation in real-time
+  useEffect(() => {
+    const syncActivation = () => {
+      const activated = localStorage.getItem(`ss_test_activated_${employeeId}`) === "true";
+      const completed = sessionStorage.getItem(`ss_test_assigned_${employeeId}`) === "Completed";
+      
+      if (activated) {
+        if (completed) {
+          sessionStorage.removeItem(`ss_mcq_test_${employeeId}`);
+          setSsMcqTest(null);
+        }
+        setTestAssigned("Assigned");
+        sessionStorage.setItem(`ss_test_assigned_${employeeId}`, "Assigned");
+      } else {
+        if (!completed) {
+          setTestAssigned("Not Assigned");
+          sessionStorage.setItem(`ss_test_assigned_${employeeId}`, "Not Assigned");
+        }
+      }
+    };
+    syncActivation();
+    const interval = setInterval(syncActivation, 1000);
+    window.addEventListener("storage", syncActivation);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("storage", syncActivation);
+    };
+  }, [employeeId]);
   const [ssActiveQIdx, setSsActiveQIdx] = useState(0);
   const [ssTestResponses, setSsTestResponses] = useState(() => Array(25).fill(null));
   
@@ -489,21 +608,43 @@ function StationSuperintendentModule({ user, onLogout }) {
     return () => clearInterval(timer);
   }, [isAssessmentTimerRunning, assessmentTimeLeft]);
   /* ─── Derived metrics ─── */
-  const latestScore = history.length ? history[0].totalScore : null;
-  const latestCategory = latestScore !== null ? getCategory(latestScore) : "—";
-  const averageScore = history.length
-    ? Math.round(history.reduce((s, i) => s + i.totalScore, 0) / history.length)
+  const approvedHistory = useMemo(() => {
+    return history.filter(h => h.approvalStatus === "Approved");
+  }, [history]);
+
+  const latestAttempt = history[0];
+  const latestIsApproved = latestAttempt ? latestAttempt.approvalStatus === "Approved" : false;
+  const latestScore = latestAttempt
+    ? (latestIsApproved ? latestAttempt.totalScore : `${latestAttempt.totalScore}/25`)
+    : null;
+  const latestCategory = latestAttempt
+    ? (latestIsApproved ? (latestAttempt.category || getCategory(latestAttempt.totalScore)) : "Awaiting Grading")
+    : "—";
+  const averageScore = approvedHistory.length
+    ? Math.round(approvedHistory.reduce((s, i) => s + i.totalScore, 0) / approvedHistory.length)
     : 0;
   const answeredCount = responses.filter(v => v !== null).length;
   const completionRate = Math.round((answeredCount / 25) * 100);
 
   /* ─── Dynamic Performance Summary ─── */
   const performanceSummaryText = useMemo(() => {
-    const rec = myAssessSelected || selectedRecord;
+    const rec = myAssessSelected || selectedRecord || approvedHistory[0];
     if (!rec || !rec.sections || rec.sections.length === 0) return "";
     const { totalScore, sections } = rec;
     const lowestSec = [...sections].sort((a, b) => a.marks - b.marks)[0];
     const highestSec = [...sections].sort((a, b) => b.marks - a.marks)[0];
+    const isApproved = rec.approvalStatus === "Approved";
+
+    if (!isApproved) {
+      let summary = `MCQ Assessment score achieved: ${totalScore}/25 (${Math.round((totalScore / 25) * 100)}%). `;
+      summary += `Demonstrated excellent competency in "${highestSec.title}" scoring ${highestSec.marks}/${highestSec.outOf} marks. `;
+      if (lowestSec.marks < lowestSec.outOf) {
+        summary += `Minor gap observed in "${lowestSec.title}" (${lowestSec.marks}/${lowestSec.outOf}). Reviewing the incorrect answers will help prepare for AOM verification.`;
+      } else {
+        summary += `Excellent understanding of all tested concepts. Recommended to maintain this standard.`;
+      }
+      return summary;
+    }
 
     let summary = `Assessment score achieved: ${totalScore}/100 (${totalScore >= 80 ? 'Outstanding Competency' : totalScore >= 50 ? 'Satisfactory Operations' : 'Requires Training'}). `;
     summary += `Demonstrated excellent competency in "${highestSec.title}" scoring ${highestSec.marks}/${highestSec.outOf} marks. `;
@@ -513,19 +654,19 @@ function StationSuperintendentModule({ user, onLogout }) {
       summary += `Achieved flawless accuracy in all modules. Recommended to maintain this premium standard in daily track shunting.`;
     }
     return summary;
-  }, [myAssessSelected, selectedRecord]);
+  }, [myAssessSelected, selectedRecord, approvedHistory]);
 
   /* ─── Chart data ─── */
   const trendData = useMemo(() =>
-    [...history].reverse().map(r => ({
+    [...approvedHistory].reverse().map(r => ({
       date: r.assessmentPeriod.slice(0, 7),
       score: r.totalScore
-    })), [history]);
+    })), [approvedHistory]);
 
   const pieData = useMemo(() => {
     const counts = { A: 0, B: 0, C: 0, D: 0 };
-    history.forEach(r => { counts[getCategory(r.totalScore)]++; });
-    const total = history.length || 1;
+    approvedHistory.forEach(r => { counts[getCategory(r.totalScore)]++; });
+    const total = approvedHistory.length || 1;
     return Object.entries(counts)
       .filter(([, c]) => c > 0)
       .map(([cat, count]) => ({
@@ -533,7 +674,7 @@ function StationSuperintendentModule({ user, onLogout }) {
         value: Math.round((count / total) * 100),
         count
       }));
-  }, [history]);
+  }, [approvedHistory]);
 
   /* ─── Filtered / sorted history ─── */
   const filteredHistory = useMemo(() => {
@@ -710,7 +851,7 @@ function StationSuperintendentModule({ user, onLogout }) {
     setScreenMode("takeTest");
   };
 
-  const handleSubmitTestAttempt = () => {
+  const handleSubmitTestAttempt = async () => {
     const correctCount = ssTestResponses.filter((r, idx) => r === testQuestions[idx].answer).length;
     const percentage = Math.round((correctCount / 25) * 100);
     const passStatus = percentage >= 60 ? "PASSED" : "FAILED";
@@ -723,33 +864,124 @@ function StationSuperintendentModule({ user, onLogout }) {
       percentage,
       passStatus
     };
+    
+    // De-activate test to prevent re-attempts (Locked by default model)
+    localStorage.setItem(`ss_test_activated_${employeeId}`, "false");
+    
+    // Save locally
     sessionStorage.setItem(`ss_mcq_test_${employeeId}`, JSON.stringify(testResult));
     setSsMcqTest(testResult);
     sessionStorage.setItem(`ss_test_assigned_${employeeId}`, "Completed");
     setTestAssigned("Completed");
-    const record = {
-      id: Date.now(),
-      date: today,
-      assessmentPeriod: "Q2 2026",
-      name: TEST_NAME,
-      assessedBy: "Online Self-Exam",
-      totalScore: correctCount * 4,
-      sections: [
-        { title: "Signal Rules",          marks: 0, outOf: 20 },
-        { title: "Track Handling",         marks: 0, outOf: 20 },
-        { title: "Communication",          marks: 0, outOf: 20 },
-        { title: "Safety Response",        marks: 0, outOf: 20 },
-        { title: "Operational Judgement",  marks: 0, outOf: 20 }
-      ],
-      responses: [...ssTestResponses],
-      approvalStatus: "Completed",
-      isOnlineExam: true
+    
+    // Submit to database under status Submitted
+    const attemptData = {
+      assessmentId: dbAssessment?.assessment_id || null,
+      employeeId: employeeId,
+      obtainedMarks: correctCount,
+      percentage: percentage,
+      category: "",
+      totalMarks: 25,
+      conductedBy: dbAssessment?.conducted_by || "AOM"
     };
-    const newHistory = [record, ...history];
-    setHistory(newHistory);
-    sessionStorage.setItem(`ss_history_${employeeId}`, JSON.stringify(newHistory));
-    setScreenMode("default");
-    setStatusText(`Assessment submitted! Score: ${percentage}% (${correctCount}/25). Status: Completed.`);
+    const answersArray = ssTestResponses.map((selected, idx) => ({
+      questionId: idx + 1,
+      selectedOption: selected || "A",
+      isCorrect: selected === testQuestions[idx].answer,
+      correctOption: testQuestions[idx].answer,
+      marksObtained: selected === testQuestions[idx].answer ? 1 : 0
+    }));
+
+    try {
+      const res = await dbService.submitTestAttempt(attemptData, answersArray);
+      if (res && res.success) {
+        triggerNotification("success", "Competency assessment successfully written to Central Database!");
+      } else {
+        console.warn("Database save failed, attempt saved locally.");
+      }
+    } catch (dbErr) {
+      console.error("Database error on test attempt submission:", dbErr);
+    }
+
+    // Prepare a temporary or db-fetched record
+    let recordToSelect = null;
+
+    // Refresh history
+    try {
+      const data = await dbService.getTestHistory(employeeId);
+      if (data && data.length > 0) {
+        const mapped = data.map(attempt => {
+          const score = attempt.obtained_marks !== undefined ? attempt.obtained_marks : (attempt.percentage || 0);
+          const isApproved = attempt.ASSESSMENT?.status === "Approved";
+          const isOnlineExam = attempt.total_marks === 25 || (attempt.ASSESSMENT?.assessment_type || "").includes("MCQ") || !isApproved;
+
+          const sections = isApproved ? [
+            { title: "Station Safety",          marks: Math.round(score * 0.30), outOf: 30 },
+            { title: "Rule Compliance",         marks: Math.round(score * 0.25), outOf: 25 },
+            { title: "Incident Management",     marks: Math.round(score * 0.20), outOf: 20 },
+            { title: "Communication Standards", marks: Math.round(score * 0.15), outOf: 15 },
+            { title: "Documentation Audit",     marks: Math.round(score * 0.10), outOf: 10 }
+          ] : [
+            { title: "Signal Rules",            marks: Math.min(5, Math.floor(score / 5) + (score % 5 > 0 ? 1 : 0)), outOf: 5 },
+            { title: "Track Handling",           marks: Math.min(5, Math.floor(score / 5) + (score % 5 > 1 ? 1 : 0)), outOf: 5 },
+            { title: "Communication",            marks: Math.min(5, Math.floor(score / 5) + (score % 5 > 2 ? 1 : 0)), outOf: 5 },
+            { title: "Safety Response",          marks: Math.min(5, Math.floor(score / 5) + (score % 5 > 3 ? 1 : 0)), outOf: 5 },
+            { title: "Operational Judgement",    marks: Math.max(0, score - Math.min(5, Math.floor(score / 5) + (score % 5 > 0 ? 1 : 0)) - Math.min(5, Math.floor(score / 5) + (score % 5 > 1 ? 1 : 0)) - Math.min(5, Math.floor(score / 5) + (score % 5 > 2 ? 1 : 0)) - Math.min(5, Math.floor(score / 5) + (score % 5 > 3 ? 1 : 0))), outOf: 5 }
+          ];
+
+          return {
+            id: attempt.attempt_id,
+            date: attempt.submitted_at ? attempt.submitted_at.slice(0, 10) : today,
+            assessmentPeriod: attempt.ASSESSMENT?.assessment_type || "Station Superintendent Assessment",
+            name: "CBT Exam",
+            assessedBy: attempt.conducted_by || "AOM",
+            totalScore: score,
+            sections,
+            responses: generateMockResponses(score, isApproved),
+            approvalStatus: attempt.ASSESSMENT?.status || "Submitted",
+            isOnlineExam: isOnlineExam
+          };
+        });
+        setHistory(mapped);
+        sessionStorage.setItem(`ss_history_${employeeId}`, JSON.stringify(mapped));
+        recordToSelect = mapped[0];
+      } else {
+        // Fallback to local record
+        const record = {
+          id: Date.now(),
+          date: today,
+          assessmentPeriod: "Station Superintendent Assessment",
+          name: TEST_NAME,
+          assessedBy: "AOM",
+          totalScore: correctCount,
+          sections: [
+            { title: "Signal Rules",            marks: Math.min(5, Math.floor(correctCount / 5) + (correctCount % 5 > 0 ? 1 : 0)), outOf: 5 },
+            { title: "Track Handling",           marks: Math.min(5, Math.floor(correctCount / 5) + (correctCount % 5 > 1 ? 1 : 0)), outOf: 5 },
+            { title: "Communication",            marks: Math.min(5, Math.floor(correctCount / 5) + (correctCount % 5 > 2 ? 1 : 0)), outOf: 5 },
+            { title: "Safety Response",          marks: Math.min(5, Math.floor(correctCount / 5) + (correctCount % 5 > 3 ? 1 : 0)), outOf: 5 },
+            { title: "Operational Judgement",    marks: Math.max(0, correctCount - Math.min(5, Math.floor(correctCount / 5) + (correctCount % 5 > 0 ? 1 : 0)) - Math.min(5, Math.floor(correctCount / 5) + (correctCount % 5 > 1 ? 1 : 0)) - Math.min(5, Math.floor(correctCount / 5) + (correctCount % 5 > 2 ? 1 : 0)) - Math.min(5, Math.floor(correctCount / 5) + (correctCount % 5 > 3 ? 1 : 0))), outOf: 5 }
+          ],
+          responses: [...ssTestResponses],
+          approvalStatus: "Submitted",
+          isOnlineExam: true
+        };
+        const newHistory = [record, ...history];
+        setHistory(newHistory);
+        sessionStorage.setItem(`ss_history_${employeeId}`, JSON.stringify(newHistory));
+        recordToSelect = record;
+      }
+    } catch (err) {
+      console.error("Error updating history after submission:", err);
+    }
+
+    if (recordToSelect) {
+      setSelectedRecord(recordToSelect);
+      setMyAssessSelected(recordToSelect);
+    }
+    setActiveNav("myAssessment");
+    setScreenMode("scorecard");
+    setStatusText(`Assessment submitted! Score: ${correctCount}/25. Status: Submitted for AOM Approval.`);
+    logActivity("Assessment", `Submitted test with score ${correctCount}/25 (Awaiting AOM Approval)`);
   };
 
   /* ─── Test Actions ─── */
@@ -787,7 +1019,7 @@ function StationSuperintendentModule({ user, onLogout }) {
     const sec = [0, 0, 0, 0, 0];
     responses.forEach((r, i) => {
       const si = Math.floor(i / 5);
-      if (r === testQuestions[i].answer) { correct++; sec[si] += 4; }
+      if (r === testQuestions[i].answer) { correct++; sec[si] += 1; }
     });
     const sections = [
       "Signal Rules", 
@@ -795,8 +1027,8 @@ function StationSuperintendentModule({ user, onLogout }) {
       "Communication", 
       "Safety Response", 
       "Operational Judgement"
-    ].map((title, i) => ({ title, marks: sec[i], outOf: 20 }));
-    return { totalScore: correct * 4, sections };
+    ].map((title, i) => ({ title, marks: sec[i], outOf: 5 }));
+    return { totalScore: correct, sections };
   };
 
   const submitTest = (isAutoSubmit = false) => {
@@ -811,10 +1043,34 @@ function StationSuperintendentModule({ user, onLogout }) {
       totalScore,
       sections,
       responses: [...responses],
-      assessedBy: "Traffic Inspector",
-      approvalStatus: "Completed",
+      assessedBy: "AOM",
+      approvalStatus: "Submitted",
       isOnlineExam: true
     };
+    
+    // Reset test activation
+    localStorage.setItem(`ss_test_activated_${employeeId}`, "false");
+    
+    // Submit to database under status Submitted
+    const percentage = Math.round((totalScore / 25) * 100);
+    const attemptData = {
+      employeeId: employeeId,
+      obtainedMarks: totalScore,
+      percentage: percentage,
+      category: "", // Do not assign category until AOM grades it
+      totalMarks: 25,
+      conductedBy: "AOM"
+    };
+    const answersArray = responses.map((selected, idx) => ({
+      questionId: idx + 1,
+      selectedOption: selected || "A",
+      isCorrect: selected === testQuestions[idx].answer,
+      correctOption: testQuestions[idx].answer,
+      marksObtained: selected === testQuestions[idx].answer ? 1 : 0
+    }));
+
+    dbService.submitTestAttempt(attemptData, answersArray).catch(console.error);
+
     const newHistory = [record, ...history];
     setHistory(newHistory);
     sessionStorage.setItem(`ss_history_${employeeId}`, JSON.stringify(newHistory));
@@ -823,8 +1079,7 @@ function StationSuperintendentModule({ user, onLogout }) {
     sessionStorage.setItem(`ss_current_test_${employeeId}`, JSON.stringify(null));
 
     // Save MCQ result for Traffic Inspector
-    const correctCount = Math.round(totalScore / 4);
-    const percentage = Math.round((correctCount / 25) * 100);
+    const correctCount = totalScore;
     const mcqResult = {
       completed: true,
       correctCount: correctCount,
@@ -835,13 +1090,13 @@ function StationSuperintendentModule({ user, onLogout }) {
 
     setSelectedRecord(record);
     setActiveTest(null);
-    setActiveNav("history");
+    setActiveNav("myAssessment");
     setScreenMode("scorecard");
     
     const label = isAutoSubmit ? "Auto-submitted (Time Expired)" : "Submitted Successfully";
     setStatusText(`Assessment evaluation completed! ${label}.`);
-    logActivity("Assessment", `Submitted test with score ${totalScore}% (Cat. ${getCategory(totalScore)})`);
-    triggerNotification("success", `Assessment complete! Score: ${totalScore}/100. Grade: Category ${getCategory(totalScore)}`);
+    logActivity("Assessment", `Submitted test with score ${totalScore}/25`);
+    triggerNotification("success", `Assessment complete! Score: ${totalScore}/25.`);
   };
 
   /* ─── Secure Session Actions ─── */
@@ -1032,7 +1287,7 @@ function StationSuperintendentModule({ user, onLogout }) {
         />
       );
     }
-    if (screenMode === "takeTest") {
+    if (screenMode === "takeTest" || screenMode === "scorecard") {
       return (
         <SSMyAssessment
           myAssessSelected={myAssessSelected}

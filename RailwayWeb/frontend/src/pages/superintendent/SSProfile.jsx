@@ -29,14 +29,16 @@ export default function SSProfile({
             <div style={{ fontSize: "1.8rem", fontWeight: 800, marginBottom: 4 }}>{fullName}</div>
             <div style={{ fontSize: "0.9rem", color: "rgba(255,255,255,0.7)" }}>{stationSuperintendentProfile.designation} &bull; {stationSuperintendentProfile.stationName} &bull; Central Railway</div>
             <div style={{ marginTop: 12, display: "flex", gap: 10 }}>
-              <span className="sdom-badge sdom-badge-success">Category {latestCategory}</span>
+              <span className="sdom-badge sdom-badge-success">
+                {(!latestCategory || latestCategory === "—" || latestCategory === "Untested" || latestCategory.includes("Awaiting")) ? "Awaiting Approval" : `Category ${latestCategory}`}
+              </span>
               <span className="sdom-badge sdom-badge-success">Low Risk</span>
               <span className="sdom-badge sdom-badge-success">Active</span>
             </div>
           </div>
           <div className="sdom-station-header-stats">
             <div className="sdom-station-header-stat">
-              <span className="val">{latestScore !== null ? latestScore : "—"}</span>
+              <span className="val">{latestScore !== null ? (String(latestScore).includes("/") ? latestScore : `${latestScore}/100`) : "—"}</span>
               <span className="lbl">Latest Score</span>
             </div>
             <div style={{ width: 1, height: 60, background: "rgba(255,255,255,0.15)" }}/>

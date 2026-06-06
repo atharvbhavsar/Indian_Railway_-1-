@@ -9,16 +9,25 @@ export function StationMasterPointsmanDetail(props) {
   const {
     smName,
     smId,
-    smProfile = {}
+    smProfile = {},
+    history = []
   } = props;
 
   // Render score trend if user has a score, otherwise empty
-  const personalScoreData = smProfile.score > 0 ? [
-    { month: "Score", score: smProfile.score }
-  ] : [];
+  let personalScoreData = (history || [])
+    .filter(h => h.approvalStatus === "Approved" || h.approvalStatus === "Completed")
+    .map(h => ({
+      month: h.date,
+      score: h.totalScore
+    }))
+    .reverse(); // chronological order
 
-  const category = smProfile.category || "Untested";
-  const risk = smProfile.risk || "Untested";
+  if (personalScoreData.length === 0 && smProfile.score > 0) {
+    personalScoreData = [{ month: "Score", score: smProfile.score }];
+  }
+
+  const category = smProfile.cat || smProfile.category || "Untested";
+  const risk = smProfile.risk || smProfile.riskLevel || "Untested";
 
   return (
     <div className="sdom-fade">

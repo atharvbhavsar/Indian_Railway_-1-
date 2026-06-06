@@ -173,6 +173,10 @@ export function useStationMasterState(user, onLogout) {
 
   useEffect(() => {
     fetchLiveDatabaseData();
+    const interval = setInterval(() => {
+      fetchLiveDatabaseData();
+    }, 4000);
+    return () => clearInterval(interval);
   }, [user]);
 
   const openPmAdd = () => {

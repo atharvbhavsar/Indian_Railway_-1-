@@ -17,7 +17,7 @@ export const computeSMScore = (form, criteriaConfig) => {
   let total = 0;
   criteriaConfig.forEach(c => {
     if (form[c.key]) {
-      form[c.key].forEach(v => { if (v === "Yes") total += c.weight; });
+      form[c.key]?.forEach(v => { if (v === "Yes") total += c.weight; });
     }
   });
   const km = Math.min(parseInt(form.knowledgeMarks) || 0, 25);

@@ -11,7 +11,6 @@ function LoginPage({ onLogin }) {
   // Dummy user database
   const dummyUsers = [
     { hrmsId: "ADMIN_01", password: "password123", role: "Super Admin", name: "Prof. Pathak" },
-    { hrmsId: "AOM_NGP", password: "password123", role: "AOM/General", name: "P. K. Verma (Sr. DOM)" },
     { hrmsId: "PM_1001", password: "password123", role: "Pointsman", name: "Ravi Kumar" },
     { hrmsId: "PM_1101", password: "password123", role: "Pointsman", name: "Ravi Kumar" },
     { hrmsId: "PM_1102", password: "password123", role: "Pointsman", name: "Sanjay Patil" },
@@ -28,10 +27,6 @@ function LoginPage({ onLogin }) {
     { hrmsId: "SS_1001", password: "password123", role: "Station Superintendent", name: "Station Superintendent User" },
     { hrmsId: "TI_1001", password: "password123", role: "Traffic Inspector", name: "Traffic Inspector User" },
     { hrmsId: "TI_1002", password: "password123", role: "Traffic Inspector", name: "TI Fresh Account" },
-    { hrmsId: "GM_1001", password: "password123", role: "AOM/General", name: "General Manager User" },
-    { hrmsId: "AOM_1001", password: "password123", role: "AOM/General", name: "AOM User" },
-    { hrmsId: "AOM", password: "password123", role: "AOM/General", name: "AOM User" },
-    { hrmsId: "aom", password: "password123", role: "AOM/General", name: "AOM User" },
     { hrmsId: "SA_1001", password: "password123", role: "Super Admin", name: "Super Admin User" },
     { hrmsId: "admin", password: "admin123", role: "Super Admin", name: "Super Admin User" }
   ];

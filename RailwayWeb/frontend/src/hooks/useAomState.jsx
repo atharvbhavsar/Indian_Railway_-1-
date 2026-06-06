@@ -1,11 +1,11 @@
 import { useState, useMemo, useEffect } from 'react';
 import { MONTHLY_TREND, ASSESSMENT_MONTHLY, COMPLIANCE, CAT_COLORS, RISK_COLORS, STATUS_COLORS, generate96Stations, DASHBOARD_96_STATIONS, stationProgressData, categoryData, sidebarItems, summaryCards, designationOptions, departmentOptions, userTypeOptions, reportingOfficerOptions, aomReadOnlyProfile, initialUserFormData, initialFilterData, stationZoneOptions, stationDivisionOptions, stationCategoryOptions, stationTypeOptions, initialStationFormData, initialStationFilterData, initialStations, tiCategoryOptions, tiAssessmentStatusOptions, initialTrafficInspectors, hrmsTiDirectory, initialTiFormData, stationAverageScoreData, initialPendingAssessments, initialApprovedAssessments, initialReportRows, assessmentCriteria } from '../constants/aomMockData';
-import { 
-  Activity, AlertCircle, AlertTriangle, ArrowRightLeft, ArrowLeft, BarChart3, Building2, BusFront, 
-  ClipboardCheck, Eye, ExternalLink, Filter, Cog, FileCheck, FileDown, FileText, FileBarChart2, 
-  LayoutDashboard, Lock, LogOut, PlusCircle, Plus, Search, ShieldCheck, Star, UserCheck, UserPlus, 
-  UserRoundSearch, Users, Edit, Trash2, TrendingUp, UserRound, TrainFront, CheckCircle, Clock, XCircle, 
-  MapPin, Phone, Calendar, Award, Globe, Tag, GitBranch, Cpu, Layers, Zap, Mail, AlignJustify, Gauge, UserCircle2 
+import {
+  Activity, AlertCircle, AlertTriangle, ArrowRightLeft, ArrowLeft, BarChart3, Building2, BusFront,
+  ClipboardCheck, Eye, ExternalLink, Filter, Cog, FileCheck, FileDown, FileText, FileBarChart2,
+  LayoutDashboard, Lock, LogOut, PlusCircle, Plus, Search, ShieldCheck, Star, UserCheck, UserPlus,
+  UserRoundSearch, Users, Edit, Trash2, TrendingUp, UserRound, TrainFront, CheckCircle, Clock, XCircle,
+  MapPin, Phone, Calendar, Award, Globe, Tag, GitBranch, Cpu, Layers, Zap, Mail, AlignJustify, Gauge, UserCircle2
 } from 'lucide-react';
 import { Bar, BarChart, Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis, LineChart, Line, CartesianGrid, LabelList } from 'recharts';
 import { saDataService } from '../services/saDataService';
@@ -440,19 +440,19 @@ export function useAomState(user, onLogout) {
   const [selectedPeriod, setSelectedPeriod] = useState("FY 2025-26 - Q3");
 
   // ── AOM Approvals Page State (mirrors TI's PM Review exactly) ──
-  const [aomApprovalTab, setAomApprovalTab]           = useState("SM"); // "SM" | "TM"
-  const [aomReviewTab, setAomReviewTab]               = useState("Pending"); // Pending/Approved/Rejected
-  const [aomReviewSearch, setAomReviewSearch]         = useState("");
-  const [aomReviewStation, setAomReviewStation]       = useState("All");
-  const [aomSelectedId, setAomSelectedId]             = useState(null);
-  const [aomEditSections, setAomEditSections]         = useState({});
-  const [aomAomRemarks, setAomAomRemarks]             = useState({});
-  const [aomShowAudit, setAomShowAudit]               = useState({});
-  const [aomRejectMode, setAomRejectMode]             = useState({});
-  const [aomApprovalNotice, setAomApprovalNotice]     = useState("");
-  const [aomSMList, setAomSMList]                     = useState([]);
-  const [aomSSList, setAomSSList]                     = useState([]);
-  const [aomTMList, setAomTMList]                     = useState([]);
+  const [aomApprovalTab, setAomApprovalTab] = useState("SM"); // "SM" | "TM"
+  const [aomReviewTab, setAomReviewTab] = useState("Pending"); // Pending/Approved/Rejected
+  const [aomReviewSearch, setAomReviewSearch] = useState("");
+  const [aomReviewStation, setAomReviewStation] = useState("All");
+  const [aomSelectedId, setAomSelectedId] = useState(null);
+  const [aomEditSections, setAomEditSections] = useState({});
+  const [aomAomRemarks, setAomAomRemarks] = useState({});
+  const [aomShowAudit, setAomShowAudit] = useState({});
+  const [aomRejectMode, setAomRejectMode] = useState({});
+  const [aomApprovalNotice, setAomApprovalNotice] = useState("");
+  const [aomSMList, setAomSMList] = useState([]);
+  const [aomSSList, setAomSSList] = useState([]);
+  const [aomTMList, setAomTMList] = useState([]);
 
   // Refresh SM/SS/TM lists from database whenever Approvals page is active
   useEffect(() => {
@@ -462,16 +462,16 @@ export function useAomState(user, onLogout) {
   }, [activePage]);
 
   const aomCatColor = { A: "#16a34a", B: "#2563eb", C: "#d97706", D: "#dc2626" };
-  const aomCatBg    = { A: "#dcfce7", B: "#dbeafe", C: "#fef3c7", D: "#fee2e2" };
-  const aomGetCat   = s => s >= 80 ? "A" : s >= 50 ? "B" : s >= 26 ? "C" : "D";
+  const aomCatBg = { A: "#dcfce7", B: "#dbeafe", C: "#fef3c7", D: "#fee2e2" };
+  const aomGetCat = s => s >= 80 ? "A" : s >= 50 ? "B" : s >= 26 ? "C" : "D";
 
   const aomCurrentList = aomApprovalTab === "SM" ? aomSMList : (aomApprovalTab === "SS" ? aomSSList : aomTMList);
   const aomSelectedItem = aomSelectedId ? aomCurrentList.find(x => x.id === aomSelectedId) || null : null;
 
   const aomFilteredList = aomCurrentList.filter(item => {
     const st = aomReviewTab === "Pending" ? item.status === "Submitted" : item.status === aomReviewTab;
-    const s  = !aomReviewSearch || item.name.toLowerCase().includes(aomReviewSearch.toLowerCase()) || item.hrmsId.toLowerCase().includes(aomReviewSearch.toLowerCase());
-    const r  = aomReviewStation === "All" || item.station === aomReviewStation;
+    const s = !aomReviewSearch || item.name.toLowerCase().includes(aomReviewSearch.toLowerCase()) || item.hrmsId.toLowerCase().includes(aomReviewSearch.toLowerCase());
+    const r = aomReviewStation === "All" || item.station === aomReviewStation;
     return st && s && r;
   });
 
@@ -499,6 +499,16 @@ export function useAomState(user, onLogout) {
         { title: "Leadership and Management", score: Math.round(total * 0.10), max: 10 },
         { title: "Discipline", score: Math.round(total * 0.10), max: 10 },
         { title: "Appearance and Neatness", score: Math.round(total * 0.10), max: 10 }
+      ];
+    } else if (aomApprovalTab === "SS") {
+      // Fallback: distribute proportionally (no real section data available)
+      const total = rec.score || 0;
+      builtSecs = [
+        { title: "Station Safety", score: Math.round(total * 0.30), max: 30 },
+        { title: "Rule Compliance", score: Math.round(total * 0.25), max: 25 },
+        { title: "Incident Management", score: Math.round(total * 0.20), max: 20 },
+        { title: "Communication Standards", score: Math.round(total * 0.15), max: 15 },
+        { title: "Documentation Audit", score: Math.round(total * 0.10), max: 10 }
       ];
     } else {
       // Train Manager criteria
@@ -546,7 +556,7 @@ export function useAomState(user, onLogout) {
   const aomFinalize = async (id, mode, rejectNote = "") => {
     try {
       const newStatus = mode === "reject" ? "Rejected" : "Approved";
-      
+
       const { error: updateError } = await supabase
         .from("ASSESSMENT")
         .update({ status: newStatus })
@@ -584,7 +594,8 @@ export function useAomState(user, onLogout) {
         await supabase.from("TEST_ATTEMPT").update({
           obtained_marks: total,
           percentage: total,
-          category: aomGetCat(total)
+          category: aomGetCat(total),
+          total_marks: 100
         }).eq("assessment_id", id);
 
         if (targetAssess?.hrmsId) {
@@ -813,77 +824,77 @@ export function useAomState(user, onLogout) {
     setPointsmanStatusFilter("All");
     setActivePage("Pointsman Under Station Master");
   };
-  
-    const stationMastersDirectory = aomStationMasters;
-  
-    const filteredStationMasters = stationMastersDirectory.filter((row) => {
-      const q = stationMasterSearch.trim().toLowerCase();
-      if (!q) return true;
-      return (
-        row.name.toLowerCase().includes(q) ||
-        row.stationName.toLowerCase().includes(q) ||
-        row.stationCode.toLowerCase().includes(q) ||
-        row.division.toLowerCase().includes(q)
-      );
+
+  const stationMastersDirectory = aomStationMasters;
+
+  const filteredStationMasters = stationMastersDirectory.filter((row) => {
+    const q = stationMasterSearch.trim().toLowerCase();
+    if (!q) return true;
+    return (
+      row.name.toLowerCase().includes(q) ||
+      row.stationName.toLowerCase().includes(q) ||
+      row.stationCode.toLowerCase().includes(q) ||
+      row.division.toLowerCase().includes(q)
+    );
+  });
+
+  const handleShiftStationMaster = (smName, targetStationCode) => {
+    if (!targetStationCode) return;
+
+    const currentStation = stations.find(s => s.stationMasterName === smName);
+    if (!currentStation) return;
+
+    const targetStationObj = stations.find(s => s.stationCode === targetStationCode);
+    const targetStationName = targetStationObj ? targetStationObj.stationName : targetStationCode;
+
+    if (!window.confirm(`Are you sure you want to shift Station Master ${smName} from ${currentStation.stationName} to ${targetStationName}?`)) {
+      return;
+    }
+
+    setStations(prev => prev.map(s => {
+      if (s.stationCode === currentStation.stationCode) {
+        return {
+          ...s,
+          stationMasterName: "",
+          contactNumber: "",
+          emailId: ""
+        };
+      }
+      if (s.stationCode === targetStationCode) {
+        return {
+          ...s,
+          stationMasterName: smName,
+          contactNumber: currentStation.contactNumber,
+          emailId: currentStation.emailId
+        };
+      }
+      return s;
+    }));
+
+    setSmShiftDrafts(prev => {
+      const next = { ...prev };
+      delete next[smName];
+      return next;
     });
+  };
 
-    const handleShiftStationMaster = (smName, targetStationCode) => {
-      if (!targetStationCode) return;
-      
-      const currentStation = stations.find(s => s.stationMasterName === smName);
-      if (!currentStation) return;
-      
-      const targetStationObj = stations.find(s => s.stationCode === targetStationCode);
-      const targetStationName = targetStationObj ? targetStationObj.stationName : targetStationCode;
-      
-      if (!window.confirm(`Are you sure you want to shift Station Master ${smName} from ${currentStation.stationName} to ${targetStationName}?`)) {
-        return;
+  const handleDeleteStationMaster = (smName) => {
+    if (!window.confirm(`Are you sure you want to delete Station Master ${smName}?`)) {
+      return;
+    }
+
+    setStations(prev => prev.map(s => {
+      if (s.stationMasterName === smName) {
+        return {
+          ...s,
+          stationMasterName: "",
+          contactNumber: "",
+          emailId: ""
+        };
       }
-
-      setStations(prev => prev.map(s => {
-        if (s.stationCode === currentStation.stationCode) {
-          return {
-            ...s,
-            stationMasterName: "",
-            contactNumber: "",
-            emailId: ""
-          };
-        }
-        if (s.stationCode === targetStationCode) {
-          return {
-            ...s,
-            stationMasterName: smName,
-            contactNumber: currentStation.contactNumber,
-            emailId: currentStation.emailId
-          };
-        }
-        return s;
-      }));
-
-      setSmShiftDrafts(prev => {
-        const next = { ...prev };
-        delete next[smName];
-        return next;
-      });
-    };
-
-    const handleDeleteStationMaster = (smName) => {
-      if (!window.confirm(`Are you sure you want to delete Station Master ${smName}?`)) {
-        return;
-      }
-      
-      setStations(prev => prev.map(s => {
-        if (s.stationMasterName === smName) {
-          return {
-            ...s,
-            stationMasterName: "",
-            contactNumber: "",
-            emailId: ""
-          };
-        }
-        return s;
-      }));
-    };
+      return s;
+    }));
+  };
 
   const [stationDetailId, setStationDetailId] = useState(null);
   const [isStationEditMode, setIsStationEditMode] = useState(false);
@@ -974,6 +985,7 @@ export function useAomState(user, onLogout) {
   const [tiActivatedAssessments, setTiActivatedAssessments] = useState({});
   const [tiAssessmentFormOpen, setTiAssessmentFormOpen] = useState(null); // hrmsId of TI being assessed
   const [tiAssessmentAnswers, setTiAssessmentAnswers] = useState({});
+  const [ssActivationTrigger, setSsActivationTrigger] = useState(0);
 
   const [aomSuperintendents, setAomSuperintendents] = useState([]);
   const [aomTrainManagers, setAomTrainManagers] = useState([]);
@@ -1120,6 +1132,7 @@ export function useAomState(user, onLogout) {
     const designation = extractDesignation(title);
     if (designation === "Station Master") return "SM";
     if (designation === "Train Manager") return "TM";
+    if (designation === "Station Superintendent") return "SS";
     return "TI";
   };
 
@@ -1138,12 +1151,12 @@ export function useAomState(user, onLogout) {
     const tab = resolveAssessmentTab(title);
     if (tab === "SM" || tab === "TM") {
       return {
-        knowledgeOfRules: "yes",
-        alertnessAndObservation: "yes",
-        safetyRecord: "no",
-        leadershipAndManagement: "yes",
-        discipline: "yes",
-        appearanceAndNeatness: "yes",
+        knowledgeOfRules: "",
+        alertnessAndObservation: "",
+        safetyRecord: "",
+        leadershipAndManagement: "",
+        discipline: "",
+        appearanceAndNeatness: "",
         alcoholicStatus: "Non-Alcoholic",
         pmeStatus: "Fit",
         refStatus: "Cleared",
@@ -1154,18 +1167,32 @@ export function useAomState(user, onLogout) {
     }
 
     return {
-      knowledgeOfRules: "no",
-      alertnessAndObservation_0: "no",
-      alertnessAndObservation_1: "no",
-      alertnessAndObservation_2: "no",
-      safetyRecord_0: "no",
-      safetyRecord_1: "no",
-      leadershipAndManagement_0: "no",
-      leadershipAndManagement_1: "no",
-      discipline_0: "no",
-      discipline_1: "no",
-      appearanceAndNeatness_0: "no",
-      appearanceAndNeatness_1: "no",
+      knowledgeOfRules: "",
+      alertnessAndObservation_0: "",
+      alertnessAndObservation_1: "",
+      alertnessAndObservation_2: "",
+      alertnessAndObservation_3: "",
+      alertnessAndObservation_4: "",
+      safetyRecord_0: "",
+      safetyRecord_1: "",
+      safetyRecord_2: "",
+      safetyRecord_3: "",
+      safetyRecord_4: "",
+      leadershipAndManagement_0: "",
+      leadershipAndManagement_1: "",
+      leadershipAndManagement_2: "",
+      leadershipAndManagement_3: "",
+      leadershipAndManagement_4: "",
+      discipline_0: "",
+      discipline_1: "",
+      discipline_2: "",
+      discipline_3: "",
+      discipline_4: "",
+      appearanceAndNeatness_0: "",
+      appearanceAndNeatness_1: "",
+      appearanceAndNeatness_2: "",
+      appearanceAndNeatness_3: "",
+      appearanceAndNeatness_4: "",
       alcoholicStatus: "Non-Alcoholic",
       pmeStatus: "Fit",
       refStatus: "Cleared",
@@ -1175,35 +1202,39 @@ export function useAomState(user, onLogout) {
     };
   };
 
-  const getTiSectionScore = (criterionKey, answers) => {
+  const getTiSectionScore = (criterionKey, answers, quizMarks = null) => {
     if (criterionKey === "knowledgeOfRules") {
-      return answers.knowledgeOfRules === "yes" ? 25 : 0;
+      return (quizMarks !== null && quizMarks !== undefined) ? Number(quizMarks) : (answers.knowledgeOfRules === "yes" ? 25 : 0);
     }
     let score = 0;
     if (criterionKey === "alertnessAndObservation") {
-      if (answers.alertnessAndObservation_0 === "yes") score += 8;
-      if (answers.alertnessAndObservation_1 === "yes") score += 8;
-      if (answers.alertnessAndObservation_2 === "yes") score += 9;
+      for (let i = 0; i < 5; i++) {
+        if (answers[`alertnessAndObservation_${i}`] === "yes") score += 5;
+      }
     } else if (criterionKey === "safetyRecord") {
-      if (answers.safetyRecord_0 === "yes") score += 7;
-      if (answers.safetyRecord_1 === "yes") score += 8;
+      for (let i = 0; i < 5; i++) {
+        if (answers[`safetyRecord_${i}`] === "yes") score += 3;
+      }
     } else if (criterionKey === "leadershipAndManagement") {
-      if (answers.leadershipAndManagement_0 === "yes") score += 7;
-      if (answers.leadershipAndManagement_1 === "yes") score += 8;
+      for (let i = 0; i < 5; i++) {
+        if (answers[`leadershipAndManagement_${i}`] === "yes") score += 3;
+      }
     } else if (criterionKey === "discipline") {
-      if (answers.discipline_0 === "yes") score += 5;
-      if (answers.discipline_1 === "yes") score += 5;
+      for (let i = 0; i < 5; i++) {
+        if (answers[`discipline_${i}`] === "yes") score += 2;
+      }
     } else if (criterionKey === "appearanceAndNeatness") {
-      if (answers.appearanceAndNeatness_0 === "yes") score += 5;
-      if (answers.appearanceAndNeatness_1 === "yes") score += 5;
+      for (let i = 0; i < 5; i++) {
+        if (answers[`appearanceAndNeatness_${i}`] === "yes") score += 2;
+      }
     }
     return score;
   };
 
-  const calculateAssessmentScore = (answers = {}, isTi = false) => {
-    if (isTi) {
+  const calculateAssessmentScore = (answers = {}, isMultiSection = false, quizMarks = null) => {
+    if (isMultiSection) {
       return assessmentCriteria.reduce((total, criterion) => {
-        return total + getTiSectionScore(criterion.key, answers);
+        return total + getTiSectionScore(criterion.key, answers, quizMarks);
       }, 0);
     }
     return assessmentCriteria.reduce((total, criterion) => {
@@ -1219,9 +1250,13 @@ export function useAomState(user, onLogout) {
 
   const computeScoreAndGrade = (target) => {
     const effectiveAnswers = answersByAssessment[target.id] || buildPrefilledAnswers(target.title);
-    const isTi = target.title?.startsWith("Traffic Inspector");
-    const score = calculateAssessmentScore(effectiveAnswers, isTi);
-    const grade = score >= 90 ? "A" : score >= 80 ? "B" : "C";
+    const tab = resolveAssessmentTab(target.title);
+    const isMultiSection = tab === "TI" || tab === "SS";
+    const score = calculateAssessmentScore(effectiveAnswers, isMultiSection, target.quizMarks);
+    let grade = score >= 90 ? "A" : score >= 80 ? "B" : "C";
+    if (effectiveAnswers.alcoholicStatus === "Alcoholic") {
+      grade = "D";
+    }
     return { score, grade };
   };
 
@@ -1264,13 +1299,219 @@ export function useAomState(user, onLogout) {
     window.alert(`${title}\n${detailLine}\nStatus: ${statusLabel}`);
   };
 
+  const handleAssignAssessment = async (employeeIdOrHrms, roleName) => {
+    if (!isSupabaseConfigured) return;
+    try {
+      const typeMap = {
+        'Traffic Inspector': 'Safety Exam',
+        'Station Superintendent': 'SS Assessment',
+        'Station Master': 'SM Assessment',
+        'Train Manager': 'TM Assessment',
+        'Pointsman': 'PM Assessment'
+      };
+      const assessmentType = typeMap[roleName] || 'Assessment';
+
+      const isValidUUID = (v) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
+
+      // Resolve employee HRMS ID → UUID if needed
+      let resolvedEmployeeId = employeeIdOrHrms;
+      if (!isValidUUID(resolvedEmployeeId)) {
+        const { data: uData, error: uErr } = await supabase
+          .from('USERS')
+          .select('user_id')
+          .eq('hrms_id', resolvedEmployeeId)
+          .single();
+        if (uErr || !uData) throw new Error(`Could not find user with HRMS ID: ${resolvedEmployeeId}`);
+        resolvedEmployeeId = uData.user_id;
+      }
+
+      // Resolve AOM (conducted_by) UUID — user.userId may be undefined for sandbox logins
+      let conductedByUuid = user.userId;
+      if (!isValidUUID(conductedByUuid)) {
+        // Try to resolve from user.hrmsId
+        const aomHrms = user.hrmsId || user.hrms_id;
+        if (aomHrms) {
+          const { data: aomData } = await supabase
+            .from('USERS')
+            .select('user_id')
+            .eq('hrms_id', aomHrms)
+            .single();
+          if (aomData?.user_id) conductedByUuid = aomData.user_id;
+        }
+        // Final fallback: use employee's own UUID (acceptable for sandbox demo)
+        if (!isValidUUID(conductedByUuid)) {
+          conductedByUuid = resolvedEmployeeId;
+        }
+      }
+
+      // Check if there's already a Pending, AVAILABLE, or Submitted exam for this employee
+      const { data: existing } = await supabase
+        .from('ASSESSMENT')
+        .select('assessment_id, status')
+        .eq('employee_id', resolvedEmployeeId)
+        .in('status', ['Pending', 'Submitted', 'AVAILABLE'])
+        .limit(1);
+
+      if (existing && existing.length > 0) {
+        setAssessmentActionNotice(`This employee already has a ${existing[0].status} exam. Cannot send duplicate access.`);
+        return;
+      }
+
+      // Check if there is an existing assessment record for this employee with status 'LOCKED'
+      const { data: lockedAssessments } = await supabase
+        .from('ASSESSMENT')
+        .select('assessment_id')
+        .eq('employee_id', resolvedEmployeeId)
+        .eq('status', 'LOCKED')
+        .limit(1);
+
+      if (lockedAssessments && lockedAssessments.length > 0) {
+        // Update status of the existing LOCKED record to 'AVAILABLE'
+        const { error: updateError } = await supabase
+          .from('ASSESSMENT')
+          .update({
+            status: 'AVAILABLE',
+            conducted_by: conductedByUuid,
+            assessment_date: new Date().toISOString().slice(0, 10),
+            assessment_type: assessmentType
+          })
+          .eq('assessment_id', lockedAssessments[0].assessment_id);
+        if (updateError) throw updateError;
+      } else {
+        // Insert new assessment with status 'AVAILABLE'
+        const { error } = await supabase.from('ASSESSMENT').insert([{
+          employee_id: resolvedEmployeeId,
+          conducted_by: conductedByUuid,
+          assessment_date: new Date().toISOString().slice(0, 10),
+          assessment_type: assessmentType,
+          status: 'AVAILABLE'
+        }]);
+        if (error) throw error;
+      }
+
+      // Sync test activation to localStorage for mock/demo offline modules
+      let employeeHrmsId = employeeIdOrHrms;
+      if (isValidUUID(employeeHrmsId)) {
+        try {
+          const { data: userData } = await supabase
+            .from('USERS')
+            .select('hrms_id')
+            .eq('user_id', employeeHrmsId)
+            .single();
+          if (userData?.hrms_id) {
+            employeeHrmsId = userData.hrms_id;
+          }
+        } catch (uErr) {
+          console.error("Error fetching hrms_id in handleAssignAssessment:", uErr);
+        }
+      }
+
+      if (employeeHrmsId) {
+        if (roleName === "Station Superintendent" || assessmentType === "SS Assessment") {
+          localStorage.setItem(`ss_test_activated_${employeeHrmsId}`, "true");
+          const existing = localStorage.getItem(`ss_test_assigned_${employeeHrmsId}`);
+          if (!existing || existing === "Not Assigned") {
+            localStorage.setItem(`ss_test_assigned_${employeeHrmsId}`, "Assigned");
+          }
+        } else if (roleName === "Station Master" || assessmentType === "SM Assessment") {
+          localStorage.setItem(`sm_test_activated_${employeeHrmsId}`, "true");
+          const existing = localStorage.getItem(`sm_test_assigned_${employeeHrmsId}`);
+          if (!existing || existing === "Not Assigned") {
+            localStorage.setItem(`sm_test_assigned_${employeeHrmsId}`, "Assigned");
+          }
+        } else if (roleName === "Train Manager" || assessmentType === "TM Assessment") {
+          localStorage.setItem(`tm_test_activated_${employeeHrmsId}`, "true");
+          const existing = localStorage.getItem(`tm_test_assigned_${employeeHrmsId}`);
+          if (!existing || existing === "Not Assigned") {
+            localStorage.setItem(`tm_test_assigned_${employeeHrmsId}`, "Assigned");
+          }
+        } else if (roleName === "Pointsman" || assessmentType === "PM Assessment") {
+          localStorage.setItem(`pm_test_activated_${employeeHrmsId}`, "true");
+          const existing = localStorage.getItem(`pm_test_assigned_${employeeHrmsId}`);
+          if (!existing || existing === "Not Assigned") {
+            localStorage.setItem(`pm_test_assigned_${employeeHrmsId}`, "Assigned");
+          }
+        }
+        window.dispatchEvent(new Event("storage"));
+      }
+
+      setAssessmentActionNotice(`Exam access sent successfully!`);
+      if (assessmentType === "Traffic Inspector") {
+        window.alert("test is been send to the TI.");
+      } else {
+        window.alert("Assessment access has been successfully sent to the employee.");
+      }
+      await fetchLiveDatabaseData();
+    } catch (err) {
+      console.error("Error assigning assessment:", err);
+      setAssessmentActionNotice(`Failed to assign assessment: ${err.message || err.details || JSON.stringify(err)}`);
+    }
+  };
+
   const handleApproveAssessment = async (id) => {
     const target = pendingAssessments.find((item) => item.id === id);
     if (!target) {
       return;
     }
 
+    const answers = answersByAssessment[id] || {};
+    const tab = resolveAssessmentTab(target.title);
+    const isMultiSection = tab === "TI" || tab === "SS";
+
+    // Validate alcoholicStatus
+    if (!answers.alcoholicStatus || (answers.alcoholicStatus !== "Alcoholic" && answers.alcoholicStatus !== "Non-Alcoholic")) {
+      alert("Validation Error: Please select an Alcoholic Status.");
+      return;
+    }
+
+    // Validate checklist questions
+    let requiredKeys = [];
+    if (isMultiSection) {
+      requiredKeys.push("knowledgeOfRules");
+      const criteriaList = [
+        "alertnessAndObservation",
+        "safetyRecord",
+        "leadershipAndManagement",
+        "discipline",
+        "appearanceAndNeatness"
+      ];
+      criteriaList.forEach((crit) => {
+        for (let i = 0; i < 5; i++) {
+          requiredKeys.push(`${crit}_${i}`);
+        }
+      });
+    } else {
+      requiredKeys = [
+        "knowledgeOfRules",
+        "alertnessAndObservation",
+        "safetyRecord",
+        "leadershipAndManagement",
+        "discipline",
+        "appearanceAndNeatness"
+      ];
+    }
+
+    for (const key of requiredKeys) {
+      const val = answers[key];
+      if (val !== "yes" && val !== "no") {
+        alert("Validation Error: Please answer all checklist questions (Yes/No).");
+        return;
+      }
+    }
+
     const { score: computedScore, grade } = computeScoreAndGrade(target);
+
+    // Resolve AOM UUID for approved_by
+    const isValidUUID = (v) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
+    let approvedByUuid = user.userId;
+    if (!isValidUUID(approvedByUuid)) {
+      const aomHrms = user.hrmsId || user.hrms_id;
+      if (aomHrms) {
+        const { data: aomData } = await supabase
+          .from('USERS').select('user_id').eq('hrms_id', aomHrms).single();
+        if (aomData?.user_id) approvedByUuid = aomData.user_id;
+      }
+    }
 
     try {
       const { error: updateError } = await supabase
@@ -1279,29 +1520,36 @@ export function useAomState(user, onLogout) {
         .eq("assessment_id", id);
       if (updateError) throw updateError;
 
-      await supabase.from("APPROVAL").insert([{
-        assessment_id: id,
-        approved_by: user.userId,
-        approval_level: "AOM",
-        remarks: "Approved by AOM via console"
-      }]);
+      if (approvedByUuid) {
+        await supabase.from("APPROVAL").insert([{
+          assessment_id: id,
+          approved_by: approvedByUuid,
+          approval_level: "AOM",
+          remarks: "Approved by AOM via console"
+        }]);
+      }
 
-      await supabase.from("TEST_ATTEMPT").update({
+      // Update TEST_ATTEMPT with the final combined score (MCQ 25 + checklist 75)
+      const { error: taErr } = await supabase.from("TEST_ATTEMPT").update({
         obtained_marks: computedScore,
         percentage: computedScore,
-        category: grade
+        category: grade,
+        total_marks: 100
       }).eq("assessment_id", id);
+      if (taErr) console.warn("TEST_ATTEMPT update warning:", taErr.message);
 
+      // Update EMPLOYEE_PROFILE with the final score and category
       const hrmsId = target.title.split(" - ")[1] || "";
-      const targetEmp = users.find(u => u.hrmsId === hrmsId);
-      if (targetEmp?.user_id) {
+      const targetEmp = users.find(u => u.hrmsId === hrmsId || u.id === hrmsId);
+      const empUserId = targetEmp?.user_id || (isValidUUID(target.employeeId) ? target.employeeId : null);
+      if (empUserId) {
         await supabase.from("EMPLOYEE_PROFILE").update({
           current_score: computedScore,
           category: grade
-        }).eq("user_id", targetEmp.user_id);
+        }).eq("user_id", empUserId);
       }
 
-      setAssessmentActionNotice(`${target.title} approved successfully.`);
+      setAssessmentActionNotice(`${target.title} approved. Score: ${computedScore}/100 (${grade})`);
       setOpenAssessmentId((prev) => (prev === id ? null : prev));
       await fetchLiveDatabaseData();
     } catch (err) {
@@ -1334,11 +1582,11 @@ export function useAomState(user, onLogout) {
       prev.map((item) =>
         item.id === id
           ? {
-              ...item,
-              statusLabel: "Pending Approval",
-              assessedByLine: `Assessed by: AOM/G - on ${todayIso()}`,
-              actionType: "approval"
-            }
+            ...item,
+            statusLabel: "Pending Approval",
+            assessedByLine: `Assessed by: AOM/G - on ${todayIso()}`,
+            actionType: "approval"
+          }
           : item
       )
     );
@@ -1346,10 +1594,10 @@ export function useAomState(user, onLogout) {
       prev.map((row) =>
         row.id === id
           ? {
-              ...row,
-              assessmentStatus: "In Progress",
-              lastAssessed: todayIso()
-            }
+            ...row,
+            assessmentStatus: "In Progress",
+            lastAssessed: todayIso()
+          }
           : row
       )
     );
@@ -1373,26 +1621,15 @@ export function useAomState(user, onLogout) {
 
   const getTiRosterList = () => {
     return trafficInspectors.map((ti) => {
-      const pending = pendingAssessments.find(p => p.id === ti.employeeId);
-      const approved = approvedAssessments.find(a => a.id === ti.employeeId);
-      
+      const pending = pendingAssessments.find(p => p.employeeId === ti.employeeId || p.id === ti.employeeId);
+      const approved = approvedAssessments.find(a => a.employeeId === ti.employeeId || a.id === ti.employeeId);
+
       let status = "Pending";
       let score = ti.lastScore || "";
       let lastAssessed = ti.lastAssessedDate || "2026-04-07";
-      
+
       if (pending) {
-        const isExamAssigned = localStorage.getItem(`ti_exam_assigned_${ti.employeeId}`) === "true";
-        const isExamTaken = localStorage.getItem(`ti_exam_taken_${ti.employeeId}`) === "true";
-        
-        if (isExamTaken) {
-          status = "Exam Taken";
-        } else if (isExamAssigned) {
-          status = "Exam Sent";
-        } else if (pending.actionType === "approval") {
-          status = "Submitted";
-        } else {
-          status = "Pending";
-        }
+        status = pending.actionType === "approval" ? "Submitted" : "Exam Sent";
       } else if (approved) {
         status = "Approved";
         const match = approved.score?.match(/Score:\s*(\d+)/i);
@@ -1402,7 +1639,7 @@ export function useAomState(user, onLogout) {
       } else {
         status = ti.assessmentStatus === "Completed" ? "Approved" : (ti.assessmentStatus || "Pending");
       }
-      
+
       return {
         ...ti,
         status,
@@ -1413,9 +1650,9 @@ export function useAomState(user, onLogout) {
   };
 
   const openTiForm = (ti) => {
-    let pendingItem = pendingAssessments.find(p => p.id === ti.employeeId);
+    let pendingItem = pendingAssessments.find(p => p.employeeId === ti.employeeId || p.id === ti.employeeId || p.hrmsId === (ti.hrmsId || ti.employeeId));
     if (!pendingItem) {
-      const approvedItem = approvedAssessments.find(a => a.id === ti.employeeId);
+      const approvedItem = approvedAssessments.find(a => a.employeeId === ti.employeeId || a.id === ti.employeeId || a.hrmsId === (ti.hrmsId || ti.employeeId));
       if (approvedItem) {
         pendingItem = {
           id: approvedItem.id,
@@ -1426,18 +1663,11 @@ export function useAomState(user, onLogout) {
           actionType: "approval"
         };
       } else {
-        pendingItem = {
-          id: ti.employeeId,
-          title: `Traffic Inspector - ${ti.employeeId}`,
-          statusLabel: "Pending Assessment",
-          assessedByLine: `Awaiting: Your Assessment - on ${todayIso()}`,
-          employeeLine: `Employee: ${ti.name} | Division: ${ti.division || "Nagpur"}`,
-          actionType: "assessment"
-        };
-        setPendingAssessments(prev => [pendingItem, ...prev]);
+        window.alert("No active assessment found. Please assign an exam first.");
+        return;
       }
     }
-    
+
     setOpenAssessmentId(pendingItem.id);
     setAnswersByAssessment((prev) => {
       if (prev[pendingItem.id]) {
@@ -1471,20 +1701,9 @@ export function useAomState(user, onLogout) {
       return acc;
     }, {});
 
-    const isTi = roleTab === "TI";
-    const tiYes = {
+    const isMultiSection = roleTab === "TI" || roleTab === "SS";
+    const multiSecYes = {
       knowledgeOfRules: "yes",
-      alertnessAndObservation_0: "yes",
-      alertnessAndObservation_1: "yes",
-      alertnessAndObservation_2: "yes",
-      safetyRecord_0: "yes",
-      safetyRecord_1: "yes",
-      leadershipAndManagement_0: "yes",
-      leadershipAndManagement_1: "yes",
-      discipline_0: "yes",
-      discipline_1: "yes",
-      appearanceAndNeatness_0: "yes",
-      appearanceAndNeatness_1: "yes",
       alcoholicStatus: "Non-Alcoholic",
       pmeStatus: "Fit",
       refStatus: "Cleared",
@@ -1492,11 +1711,23 @@ export function useAomState(user, onLogout) {
       automaticTraining: "Not Required",
       remarks: ""
     };
+    const criteriaList = [
+      "alertnessAndObservation",
+      "safetyRecord",
+      "leadershipAndManagement",
+      "discipline",
+      "appearanceAndNeatness"
+    ];
+    criteriaList.forEach(crit => {
+      for (let i = 0; i < 5; i++) {
+        multiSecYes[`${crit}_${i}`] = "yes";
+      }
+    });
 
     setAnswersByAssessment((prev) => {
       const next = { ...prev };
       assessmentIds.forEach((assessmentId) => {
-        next[assessmentId] = isTi ? { ...tiYes } : { ...allYes };
+        next[assessmentId] = isMultiSection ? { ...multiSecYes } : { ...allYes };
       });
       return next;
     });
@@ -1577,10 +1808,10 @@ export function useAomState(user, onLogout) {
       prev.map((row) =>
         row.id === id
           ? {
-              ...row,
-              assessmentStatus: "In Progress",
-              lastAssessed: todayIso()
-            }
+            ...row,
+            assessmentStatus: "In Progress",
+            lastAssessed: todayIso()
+          }
           : row
       )
     );
@@ -1720,9 +1951,9 @@ export function useAomState(user, onLogout) {
         prev.map((row) =>
           row.id === editingUserId
             ? {
-                ...row,
-                ...userFormData
-              }
+              ...row,
+              ...userFormData
+            }
             : row
         )
       );
@@ -1980,12 +2211,12 @@ export function useAomState(user, onLogout) {
       prev.map((station) =>
         station.id === stationDetailId
           ? {
-              ...station,
-              ...stationFormData,
-              stationCode: stationFormData.stationCode.trim().toUpperCase(),
-              platforms: Number(stationFormData.platforms),
-              tracks: Number(stationFormData.tracks)
-            }
+            ...station,
+            ...stationFormData,
+            stationCode: stationFormData.stationCode.trim().toUpperCase(),
+            platforms: Number(stationFormData.platforms),
+            tracks: Number(stationFormData.tracks)
+          }
           : station
       )
     );
@@ -2151,10 +2382,10 @@ export function useAomState(user, onLogout) {
       prev.map((row) =>
         row.id === tiLinkTargetId
           ? {
-              ...row,
-              linkedStations: tiLinkDraft.stations,
-              linkedSms: tiLinkDraft.sms
-            }
+            ...row,
+            linkedStations: tiLinkDraft.stations,
+            linkedSms: tiLinkDraft.sms
+          }
           : row
       )
     );
@@ -2174,10 +2405,10 @@ export function useAomState(user, onLogout) {
       prev.map((row) =>
         row.id === id
           ? {
-              ...row,
-              jurisdiction: targetDivision,
-              division: targetDivision
-            }
+            ...row,
+            jurisdiction: targetDivision,
+            division: targetDivision
+          }
           : row
       )
     );
@@ -2488,7 +2719,7 @@ export function useAomState(user, onLogout) {
   const renderPointsmanMonitoringDetail = (pm) => {
     const cat = getPmCat(pm.lastScore);
     const risk = getPmRisk(pm);
-    
+
     // Mock assessment history for pointsman
     const pmAssessmentHistoryMock = {
       PM_1001: [
@@ -2517,7 +2748,7 @@ export function useAomState(user, onLogout) {
         { date: "2026-02-01", testMarks: 12, addMarks: 7, total: 19, grade: "D", approvalStatus: "Rejected", remarks: "Severe safety oversight near point 4B. Re-training mandatory." }
       ]
     };
-    
+
     const hist = pmAssessmentHistoryMock[pm.hrmsId] || [];
 
     return (
@@ -2525,8 +2756,8 @@ export function useAomState(user, onLogout) {
         {/* TITLE AND BACK BUTTON HEADER */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
           <h2 style={{ fontSize: "20px", fontWeight: "700", color: "#0f172a", margin: 0 }}>Pointsman Details</h2>
-          <button 
-            type="button" 
+          <button
+            type="button"
             className="sm2-monitor-btn"
             onClick={() => setSelectedPointsmanForMonitoring(null)}
             style={{
@@ -2680,45 +2911,45 @@ export function useAomState(user, onLogout) {
           }}>
             <Activity size={16} color="#0f172a" style={{ marginRight: "4px" }} /> Monitoring Status
           </h4>
-          
+
           <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "12px" }}>
             {[
-              { 
-                status: "Active", 
-                color: "#16a34a", 
-                bg: "#dcfce7", 
+              {
+                status: "Active",
+                color: "#16a34a",
+                bg: "#dcfce7",
                 icon: (
                   <span style={{ color: "#16a34a", marginRight: "4px", fontSize: "14px" }}>🟢</span>
                 ),
-                desc: "Available for yard operations" 
+                desc: "Available for yard operations"
               },
-              { 
-                status: "On Duty", 
-                color: "#d97706", 
-                bg: "#fef3c7", 
+              {
+                status: "On Duty",
+                color: "#d97706",
+                bg: "#fef3c7",
                 icon: (
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#d97706" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: "4px" }}>
                     <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
                   </svg>
                 ),
-                desc: "Currently executing track tasks" 
+                desc: "Currently executing track tasks"
               },
-              { 
-                status: "Off Duty", 
-                color: "#64748b", 
-                bg: "#f1f5f9", 
+              {
+                status: "Off Duty",
+                color: "#64748b",
+                bg: "#f1f5f9",
                 icon: (
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: "4px" }}>
                     <circle cx="12" cy="12" r="10" />
                     <polyline points="12 6 12 12 16 14" />
                   </svg>
                 ),
-                desc: "Resting / Shift ended" 
+                desc: "Resting / Shift ended"
               },
-              { 
-                status: "Absent", 
-                color: "#dc2626", 
-                bg: "#fee2e2", 
+              {
+                status: "Absent",
+                color: "#dc2626",
+                bg: "#fee2e2",
                 icon: (
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#dc2626" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: "4px" }}>
                     <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
@@ -2726,7 +2957,7 @@ export function useAomState(user, onLogout) {
                     <line x1="12" y1="17" x2="12.01" y2="17" />
                   </svg>
                 ),
-                desc: "Unexcused leave of absence" 
+                desc: "Unexcused leave of absence"
               }
             ].map(item => {
               const isActive = (pm.monitoringStatus || "Active") === item.status;
@@ -2789,7 +3020,7 @@ export function useAomState(user, onLogout) {
         {/* SAFETY COMPLIANCE SECTION */}
         <div style={{ background: "#ffffff", border: "1px solid #e2e8f0", borderRadius: "10px", padding: "20px", marginBottom: "24px" }}>
           <h4 style={{ margin: "0 0 16px 0", fontSize: "14px", fontWeight: "700", color: "#0f172a" }}>Safety Compliance</h4>
-          
+
           <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "16px", marginBottom: "20px" }}>
             <div style={{ background: "#ffffff", border: "1px solid #e2e8f0", borderRadius: "8px", padding: "12px 16px" }}>
               <span style={{ fontSize: "11px", color: "#64748b", display: "block" }}>PME Status</span>
@@ -2808,7 +3039,7 @@ export function useAomState(user, onLogout) {
               <strong style={{ fontSize: "15px", fontWeight: "700", color: pm.incidents === 0 ? "#16a34a" : "#dc2626", marginTop: "4px", display: "block" }}>{pm.incidents === 0 ? "0 reported" : `${pm.incidents} reported`}</strong>
             </div>
           </div>
-          
+
           <div style={{ borderTop: "1px solid #f1f5f9", paddingTop: "16px" }}>
             <span style={{ fontSize: "12px", fontWeight: "700", color: "#475569", display: "block", marginBottom: "8px" }}>Overall Safety Compliance</span>
             <div style={{ display: "flex", alignItems: "center" }}>
@@ -2894,9 +3125,9 @@ export function useAomState(user, onLogout) {
             </div>
             <button type="button" onClick={() => setShowAddStation(false)} style={{ background: "none", border: "none", fontSize: "28px", cursor: "pointer", color: "#94a3b8", lineHeight: 1, padding: 0 }}>&times;</button>
           </div>
-          
+
           <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
-            
+
             {/* SECTION 1: IDENTITY */}
             <div>
               <h4 style={{ margin: "0 0 12px 0", fontSize: "0.9rem", fontWeight: 700, color: "#2563eb", textTransform: "uppercase", letterSpacing: "0.05em", borderLeft: "3px solid #2563eb", paddingLeft: "8px" }}>1. Station Identity & Jurisdiction</h4>
@@ -3061,9 +3292,9 @@ export function useAomState(user, onLogout) {
     if (!pmModal) return null;
     const isShift = pmModal.mode === "shift";
     return (
-      <div className="sdom-modal-overlay" style={{ zIndex: 99999 }} onClick={e=>e.target===e.currentTarget&&setPmModal(null)}>
+      <div className="sdom-modal-overlay" style={{ zIndex: 99999 }} onClick={e => e.target === e.currentTarget && setPmModal(null)}>
         <div className="sdom-modal" style={!isShift ? { width: "900px", maxWidth: "95vw" } : undefined}>
-          
+
           {!isShift ? (
             <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
               {/* Header inside modal */}
@@ -3098,39 +3329,39 @@ export function useAomState(user, onLogout) {
                   1. General & Contact Information
                 </h4>
                 <div style={{ height: '1px', background: '#d5dfeb', marginBottom: '16px' }}></div>
-                
+
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
                   <div className="sdom-modal-field">
                     <label>Full Name *</label>
-                    <input 
-                      value={pmModal.data.name || ""} 
-                      onChange={e => setPmModal(p => ({ ...p, data: { ...p.data, name: e.target.value } }))} 
-                      placeholder="Enter full name (e.g. A. K. Sharma)" 
+                    <input
+                      value={pmModal.data.name || ""}
+                      onChange={e => setPmModal(p => ({ ...p, data: { ...p.data, name: e.target.value } }))}
+                      placeholder="Enter full name (e.g. A. K. Sharma)"
                     />
                   </div>
                   <div className="sdom-modal-field">
                     <label>Mobile Number *</label>
-                    <input 
-                      value={pmModal.data.contact || ""} 
-                      onChange={e => setPmModal(p => ({ ...p, data: { ...p.data, contact: e.target.value } }))} 
-                      placeholder="Enter 10-digit mobile number" 
+                    <input
+                      value={pmModal.data.contact || ""}
+                      onChange={e => setPmModal(p => ({ ...p, data: { ...p.data, contact: e.target.value } }))}
+                      placeholder="Enter 10-digit mobile number"
                     />
                   </div>
                   <div className="sdom-modal-field">
                     <label>HRMS ID / Employee ID *</label>
-                    <input 
-                      value={pmModal.data.hrmsId || ""} 
+                    <input
+                      value={pmModal.data.hrmsId || ""}
                       disabled={pmModal.mode === "edit"}
-                      onChange={e => setPmModal(p => ({ ...p, data: { ...p.data, hrmsId: e.target.value } }))} 
-                      placeholder="Enter unique ID (e.g. PM_8820)" 
+                      onChange={e => setPmModal(p => ({ ...p, data: { ...p.data, hrmsId: e.target.value } }))}
+                      placeholder="Enter unique ID (e.g. PM_8820)"
                     />
                   </div>
                   <div className="sdom-modal-field">
                     <label>Email ID *</label>
-                    <input 
-                      value={pmModal.data.email || ""} 
-                      onChange={e => setPmModal(p => ({ ...p, data: { ...p.data, email: e.target.value } }))} 
-                      placeholder="Enter email address (e.g. user@rail.in)" 
+                    <input
+                      value={pmModal.data.email || ""}
+                      onChange={e => setPmModal(p => ({ ...p, data: { ...p.data, email: e.target.value } }))}
+                      placeholder="Enter email address (e.g. user@rail.in)"
                     />
                   </div>
                 </div>
@@ -3143,7 +3374,7 @@ export function useAomState(user, onLogout) {
                   2. Designation & Station Placement Setup
                 </h4>
                 <div style={{ height: '1px', background: '#d5dfeb', marginBottom: '16px' }}></div>
-                
+
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
                   <div className="sdom-modal-field">
                     <label>Role / Designation *</label>
@@ -3153,8 +3384,8 @@ export function useAomState(user, onLogout) {
                   </div>
                   <div className="sdom-modal-field">
                     <label>Division *</label>
-                    <select 
-                      value={pmModal.data.division || "Nagpur"} 
+                    <select
+                      value={pmModal.data.division || "Nagpur"}
                       onChange={e => {
                         const div = e.target.value;
                         setPmModal(p => ({ ...p, data: { ...p.data, division: div } }));
@@ -3165,8 +3396,8 @@ export function useAomState(user, onLogout) {
                   </div>
                   <div className="sdom-modal-field">
                     <label>Railway Zone *</label>
-                    <select 
-                      value={pmModal.data.zone || "Central Railway"} 
+                    <select
+                      value={pmModal.data.zone || "Central Railway"}
                       onChange={e => {
                         const zone = e.target.value;
                         setPmModal(p => ({ ...p, data: { ...p.data, zone: zone } }));
@@ -3177,18 +3408,18 @@ export function useAomState(user, onLogout) {
                   </div>
                   <div className="sdom-modal-field">
                     <label>Station Name *</label>
-                    <select 
-                      value={pmModal.data.stationName || ""} 
+                    <select
+                      value={pmModal.data.stationName || ""}
                       onChange={e => {
                         const stName = e.target.value;
                         const matchedSt = stations.find(s => s.stationName === stName);
-                        setPmModal(p => ({ 
-                          ...p, 
-                          data: { 
-                            ...p.data, 
-                            stationName: stName, 
-                            stationCode: matchedSt ? matchedSt.stationCode : p.data.stationCode 
-                          } 
+                        setPmModal(p => ({
+                          ...p,
+                          data: {
+                            ...p.data,
+                            stationName: stName,
+                            stationCode: matchedSt ? matchedSt.stationCode : p.data.stationCode
+                          }
                         }));
                       }}
                     >
@@ -3198,8 +3429,8 @@ export function useAomState(user, onLogout) {
                   </div>
                   <div className="sdom-modal-field">
                     <label>Category *</label>
-                    <select 
-                      value={pmModal.data.cat || "A"} 
+                    <select
+                      value={pmModal.data.cat || "A"}
                       onChange={e => setPmModal(p => ({ ...p, data: { ...p.data, cat: e.target.value } }))}
                     >
                       <option>A</option><option>B</option><option>C</option><option>D</option>
@@ -3217,16 +3448,16 @@ export function useAomState(user, onLogout) {
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
                   <div className="sdom-modal-field">
                     <label>Reporting Station Master *</label>
-                    <input 
-                      value={pmModal.data.reportingSm || ""} 
-                      onChange={e => setPmModal(p => ({ ...p, data: { ...p.data, reportingSm: e.target.value } }))} 
+                    <input
+                      value={pmModal.data.reportingSm || ""}
+                      onChange={e => setPmModal(p => ({ ...p, data: { ...p.data, reportingSm: e.target.value } }))}
                       placeholder="Station Master Name"
                     />
                   </div>
                   <div className="sdom-modal-field">
                     <label>Work Location Setup *</label>
-                    <select 
-                      value={pmModal.data.workLocation || ""} 
+                    <select
+                      value={pmModal.data.workLocation || ""}
                       onChange={e => setPmModal(p => ({ ...p, data: { ...p.data, workLocation: e.target.value } }))}
                     >
                       <option value="">Select Location</option>
@@ -3239,8 +3470,8 @@ export function useAomState(user, onLogout) {
                   </div>
                   <div className="sdom-modal-field">
                     <label>Assigned Shift *</label>
-                    <select 
-                      value={pmModal.data.shift || ""} 
+                    <select
+                      value={pmModal.data.shift || ""}
                       onChange={e => setPmModal(p => ({ ...p, data: { ...p.data, shift: e.target.value } }))}
                     >
                       <option value="">Select Shift</option>
@@ -3258,9 +3489,9 @@ export function useAomState(user, onLogout) {
               <div className="sdom-modal-title" style={{ marginBottom: 20 }}>Shift Staff Role</div>
               <div className="sdom-modal-field">
                 <label>Role (Shift to)</label>
-                <select 
-                  value={pmModal.role || "pointsmen"} 
-                  onChange={e=>setPmModal(p=>({...p, role: e.target.value}))}
+                <select
+                  value={pmModal.role || "pointsmen"}
+                  onChange={e => setPmModal(p => ({ ...p, role: e.target.value }))}
                 >
                   <option value="pointsmen">Pointsman</option>
                   <option value="sm">Station Master</option>
@@ -3276,7 +3507,7 @@ export function useAomState(user, onLogout) {
             <button className="sdom-btn-primary" style={{ flex: 1 }} onClick={savePmModal}>
               {pmModal.mode === "edit" ? "🔒 UPDATE POINTSMAN" : isShift ? "🔄 SHIFT POINTSMAN ROLE" : "👤 ADD POINTSMAN"}
             </button>
-            <button className="sdom-btn-ghost" style={{ flex: 1 }} onClick={()=>setPmModal(null)}>Cancel</button>
+            <button className="sdom-btn-ghost" style={{ flex: 1 }} onClick={() => setPmModal(null)}>Cancel</button>
           </div>
         </div>
       </div>
@@ -3287,9 +3518,9 @@ export function useAomState(user, onLogout) {
     if (!tiModal) return null;
     const isShift = tiModal.mode === "shift";
     return (
-      <div className="sdom-modal-overlay" style={{ zIndex: 99999 }} onClick={e=>e.target===e.currentTarget&&setTiModal(null)}>
+      <div className="sdom-modal-overlay" style={{ zIndex: 99999 }} onClick={e => e.target === e.currentTarget && setTiModal(null)}>
         <div className="sdom-modal" style={!isShift ? { width: "900px", maxWidth: "95vw" } : undefined}>
-          
+
           <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
             {/* Header inside modal */}
             <div style={{ display: "flex", alignItems: "center", gap: "16px", marginBottom: "8px" }}>
@@ -3323,39 +3554,39 @@ export function useAomState(user, onLogout) {
                 1. General & Contact Information
               </h4>
               <div style={{ height: '1px', background: '#d5dfeb', marginBottom: '16px' }}></div>
-              
+
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
                 <div className="sdom-modal-field">
                   <label>Full Name *</label>
-                  <input 
-                    value={tiModal.data.name || ""} 
-                    onChange={e => setTiModal(p => ({ ...p, data: { ...p.data, name: e.target.value } }))} 
-                    placeholder="Enter full name (e.g. A. K. Kulkarni)" 
+                  <input
+                    value={tiModal.data.name || ""}
+                    onChange={e => setTiModal(p => ({ ...p, data: { ...p.data, name: e.target.value } }))}
+                    placeholder="Enter full name (e.g. A. K. Kulkarni)"
                   />
                 </div>
                 <div className="sdom-modal-field">
                   <label>Mobile Number *</label>
-                  <input 
-                    value={tiModal.data.phone || ""} 
-                    onChange={e => setTiModal(p => ({ ...p, data: { ...p.data, phone: e.target.value } }))} 
-                    placeholder="Enter 10-digit mobile number" 
+                  <input
+                    value={tiModal.data.phone || ""}
+                    onChange={e => setTiModal(p => ({ ...p, data: { ...p.data, phone: e.target.value } }))}
+                    placeholder="Enter 10-digit mobile number"
                   />
                 </div>
                 <div className="sdom-modal-field">
                   <label>Employee ID *</label>
-                  <input 
-                    value={tiModal.data.employeeId || ""} 
+                  <input
+                    value={tiModal.data.employeeId || ""}
                     disabled={tiModal.mode === "edit"}
-                    onChange={e => setTiModal(p => ({ ...p, data: { ...p.data, employeeId: e.target.value } }))} 
-                    placeholder="Enter unique ID (e.g. TI_1004)" 
+                    onChange={e => setTiModal(p => ({ ...p, data: { ...p.data, employeeId: e.target.value } }))}
+                    placeholder="Enter unique ID (e.g. TI_1004)"
                   />
                 </div>
                 <div className="sdom-modal-field">
                   <label>Email ID *</label>
-                  <input 
-                    value={tiModal.data.email || ""} 
-                    onChange={e => setTiModal(p => ({ ...p, data: { ...p.data, email: e.target.value } }))} 
-                    placeholder="Enter email address (e.g. user@rail.in)" 
+                  <input
+                    value={tiModal.data.email || ""}
+                    onChange={e => setTiModal(p => ({ ...p, data: { ...p.data, email: e.target.value } }))}
+                    placeholder="Enter email address (e.g. user@rail.in)"
                   />
                 </div>
               </div>
@@ -3368,7 +3599,7 @@ export function useAomState(user, onLogout) {
                 2. Designation & Station Placement Setup
               </h4>
               <div style={{ height: '1px', background: '#d5dfeb', marginBottom: '16px' }}></div>
-              
+
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
                 <div className="sdom-modal-field">
                   <label>Role / Designation *</label>
@@ -3378,8 +3609,8 @@ export function useAomState(user, onLogout) {
                 </div>
                 <div className="sdom-modal-field">
                   <label>TI Area *</label>
-                  <select 
-                    value={tiModal.data.tiArea || "TI NGP"} 
+                  <select
+                    value={tiModal.data.tiArea || "TI NGP"}
                     onChange={e => {
                       const area = e.target.value;
                       setTiModal(p => ({ ...p, data: { ...p.data, tiArea: area, division: area } }));
@@ -3390,8 +3621,8 @@ export function useAomState(user, onLogout) {
                 </div>
                 <div className="sdom-modal-field">
                   <label>Station Placement *</label>
-                  <select 
-                    value={tiModal.data.stationName || "Nagpur Junction"} 
+                  <select
+                    value={tiModal.data.stationName || "Nagpur Junction"}
                     onChange={e => setTiModal(p => ({ ...p, data: { ...p.data, stationName: e.target.value } }))}
                   >
                     {["Nagpur Junction", "Pune Junction", "Parbhani Junction", "Amla", "New Delhi"].map(s => <option key={s} value={s}>{s}</option>)}
@@ -3399,8 +3630,8 @@ export function useAomState(user, onLogout) {
                 </div>
                 <div className="sdom-modal-field">
                   <label>Category *</label>
-                  <select 
-                    value={tiModal.data.category || "A"} 
+                  <select
+                    value={tiModal.data.category || "A"}
                     onChange={e => setTiModal(p => ({ ...p, data: { ...p.data, category: e.target.value } }))}
                   >
                     {["A", "B", "C", "D"].map(c => <option key={c} value={c}>Category {c}</option>)}
@@ -3408,8 +3639,8 @@ export function useAomState(user, onLogout) {
                 </div>
                 <div className="sdom-modal-field">
                   <label>Risk Level *</label>
-                  <select 
-                    value={tiModal.data.riskLevel || "Low"} 
+                  <select
+                    value={tiModal.data.riskLevel || "Low"}
                     onChange={e => setTiModal(p => ({ ...p, data: { ...p.data, riskLevel: e.target.value } }))}
                   >
                     {["Low", "Medium", "High"].map(r => <option key={r} value={r}>{r} Risk</option>)}
@@ -3417,17 +3648,17 @@ export function useAomState(user, onLogout) {
                 </div>
                 <div className="sdom-modal-field">
                   <label>Last Assessment Score *</label>
-                  <input 
+                  <input
                     type="number"
-                    value={tiModal.data.lastScore || ""} 
-                    onChange={e => setTiModal(p => ({ ...p, data: { ...p.data, lastScore: e.target.value } }))} 
-                    placeholder="Enter last assessment score (e.g. 85)" 
+                    value={tiModal.data.lastScore || ""}
+                    onChange={e => setTiModal(p => ({ ...p, data: { ...p.data, lastScore: e.target.value } }))}
+                    placeholder="Enter last assessment score (e.g. 85)"
                   />
                 </div>
                 <div className="sdom-modal-field">
                   <label>Assessment Status *</label>
-                  <select 
-                    value={tiModal.data.assessmentStatus || "Pending"} 
+                  <select
+                    value={tiModal.data.assessmentStatus || "Pending"}
                     onChange={e => setTiModal(p => ({ ...p, data: { ...p.data, assessmentStatus: e.target.value } }))}
                   >
                     <option value="Completed">Completed (Approved)</option>
@@ -3442,7 +3673,7 @@ export function useAomState(user, onLogout) {
               <button className="sdom-btn-primary" style={{ flex: 1 }} onClick={saveTiModal}>
                 {tiModal.mode === "edit" ? "🔒 UPDATE TRAFFIC INSPECTOR" : "👤 ADD TRAFFIC INSPECTOR"}
               </button>
-              <button className="sdom-btn-ghost" style={{ flex: 1 }} onClick={()=>setTiModal(null)}>Cancel</button>
+              <button className="sdom-btn-ghost" style={{ flex: 1 }} onClick={() => setTiModal(null)}>Cancel</button>
             </div>
           </div>
         </div>
@@ -3455,9 +3686,9 @@ export function useAomState(user, onLogout) {
     const isShift = smModal.mode === "shift";
     const ROLE_MAP = { pointsmen: "Pointsman", sm: "Station Master", ss: "Station Superintendent", tm: "Train Manager", ti: "Traffic Inspector" };
     return (
-      <div className="sdom-modal-overlay" style={{ zIndex: 99999 }} onClick={e=>e.target===e.currentTarget&&setSmModal(null)}>
+      <div className="sdom-modal-overlay" style={{ zIndex: 99999 }} onClick={e => e.target === e.currentTarget && setSmModal(null)}>
         <div className="sdom-modal" style={!isShift ? { width: "900px", maxWidth: "95vw" } : undefined}>
-          
+
           {!isShift ? (
             <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
               {/* Header inside modal */}
@@ -3492,39 +3723,39 @@ export function useAomState(user, onLogout) {
                   1. General & Contact Information
                 </h4>
                 <div style={{ height: '1px', background: '#d5dfeb', marginBottom: '16px' }}></div>
-                
+
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
                   <div className="sdom-modal-field">
                     <label>Full Name *</label>
-                    <input 
-                      value={smModal.data.name || ""} 
-                      onChange={e => setSmModal(p => ({ ...p, data: { ...p.data, name: e.target.value } }))} 
-                      placeholder="Enter full name (e.g. A. K. Sharma)" 
+                    <input
+                      value={smModal.data.name || ""}
+                      onChange={e => setSmModal(p => ({ ...p, data: { ...p.data, name: e.target.value } }))}
+                      placeholder="Enter full name (e.g. A. K. Sharma)"
                     />
                   </div>
                   <div className="sdom-modal-field">
                     <label>Mobile Number *</label>
-                    <input 
-                      value={smModal.data.contact || smModal.data.contactNumber || ""} 
-                      onChange={e => setSmModal(p => ({ ...p, data: { ...p.data, contact: e.target.value, contactNumber: e.target.value } }))} 
-                      placeholder="Enter 10-digit mobile number" 
+                    <input
+                      value={smModal.data.contact || smModal.data.contactNumber || ""}
+                      onChange={e => setSmModal(p => ({ ...p, data: { ...p.data, contact: e.target.value, contactNumber: e.target.value } }))}
+                      placeholder="Enter 10-digit mobile number"
                     />
                   </div>
                   <div className="sdom-modal-field">
                     <label>HRMS ID / Employee ID *</label>
-                    <input 
-                      value={smModal.data.hrmsId || smModal.data.id || ""} 
+                    <input
+                      value={smModal.data.hrmsId || smModal.data.id || ""}
                       disabled={smModal.mode === "edit"}
-                      onChange={e => setSmModal(p => ({ ...p, data: { ...p.data, hrmsId: e.target.value, id: e.target.value } }))} 
-                      placeholder="Enter unique ID (e.g. SM_8820)" 
+                      onChange={e => setSmModal(p => ({ ...p, data: { ...p.data, hrmsId: e.target.value, id: e.target.value } }))}
+                      placeholder="Enter unique ID (e.g. SM_8820)"
                     />
                   </div>
                   <div className="sdom-modal-field">
                     <label>Email ID *</label>
-                    <input 
-                      value={smModal.data.email || smModal.data.emailId || ""} 
-                      onChange={e => setSmModal(p => ({ ...p, data: { ...p.data, email: e.target.value, emailId: e.target.value } }))} 
-                      placeholder="Enter email address (e.g. user@rail.in)" 
+                    <input
+                      value={smModal.data.email || smModal.data.emailId || ""}
+                      onChange={e => setSmModal(p => ({ ...p, data: { ...p.data, email: e.target.value, emailId: e.target.value } }))}
+                      placeholder="Enter email address (e.g. user@rail.in)"
                     />
                   </div>
                 </div>
@@ -3537,7 +3768,7 @@ export function useAomState(user, onLogout) {
                   2. Designation & Station Placement Setup
                 </h4>
                 <div style={{ height: '1px', background: '#d5dfeb', marginBottom: '16px' }}></div>
-                
+
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
                   <div className="sdom-modal-field">
                     <label>Role / Designation *</label>
@@ -3547,8 +3778,8 @@ export function useAomState(user, onLogout) {
                   </div>
                   <div className="sdom-modal-field">
                     <label>Division *</label>
-                    <select 
-                      value={smModal.data.smDivision || "Nagpur"} 
+                    <select
+                      value={smModal.data.smDivision || "Nagpur"}
                       onChange={e => {
                         const div = e.target.value;
                         setSmModal(p => ({ ...p, data: { ...p.data, smDivision: div, division: div } }));
@@ -3559,8 +3790,8 @@ export function useAomState(user, onLogout) {
                   </div>
                   <div className="sdom-modal-field">
                     <label>Railway Zone *</label>
-                    <select 
-                      value={smModal.data.smZone || "Central Railway"} 
+                    <select
+                      value={smModal.data.smZone || "Central Railway"}
                       onChange={e => {
                         const zone = e.target.value;
                         setSmModal(p => ({ ...p, data: { ...p.data, smZone: zone, zone } }));
@@ -3571,8 +3802,8 @@ export function useAomState(user, onLogout) {
                   </div>
                   <div className="sdom-modal-field">
                     <label>Station Name *</label>
-                    <select 
-                      value={smModal.data.smStation || ""} 
+                    <select
+                      value={smModal.data.smStation || ""}
                       onChange={e => {
                         const stName = e.target.value;
                         setSmModal(p => ({ ...p, data: { ...p.data, smStation: stName, stationName: stName } }));
@@ -3583,8 +3814,8 @@ export function useAomState(user, onLogout) {
                   </div>
                   <div className="sdom-modal-field">
                     <label>Category *</label>
-                    <select 
-                      value={smModal.data.cat || smModal.data.category || "A"} 
+                    <select
+                      value={smModal.data.cat || smModal.data.category || "A"}
                       onChange={e => setSmModal(p => ({ ...p, data: { ...p.data, cat: e.target.value, category: e.target.value } }))}
                     >
                       <option>A</option><option>B</option><option>C</option><option>D</option>
@@ -3602,8 +3833,8 @@ export function useAomState(user, onLogout) {
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
                   <div className="sdom-modal-field">
                     <label>Operational Station *</label>
-                    <select 
-                      value={smModal.data.smStation || ""} 
+                    <select
+                      value={smModal.data.smStation || ""}
                       onChange={e => setSmModal(p => ({ ...p, data: { ...p.data, smStation: e.target.value, stationName: e.target.value } }))}
                     >
                       <option value="">Select Operational Station</option>
@@ -3612,8 +3843,8 @@ export function useAomState(user, onLogout) {
                   </div>
                   <div className="sdom-modal-field">
                     <label>Operational Zone *</label>
-                    <select 
-                      value={smModal.data.smZone || ""} 
+                    <select
+                      value={smModal.data.smZone || ""}
                       onChange={e => setSmModal(p => ({ ...p, data: { ...p.data, smZone: e.target.value, zone: e.target.value } }))}
                     >
                       <option value="">Select Zone</option>
@@ -3622,8 +3853,8 @@ export function useAomState(user, onLogout) {
                   </div>
                   <div className="sdom-modal-field">
                     <label>Operational Division *</label>
-                    <select 
-                      value={smModal.data.smDivision || ""} 
+                    <select
+                      value={smModal.data.smDivision || ""}
                       onChange={e => setSmModal(p => ({ ...p, data: { ...p.data, smDivision: e.target.value, division: e.target.value } }))}
                     >
                       <option value="">Select Division</option>
@@ -3638,11 +3869,11 @@ export function useAomState(user, onLogout) {
               <div className="sdom-modal-title" style={{ marginBottom: 20 }}>Shift Station Master Role</div>
               <div className="sdom-modal-field">
                 <label>Role (Shift to)</label>
-                <select 
-                  value={smModal.role || "sm"} 
+                <select
+                  value={smModal.role || "sm"}
                   onChange={e => setSmModal(p => ({ ...p, role: e.target.value }))}
                 >
-                  {Object.entries(ROLE_MAP).map(([k,v]) => <option key={k} value={k}>{v}</option>)}
+                  {Object.entries(ROLE_MAP).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
                 </select>
               </div>
             </>
@@ -3652,7 +3883,7 @@ export function useAomState(user, onLogout) {
             <button className="sdom-btn-primary" style={{ flex: 1 }} onClick={saveSmModal}>
               {smModal.mode === "edit" ? "🔒 UPDATE STATION MASTER" : isShift ? "🔄 SHIFT STATION MASTER ROLE" : "👤 ADD STATION MASTER"}
             </button>
-            <button className="sdom-btn-ghost" style={{ flex: 1 }} onClick={()=>setSmModal(null)}>Cancel</button>
+            <button className="sdom-btn-ghost" style={{ flex: 1 }} onClick={() => setSmModal(null)}>Cancel</button>
           </div>
         </div>
       </div>
@@ -3664,9 +3895,9 @@ export function useAomState(user, onLogout) {
     const isShift = ssModal.mode === "shift";
     const ROLE_MAP = { pointsmen: "Pointsman", sm: "Station Master", ss: "Station Superintendent", tm: "Train Manager", ti: "Traffic Inspector" };
     return (
-      <div className="sdom-modal-overlay" style={{ zIndex: 99999 }} onClick={e=>e.target===e.currentTarget&&setSsModal(null)}>
+      <div className="sdom-modal-overlay" style={{ zIndex: 99999 }} onClick={e => e.target === e.currentTarget && setSsModal(null)}>
         <div className="sdom-modal" style={!isShift ? { width: "900px", maxWidth: "95vw" } : undefined}>
-          
+
           {!isShift ? (
             <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
               {/* Header inside modal */}
@@ -3701,39 +3932,39 @@ export function useAomState(user, onLogout) {
                   1. General & Contact Information
                 </h4>
                 <div style={{ height: '1px', background: '#d5dfeb', marginBottom: '16px' }}></div>
-                
+
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
                   <div className="sdom-modal-field">
                     <label>Full Name *</label>
-                    <input 
-                      value={ssModal.data.name || ""} 
-                      onChange={e => setSsModal(p => ({ ...p, data: { ...p.data, name: e.target.value } }))} 
-                      placeholder="Enter full name (e.g. A. K. Sharma)" 
+                    <input
+                      value={ssModal.data.name || ""}
+                      onChange={e => setSsModal(p => ({ ...p, data: { ...p.data, name: e.target.value } }))}
+                      placeholder="Enter full name (e.g. A. K. Sharma)"
                     />
                   </div>
                   <div className="sdom-modal-field">
                     <label>Mobile Number *</label>
-                    <input 
-                      value={ssModal.data.contact || ssModal.data.contactNumber || ""} 
-                      onChange={e => setSsModal(p => ({ ...p, data: { ...p.data, contact: e.target.value, contactNumber: e.target.value } }))} 
-                      placeholder="Enter 10-digit mobile number" 
+                    <input
+                      value={ssModal.data.contact || ssModal.data.contactNumber || ""}
+                      onChange={e => setSsModal(p => ({ ...p, data: { ...p.data, contact: e.target.value, contactNumber: e.target.value } }))}
+                      placeholder="Enter 10-digit mobile number"
                     />
                   </div>
                   <div className="sdom-modal-field">
                     <label>HRMS ID / Employee ID *</label>
-                    <input 
-                      value={ssModal.data.employeeId || ssModal.data.id || ""} 
+                    <input
+                      value={ssModal.data.employeeId || ssModal.data.id || ""}
                       disabled={ssModal.mode === "edit"}
-                      onChange={e => setSsModal(p => ({ ...p, data: { ...p.data, employeeId: e.target.value, id: e.target.value } }))} 
-                      placeholder="Enter unique ID (e.g. SS_8820)" 
+                      onChange={e => setSsModal(p => ({ ...p, data: { ...p.data, employeeId: e.target.value, id: e.target.value } }))}
+                      placeholder="Enter unique ID (e.g. SS_8820)"
                     />
                   </div>
                   <div className="sdom-modal-field">
                     <label>Email ID *</label>
-                    <input 
-                      value={ssModal.data.email || ssModal.data.emailId || ""} 
-                      onChange={e => setSsModal(p => ({ ...p, data: { ...p.data, email: e.target.value, emailId: e.target.value } }))} 
-                      placeholder="Enter email address (e.g. user@rail.in)" 
+                    <input
+                      value={ssModal.data.email || ssModal.data.emailId || ""}
+                      onChange={e => setSsModal(p => ({ ...p, data: { ...p.data, email: e.target.value, emailId: e.target.value } }))}
+                      placeholder="Enter email address (e.g. user@rail.in)"
                     />
                   </div>
                 </div>
@@ -3746,7 +3977,7 @@ export function useAomState(user, onLogout) {
                   2. Designation & Station Placement Setup
                 </h4>
                 <div style={{ height: '1px', background: '#d5dfeb', marginBottom: '16px' }}></div>
-                
+
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
                   <div className="sdom-modal-field">
                     <label>Role / Designation *</label>
@@ -3756,8 +3987,8 @@ export function useAomState(user, onLogout) {
                   </div>
                   <div className="sdom-modal-field">
                     <label>Division *</label>
-                    <select 
-                      value={ssModal.data.smDivision || "Nagpur"} 
+                    <select
+                      value={ssModal.data.smDivision || "Nagpur"}
                       onChange={e => {
                         const div = e.target.value;
                         setSsModal(p => ({ ...p, data: { ...p.data, smDivision: div, division: div } }));
@@ -3768,8 +3999,8 @@ export function useAomState(user, onLogout) {
                   </div>
                   <div className="sdom-modal-field">
                     <label>Railway Zone *</label>
-                    <select 
-                      value={ssModal.data.smZone || "Central Railway"} 
+                    <select
+                      value={ssModal.data.smZone || "Central Railway"}
                       onChange={e => {
                         const zone = e.target.value;
                         setSsModal(p => ({ ...p, data: { ...p.data, smZone: zone, zone } }));
@@ -3780,8 +4011,8 @@ export function useAomState(user, onLogout) {
                   </div>
                   <div className="sdom-modal-field">
                     <label>Station Name *</label>
-                    <select 
-                      value={ssModal.data.smStation || ""} 
+                    <select
+                      value={ssModal.data.smStation || ""}
                       onChange={e => {
                         const stName = e.target.value;
                         setSsModal(p => ({ ...p, data: { ...p.data, smStation: stName, station: stName } }));
@@ -3792,8 +4023,8 @@ export function useAomState(user, onLogout) {
                   </div>
                   <div className="sdom-modal-field">
                     <label>Category *</label>
-                    <select 
-                      value={ssModal.data.cat || ssModal.data.category || "A"} 
+                    <select
+                      value={ssModal.data.cat || ssModal.data.category || "A"}
                       onChange={e => setSsModal(p => ({ ...p, data: { ...p.data, cat: e.target.value, category: e.target.value } }))}
                     >
                       <option>A</option><option>B</option><option>C</option><option>D</option>
@@ -3811,8 +4042,8 @@ export function useAomState(user, onLogout) {
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
                   <div className="sdom-modal-field">
                     <label>Operational Station *</label>
-                    <select 
-                      value={ssModal.data.smStation || ""} 
+                    <select
+                      value={ssModal.data.smStation || ""}
                       onChange={e => setSsModal(p => ({ ...p, data: { ...p.data, smStation: e.target.value, station: e.target.value } }))}
                     >
                       <option value="">Select Operational Station</option>
@@ -3821,8 +4052,8 @@ export function useAomState(user, onLogout) {
                   </div>
                   <div className="sdom-modal-field">
                     <label>Operational Zone *</label>
-                    <select 
-                      value={ssModal.data.smZone || ""} 
+                    <select
+                      value={ssModal.data.smZone || ""}
                       onChange={e => setSsModal(p => ({ ...p, data: { ...p.data, smZone: e.target.value, zone: e.target.value } }))}
                     >
                       <option value="">Select Zone</option>
@@ -3831,8 +4062,8 @@ export function useAomState(user, onLogout) {
                   </div>
                   <div className="sdom-modal-field">
                     <label>Operational Division *</label>
-                    <select 
-                      value={ssModal.data.smDivision || ""} 
+                    <select
+                      value={ssModal.data.smDivision || ""}
                       onChange={e => setSsModal(p => ({ ...p, data: { ...p.data, smDivision: e.target.value, division: e.target.value } }))}
                     >
                       <option value="">Select Division</option>
@@ -3847,11 +4078,11 @@ export function useAomState(user, onLogout) {
               <div className="sdom-modal-title" style={{ marginBottom: 20 }}>Shift Station Superintendent Role</div>
               <div className="sdom-modal-field">
                 <label>Role (Shift to)</label>
-                <select 
-                  value={ssModal.role || "ss"} 
+                <select
+                  value={ssModal.role || "ss"}
                   onChange={e => setSsModal(p => ({ ...p, role: e.target.value }))}
                 >
-                  {Object.entries(ROLE_MAP).map(([k,v]) => <option key={k} value={k}>{v}</option>)}
+                  {Object.entries(ROLE_MAP).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
                 </select>
               </div>
             </>
@@ -3861,7 +4092,7 @@ export function useAomState(user, onLogout) {
             <button className="sdom-btn-primary" style={{ flex: 1 }} onClick={saveSsModal}>
               {ssModal.mode === "edit" ? "🔒 UPDATE STATION SUPERINTENDENT" : isShift ? "🔄 SHIFT STATION SUPERINTENDENT ROLE" : "👤 ADD STATION SUPERINTENDENT"}
             </button>
-            <button className="sdom-btn-ghost" style={{ flex: 1 }} onClick={()=>setSsModal(null)}>Cancel</button>
+            <button className="sdom-btn-ghost" style={{ flex: 1 }} onClick={() => setSsModal(null)}>Cancel</button>
           </div>
         </div>
       </div>
@@ -3873,9 +4104,9 @@ export function useAomState(user, onLogout) {
     const isShift = tmModal.mode === "shift";
     const ROLE_MAP = { pointsmen: "Pointsman", sm: "Station Master", ss: "Station Superintendent", tm: "Train Manager", ti: "Traffic Inspector" };
     return (
-      <div className="sdom-modal-overlay" style={{ zIndex: 99999 }} onClick={e=>e.target===e.currentTarget&&setTmModal(null)}>
+      <div className="sdom-modal-overlay" style={{ zIndex: 99999 }} onClick={e => e.target === e.currentTarget && setTmModal(null)}>
         <div className="sdom-modal" style={!isShift ? { width: "900px", maxWidth: "95vw" } : undefined}>
-          
+
           {!isShift ? (
             <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
               {/* Header inside modal */}
@@ -3910,39 +4141,39 @@ export function useAomState(user, onLogout) {
                   1. General & Contact Information
                 </h4>
                 <div style={{ height: '1px', background: '#d5dfeb', marginBottom: '16px' }}></div>
-                
+
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
                   <div className="sdom-modal-field">
                     <label>Full Name *</label>
-                    <input 
-                      value={tmModal.data.name || ""} 
-                      onChange={e => setTmModal(p => ({ ...p, data: { ...p.data, name: e.target.value } }))} 
-                      placeholder="Enter full name (e.g. A. K. Sharma)" 
+                    <input
+                      value={tmModal.data.name || ""}
+                      onChange={e => setTmModal(p => ({ ...p, data: { ...p.data, name: e.target.value } }))}
+                      placeholder="Enter full name (e.g. A. K. Sharma)"
                     />
                   </div>
                   <div className="sdom-modal-field">
                     <label>Mobile Number *</label>
-                    <input 
-                      value={tmModal.data.contact || ""} 
-                      onChange={e => setTmModal(p => ({ ...p, data: { ...p.data, contact: e.target.value } }))} 
-                      placeholder="Enter 10-digit mobile number" 
+                    <input
+                      value={tmModal.data.contact || ""}
+                      onChange={e => setTmModal(p => ({ ...p, data: { ...p.data, contact: e.target.value } }))}
+                      placeholder="Enter 10-digit mobile number"
                     />
                   </div>
                   <div className="sdom-modal-field">
                     <label>HRMS ID / Employee ID *</label>
-                    <input 
-                      value={tmModal.data.employeeId || ""} 
+                    <input
+                      value={tmModal.data.employeeId || ""}
                       disabled={tmModal.mode === "edit"}
-                      onChange={e => setTmModal(p => ({ ...p, data: { ...p.data, employeeId: e.target.value } }))} 
-                      placeholder="Enter unique ID (e.g. TM_3001)" 
+                      onChange={e => setTmModal(p => ({ ...p, data: { ...p.data, employeeId: e.target.value } }))}
+                      placeholder="Enter unique ID (e.g. TM_3001)"
                     />
                   </div>
                   <div className="sdom-modal-field">
                     <label>Email ID *</label>
-                    <input 
-                      value={tmModal.data.email || ""} 
-                      onChange={e => setTmModal(p => ({ ...p, data: { ...p.data, email: e.target.value } }))} 
-                      placeholder="Enter email address (e.g. user@rail.in)" 
+                    <input
+                      value={tmModal.data.email || ""}
+                      onChange={e => setTmModal(p => ({ ...p, data: { ...p.data, email: e.target.value } }))}
+                      placeholder="Enter email address (e.g. user@rail.in)"
                     />
                   </div>
                 </div>
@@ -3955,7 +4186,7 @@ export function useAomState(user, onLogout) {
                   2. Designation & Station Placement Setup
                 </h4>
                 <div style={{ height: '1px', background: '#d5dfeb', marginBottom: '16px' }}></div>
-                
+
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
                   <div className="sdom-modal-field">
                     <label>Role / Designation *</label>
@@ -3965,8 +4196,8 @@ export function useAomState(user, onLogout) {
                   </div>
                   <div className="sdom-modal-field">
                     <label>Division *</label>
-                    <select 
-                      value={tmModal.data.division || "Nagpur"} 
+                    <select
+                      value={tmModal.data.division || "Nagpur"}
                       onChange={e => {
                         const div = e.target.value;
                         setTmModal(p => ({ ...p, data: { ...p.data, division: div } }));
@@ -3977,8 +4208,8 @@ export function useAomState(user, onLogout) {
                   </div>
                   <div className="sdom-modal-field">
                     <label>Railway Zone *</label>
-                    <select 
-                      value={tmModal.data.zone || "Central Railway"} 
+                    <select
+                      value={tmModal.data.zone || "Central Railway"}
                       onChange={e => {
                         const zone = e.target.value;
                         setTmModal(p => ({ ...p, data: { ...p.data, zone: zone } }));
@@ -3989,8 +4220,8 @@ export function useAomState(user, onLogout) {
                   </div>
                   <div className="sdom-modal-field">
                     <label>Station Name *</label>
-                    <select 
-                      value={tmModal.data.station || ""} 
+                    <select
+                      value={tmModal.data.station || ""}
                       onChange={e => {
                         const stName = e.target.value;
                         setTmModal(p => ({ ...p, data: { ...p.data, station: stName } }));
@@ -4001,8 +4232,8 @@ export function useAomState(user, onLogout) {
                   </div>
                   <div className="sdom-modal-field">
                     <label>Category *</label>
-                    <select 
-                      value={tmModal.data.cat || "A"} 
+                    <select
+                      value={tmModal.data.cat || "A"}
                       onChange={e => setTmModal(p => ({ ...p, data: { ...p.data, cat: e.target.value } }))}
                     >
                       <option>A</option><option>B</option><option>C</option><option>D</option>
@@ -4020,8 +4251,8 @@ export function useAomState(user, onLogout) {
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
                   <div className="sdom-modal-field">
                     <label>Crew Depot *</label>
-                    <select 
-                      value={tmModal.data.workLocation || "Nagpur Depot"} 
+                    <select
+                      value={tmModal.data.workLocation || "Nagpur Depot"}
                       onChange={e => setTmModal(p => ({ ...p, data: { ...p.data, workLocation: e.target.value } }))}
                     >
                       <option value="Nagpur Depot">Nagpur Depot</option>
@@ -4033,16 +4264,16 @@ export function useAomState(user, onLogout) {
                   </div>
                   <div className="sdom-modal-field">
                     <label>Assigned Section Beats *</label>
-                    <input 
-                      value={tmModal.data.reportingSm || "NGP-BSL Section"} 
-                      onChange={e => setTmModal(p => ({ ...p, data: { ...p.data, reportingSm: e.target.value } }))} 
+                    <input
+                      value={tmModal.data.reportingSm || "NGP-BSL Section"}
+                      onChange={e => setTmModal(p => ({ ...p, data: { ...p.data, reportingSm: e.target.value } }))}
                       placeholder="E.g. NGP-BSL, NGP-DURG"
                     />
                   </div>
                   <div className="sdom-modal-field">
                     <label>Assigned Shift *</label>
-                    <select 
-                      value={tmModal.data.shift || "Goods Train Beat"} 
+                    <select
+                      value={tmModal.data.shift || "Goods Train Beat"}
                       onChange={e => setTmModal(p => ({ ...p, data: { ...p.data, shift: e.target.value } }))}
                     >
                       <option value="Mail/Express Beat">Mail/Express Beat</option>
@@ -4058,11 +4289,11 @@ export function useAomState(user, onLogout) {
               <div className="sdom-modal-title" style={{ marginBottom: 20 }}>Shift Train Manager Role</div>
               <div className="sdom-modal-field">
                 <label>Role (Shift to)</label>
-                <select 
-                  value={tmModal.role || "tm"} 
+                <select
+                  value={tmModal.role || "tm"}
                   onChange={e => setTmModal(p => ({ ...p, role: e.target.value }))}
                 >
-                  {Object.entries(ROLE_MAP).map(([k,v]) => <option key={k} value={k}>{v}</option>)}
+                  {Object.entries(ROLE_MAP).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
                 </select>
               </div>
             </>
@@ -4072,7 +4303,7 @@ export function useAomState(user, onLogout) {
             <button className="sdom-btn-primary" style={{ flex: 1 }} onClick={saveTmModal}>
               {tmModal.mode === "edit" ? "🔒 UPDATE TRAIN MANAGER" : isShift ? "🔄 SHIFT TRAIN MANAGER ROLE" : "👤 ADD TRAIN MANAGER"}
             </button>
-            <button className="sdom-btn-ghost" style={{ flex: 1 }} onClick={()=>setTmModal(null)}>Cancel</button>
+            <button className="sdom-btn-ghost" style={{ flex: 1 }} onClick={() => setTmModal(null)}>Cancel</button>
           </div>
         </div>
       </div>
@@ -4086,13 +4317,13 @@ export function useAomState(user, onLogout) {
     const filtered = DASHBOARD_96_STATIONS.filter(st => {
       const q = zoomPopupSearch.trim().toLowerCase();
       const matchesSearch = !q || st.stationName.toLowerCase().includes(q) || st.stationCode.toLowerCase().includes(q);
-      
+
       const matchesZone = zoomPopupZone === "All" || st.zone === zoomPopupZone;
       const matchesDivision = zoomPopupDivision === "All" || st.division === zoomPopupDivision;
-      
+
       const matchesName = zoomPopupStationName === "All" || !zoomPopupStationName.trim() || st.stationName.toLowerCase().includes(zoomPopupStationName.toLowerCase());
       const matchesCode = zoomPopupStationCode === "All" || !zoomPopupStationCode.trim() || st.stationCode.toLowerCase().includes(zoomPopupStationCode.toLowerCase());
-      
+
       const matchesCategory = zoomPopupCategory === "All" || st.category === zoomPopupCategory;
       const matchesRisk = zoomPopupRisk === "All" || st.riskLevel === zoomPopupRisk;
       const matchesStatus = zoomPopupStatus === "All" || st.assessmentStatus === zoomPopupStatus;
@@ -4153,7 +4384,7 @@ export function useAomState(user, onLogout) {
     };
 
     return (
-      <div 
+      <div
         className="zoom-modal-overlay"
         style={{
           position: "fixed",
@@ -4180,7 +4411,7 @@ export function useAomState(user, onLogout) {
             to { transform: translateY(0); opacity: 1; }
           }
         `}</style>
-        <div 
+        <div
           className="zoom-modal-container"
           style={{
             backgroundColor: "#ffffff",
@@ -4196,7 +4427,7 @@ export function useAomState(user, onLogout) {
           }}
         >
           {/* Modal Header */}
-          <div 
+          <div
             style={{
               padding: "18px 24px",
               borderBottom: "1px solid #e2e8f0",
@@ -4211,17 +4442,17 @@ export function useAomState(user, onLogout) {
           >
             <div>
               <h3 style={{ margin: 0, fontSize: "20px", fontWeight: "800", color: "#0f172a" }}>
-                {selectedChartType === "progress" 
-                  ? "Station-wise Evaluation Progress" 
-                  : selectedChartType === "score" 
-                  ? "Station-wise Average Score" 
-                  : "Category Distribution"}
+                {selectedChartType === "progress"
+                  ? "Station-wise Evaluation Progress"
+                  : selectedChartType === "score"
+                    ? "Station-wise Average Score"
+                    : "Category Distribution"}
               </h3>
               <p style={{ margin: "4px 0 0 0", fontSize: "12px", color: "#64748b", fontWeight: "600" }}>
                 Page {currentPage} of {totalPages} (Showing 10 stations per page out of {filtered.length} matching stations)
               </p>
             </div>
-            
+
             <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
               <button
                 type="button"
@@ -4244,9 +4475,9 @@ export function useAomState(user, onLogout) {
 
           {/* Modal Body Container */}
           <div style={{ flex: 1, padding: "24px", display: "flex", flexDirection: "column", gap: "20px", overflow: "visible" }}>
-            
+
             {/* 1. FILTER CONTROLS GRID */}
-            <div 
+            <div
               style={{
                 background: "#f8fafc",
                 border: "1px solid #e2e8f0",
@@ -4274,7 +4505,7 @@ export function useAomState(user, onLogout) {
                   Reset Diagnostics Filters
                 </button>
               </div>
-              <div 
+              <div
                 style={{
                   display: "grid",
                   gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))",
@@ -4418,7 +4649,7 @@ export function useAomState(user, onLogout) {
             </div>
 
             {/* 2. DYNAMIC REAL-TIME CHART BOX */}
-            <div 
+            <div
               style={{
                 background: "#ffffff",
                 border: "1px solid #e2e8f0",
@@ -4429,17 +4660,17 @@ export function useAomState(user, onLogout) {
             >
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
                 <h4 style={{ margin: 0, fontSize: "14px", fontWeight: "750", color: "#0f172a" }}>
-                  {selectedChartType === "progress" 
-                    ? "Evaluation Progress Trends (Completed vs Pending)" 
-                    : selectedChartType === "score" 
-                    ? "Average Safety Evaluation Scores (/100)" 
-                    : "Category Distribution Breakdown"}
+                  {selectedChartType === "progress"
+                    ? "Evaluation Progress Trends (Completed vs Pending)"
+                    : selectedChartType === "score"
+                      ? "Average Safety Evaluation Scores (/100)"
+                      : "Category Distribution Breakdown"}
                 </h4>
                 <span style={{ fontSize: "12px", color: "#64748b", fontWeight: "600" }}>
                   Showing 10 stations on this page
                 </span>
               </div>
-              
+
               <div style={{ height: "260px", width: "100%" }}>
                 {selectedChartType === "category" ? (
                   <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100%", gap: "60px" }}>
@@ -4486,7 +4717,7 @@ export function useAomState(user, onLogout) {
                         height={40}
                       />
                       <YAxis tick={{ fontSize: 10, fill: "#475569" }} domain={selectedChartType === "score" ? [0, 100] : undefined} />
-                      <Tooltip 
+                      <Tooltip
                         contentStyle={{ background: "#0f172a", color: "#ffffff", borderRadius: "8px", border: "none", fontSize: "12px" }}
                       />
                       <Legend iconType="circle" wrapperStyle={{ fontSize: "12px" }} />
@@ -4505,7 +4736,7 @@ export function useAomState(user, onLogout) {
             </div>
 
             {/* 3. DETAILED STATION DATA TABLE */}
-            <div 
+            <div
               style={{
                 background: "#ffffff",
                 border: "1px solid #e2e8f0",
@@ -4574,7 +4805,7 @@ export function useAomState(user, onLogout) {
           </div>
 
           {/* Modal Footer (SLIDER / TABS PAGINATION) */}
-          <div 
+          <div
             style={{
               padding: "16px 24px",
               borderTop: "1px solid #e2e8f0",
@@ -4587,7 +4818,7 @@ export function useAomState(user, onLogout) {
             <div style={{ fontSize: "13px", color: "#475569", fontWeight: "600" }}>
               Showing {filtered.length > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0} to {Math.min(currentPage * itemsPerPage, filtered.length)} of {filtered.length} stations
             </div>
-            
+
             {/* Page tabs */}
             <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
               <button
@@ -4683,14 +4914,14 @@ export function useAomState(user, onLogout) {
         lastScore: p.lastScore,
         safetyScore: p.safetyScore,
         totalAssessments: p.totalAssessments,
-        lastAssessedDate: p.hrmsId === "PM_1001" ? "2026-03-28" : 
-                          p.hrmsId === "PM_1102" ? "2026-03-10" : 
-                          p.hrmsId === "PM_1103" ? "2026-02-15" : 
-                          p.hrmsId === "PM_1104" ? "2026-03-18" : 
-                          p.hrmsId === "PM_1105" ? "2026-01-20" : 
-                          p.hrmsId === "PM_1106" ? "2026-03-05" : 
-                          p.hrmsId === "PM_1107" ? "2026-03-20" : 
-                          p.hrmsId === "PM_1108" ? "2026-02-01" : "—",
+        lastAssessedDate: p.hrmsId === "PM_1001" ? "2026-03-28" :
+          p.hrmsId === "PM_1102" ? "2026-03-10" :
+            p.hrmsId === "PM_1103" ? "2026-02-15" :
+              p.hrmsId === "PM_1104" ? "2026-03-18" :
+                p.hrmsId === "PM_1105" ? "2026-01-20" :
+                  p.hrmsId === "PM_1106" ? "2026-03-05" :
+                    p.hrmsId === "PM_1107" ? "2026-03-20" :
+                      p.hrmsId === "PM_1108" ? "2026-02-01" : "—",
         monitoringStatus: deactivatedUserIds.has(p.hrmsId) ? "Deactivated" : (p.monitoringStatus || "Active")
       })),
       ...stationMastersDirectory.map((sm, idx) => {
@@ -4754,7 +4985,7 @@ export function useAomState(user, onLogout) {
     const filteredEmployees = allEmployees.filter(emp => {
       const q = empSearchText.trim().toLowerCase();
       const matchesSearch = !q || emp.name.toLowerCase().includes(q) || emp.hrmsId.toLowerCase().includes(q);
-      
+
       const matchesDesignation = empDesignationFilter === "All" || emp.designation === empDesignationFilter;
       const matchesStation = empStationFilter === "All" || emp.stationName === empStationFilter;
       const matchesDivision = empDivisionFilter === "All" || emp.division === empDivisionFilter;
@@ -4878,10 +5109,10 @@ export function useAomState(user, onLogout) {
             prev.map((r) =>
               r.employeeId === row.hrmsId
                 ? {
-                    ...r,
-                    jurisdiction: target,
-                    division: target
-                  }
+                  ...r,
+                  jurisdiction: target,
+                  division: target
+                }
                 : r
             )
           );
@@ -5178,21 +5409,21 @@ export function useAomState(user, onLogout) {
                       paginatedEmployees.map((row, idx) => {
                         const riskColor = row.riskLevel === "High" ? "#ef4444" : row.riskLevel === "Medium" ? "#ea580c" : "#16a34a";
                         const riskBg = row.riskLevel === "High" ? "#fef2f2" : row.riskLevel === "Medium" ? "#fff7ed" : "#dcfce7";
-                        
+
                         const statusColor = row.assessmentStatus === "Approved" ? "#16a34a" : row.assessmentStatus === "Pending" ? "#d97706" : "#ef4444";
                         const statusBg = row.assessmentStatus === "Approved" ? "#dcfce7" : row.assessmentStatus === "Pending" ? "#fef3c7" : "#fee2e2";
-                        
+
                         const isDeactivated = deactivatedUserIds.has(row.hrmsId);
                         const displayMonStatus = isDeactivated ? "Deactivated" : row.monitoringStatus;
 
-                        const monColor = displayMonStatus === "Active" ? "#16a34a" : 
-                                         displayMonStatus === "On Duty" ? "#d97706" : 
-                                         displayMonStatus === "Off Duty" ? "#475569" : 
-                                         displayMonStatus === "Deactivated" ? "#64748b" : "#dc2626";
-                        const monBg = displayMonStatus === "Active" ? "#dcfce7" : 
-                                      displayMonStatus === "On Duty" ? "#fef3c7" : 
-                                      displayMonStatus === "Off Duty" ? "#f1f5f9" : 
-                                      displayMonStatus === "Deactivated" ? "#f1f5f9" : "#fee2e2";
+                        const monColor = displayMonStatus === "Active" ? "#16a34a" :
+                          displayMonStatus === "On Duty" ? "#d97706" :
+                            displayMonStatus === "Off Duty" ? "#475569" :
+                              displayMonStatus === "Deactivated" ? "#64748b" : "#dc2626";
+                        const monBg = displayMonStatus === "Active" ? "#dcfce7" :
+                          displayMonStatus === "On Duty" ? "#fef3c7" :
+                            displayMonStatus === "Off Duty" ? "#f1f5f9" :
+                              displayMonStatus === "Deactivated" ? "#f1f5f9" : "#fee2e2";
 
                         const draftShift = empShiftDrafts[row.hrmsId] || "";
 
@@ -5467,28 +5698,28 @@ export function useAomState(user, onLogout) {
                 <h4 style={{ margin: '0 0 12px', fontSize: '14px', color: '#0f172a', fontWeight: '800', borderBottom: '1px solid #cbd5e1', paddingBottom: '6px' }}>
                   Operational Profile Specifications
                 </h4>
-                
+
                 {s.role === "pointsmen" && (
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', fontSize: '13px' }}>
-                    <div><strong>Reporting Station Master:</strong><div style={{fontWeight: 700, color: "#1e3a5f", marginTop: 4}}>{s.reportingSm || "S. Deshmukh (SM)"}</div></div>
-                    <div><strong>Assigned Shift:</strong><div style={{fontWeight: 700, color: "#1e3a5f", marginTop: 4}}>{s.shift || "Morning Shift (06:00 - 14:00)"}</div></div>
-                    <div><strong>Work Location Setup:</strong><div style={{fontWeight: 700, color: "#1e3a5f", marginTop: 4}}>{s.workLocation || "Yard Area"}</div></div>
+                    <div><strong>Reporting Station Master:</strong><div style={{ fontWeight: 700, color: "#1e3a5f", marginTop: 4 }}>{s.reportingSm || "S. Deshmukh (SM)"}</div></div>
+                    <div><strong>Assigned Shift:</strong><div style={{ fontWeight: 700, color: "#1e3a5f", marginTop: 4 }}>{s.shift || "Morning Shift (06:00 - 14:00)"}</div></div>
+                    <div><strong>Work Location Setup:</strong><div style={{ fontWeight: 700, color: "#1e3a5f", marginTop: 4 }}>{s.workLocation || "Yard Area"}</div></div>
                   </div>
                 )}
 
                 {(s.role === "sm" || s.role === "ss") && (
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', fontSize: '13px' }}>
-                    <div><strong>Operational Station:</strong><div style={{fontWeight: 700, color: "#065f46", marginTop: 4}}>{s.smStation || s.stationName || "N/A"}</div></div>
-                    <div><strong>Operational Division:</strong><div style={{fontWeight: 700, color: "#065f46", marginTop: 4}}>{s.smDivision || s.division || "Nagpur"}</div></div>
-                    <div><strong>Operational Zone:</strong><div style={{fontWeight: 700, color: "#065f46", marginTop: 4}}>{s.smZone || s.zone || "Central Railway"}</div></div>
+                    <div><strong>Operational Station:</strong><div style={{ fontWeight: 700, color: "#065f46", marginTop: 4 }}>{s.smStation || s.stationName || "N/A"}</div></div>
+                    <div><strong>Operational Division:</strong><div style={{ fontWeight: 700, color: "#065f46", marginTop: 4 }}>{s.smDivision || s.division || "Nagpur"}</div></div>
+                    <div><strong>Operational Zone:</strong><div style={{ fontWeight: 700, color: "#065f46", marginTop: 4 }}>{s.smZone || s.zone || "Central Railway"}</div></div>
                   </div>
                 )}
 
                 {s.role === "tm" && (
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', fontSize: '13px' }}>
-                    <div><strong>Crew Depot:</strong><div style={{fontWeight: 700, color: "#6b21a8", marginTop: 4}}>{s.workLocation || "Nagpur Depot"}</div></div>
-                    <div><strong>Assigned Shift:</strong><div style={{fontWeight: 700, color: "#6b21a8", marginTop: 4}}>{s.shift || "Goods Train Beat"}</div></div>
-                    <div><strong>Assigned Section Beats:</strong><div style={{fontWeight: 700, color: "#6b21a8", marginTop: 4}}>{s.reportingSm || "NGP-BSL Section"}</div></div>
+                    <div><strong>Crew Depot:</strong><div style={{ fontWeight: 700, color: "#6b21a8", marginTop: 4 }}>{s.workLocation || "Nagpur Depot"}</div></div>
+                    <div><strong>Assigned Shift:</strong><div style={{ fontWeight: 700, color: "#6b21a8", marginTop: 4 }}>{s.shift || "Goods Train Beat"}</div></div>
+                    <div><strong>Assigned Section Beats:</strong><div style={{ fontWeight: 700, color: "#6b21a8", marginTop: 4 }}>{s.reportingSm || "NGP-BSL Section"}</div></div>
                   </div>
                 )}
               </div>
@@ -5549,18 +5780,22 @@ export function useAomState(user, onLogout) {
                     <button
                       type="button"
                       onClick={() => setTiAssessmentAnswers(prev => ({ ...prev, [tiAssessmentFormOpen]: { ...prev[tiAssessmentFormOpen], [c.key]: "yes" } }))}
-                      style={{ padding: "8px 20px", borderRadius: 6, border: "2px solid", cursor: "pointer", fontWeight: 700, fontSize: "0.85rem",
+                      style={{
+                        padding: "8px 20px", borderRadius: 6, border: "2px solid", cursor: "pointer", fontWeight: 700, fontSize: "0.85rem",
                         borderColor: answers[c.key] === "yes" ? "#16a34a" : "#d1d5db",
                         background: answers[c.key] === "yes" ? "#dcfce7" : "#ffffff",
-                        color: answers[c.key] === "yes" ? "#15803d" : "#6b7280" }}
+                        color: answers[c.key] === "yes" ? "#15803d" : "#6b7280"
+                      }}
                     >✓ Yes</button>
                     <button
                       type="button"
                       onClick={() => setTiAssessmentAnswers(prev => ({ ...prev, [tiAssessmentFormOpen]: { ...prev[tiAssessmentFormOpen], [c.key]: "no" } }))}
-                      style={{ padding: "8px 20px", borderRadius: 6, border: "2px solid", cursor: "pointer", fontWeight: 700, fontSize: "0.85rem",
+                      style={{
+                        padding: "8px 20px", borderRadius: 6, border: "2px solid", cursor: "pointer", fontWeight: 700, fontSize: "0.85rem",
                         borderColor: answers[c.key] === "no" ? "#dc2626" : "#d1d5db",
                         background: answers[c.key] === "no" ? "#fee2e2" : "#ffffff",
-                        color: answers[c.key] === "no" ? "#b91c1c" : "#6b7280" }}
+                        color: answers[c.key] === "no" ? "#b91c1c" : "#6b7280"
+                      }}
                     >✗ No</button>
                   </div>
                 </div>
@@ -5605,9 +5840,9 @@ export function useAomState(user, onLogout) {
           {(roleKey === "pointsmen" || roleKey === "sm" || roleKey === "ss" || roleKey === "tm" || roleKey === "ti") && (
             <button className="sdom-btn-primary" onClick={
               roleKey === "pointsmen" ? openPmAdd :
-              roleKey === "sm" ? openSmAdd :
-              roleKey === "ss" ? openSsAdd :
-              roleKey === "tm" ? openTmAdd : openTiAdd
+                roleKey === "sm" ? openSmAdd :
+                  roleKey === "ss" ? openSsAdd :
+                    roleKey === "tm" ? openTmAdd : openTiAdd
             }>
               <Plus size={16} /> Add New {title}
             </button>
@@ -5676,7 +5911,7 @@ export function useAomState(user, onLogout) {
                   const renderCategoryBadge = (cat) => {
                     const bgMap = { A: "#dcfce7", B: "#dbeafe", C: "#fef3c7", D: "#fee2e2" };
                     const fgMap = { A: "#15803d", B: "#1d4ed8", C: "#b45309", D: "#b91c1c" };
-                    
+
                     if (roleKey === "ti") {
                       return (
                         <span style={{
@@ -5770,7 +6005,43 @@ export function useAomState(user, onLogout) {
                             onClick={() => setSelectedRoleEmployee({ ...s, _roleKey: roleKey })}>
                             View
                           </button>
-                          
+
+                          {roleKey === "ss" && (
+                            <button
+                              className="sdom-btn-outline"
+                              style={{
+                                padding: "5px 10px",
+                                fontSize: "0.8rem",
+                                borderColor: localStorage.getItem(`ss_test_activated_${s.hrmsId}`) === "true" ? "#dc2626" : "#16a34a",
+                                color: localStorage.getItem(`ss_test_activated_${s.hrmsId}`) === "true" ? "#dc2626" : "#15803d",
+                                background: localStorage.getItem(`ss_test_activated_${s.hrmsId}`) === "true" ? "#fee2e2" : "#f0fdf4",
+                                fontWeight: "700"
+                              }}
+                              onClick={async () => {
+                                const isActivated = localStorage.getItem(`ss_test_activated_${s.hrmsId}`) === "true";
+                                const nextVal = !isActivated;
+                                localStorage.setItem(`ss_test_activated_${s.hrmsId}`, nextVal ? "true" : "false");
+                                window.dispatchEvent(new Event("storage"));
+                                
+                                if (isSupabaseConfigured) {
+                                  try {
+                                    await supabase.from("AUDIT_LOG").insert([{
+                                      user_id: user?.userId || null,
+                                      action: nextVal ? "ACTIVATE_SS_EXAM" : "DEACTIVATE_SS_EXAM",
+                                      table_name: "STATION_SUPERINTENDENT",
+                                      record_id: s.hrmsId
+                                    }]);
+                                  } catch (auditErr) {
+                                    console.error("Failed to write activation to AUDIT_LOG:", auditErr);
+                                  }
+                                }
+                                setSsActivationTrigger(p => p + 1);
+                              }}
+                            >
+                              {localStorage.getItem(`ss_test_activated_${s.hrmsId}`) === "true" ? "Deactivate Exam" : "Activate Exam"}
+                            </button>
+                          )}
+
                           {/* Edit */}
                           {roleKey === "ti" ? (
                             <button className="sdom-icon-btn" title="Edit" onClick={() => openTiEdit(s)}>
@@ -6054,7 +6325,7 @@ export function useAomState(user, onLogout) {
         <div className="sdom-row-2">
           <div className="sdom-chart-card">
             <div className="sdom-chart-title" style={{ marginBottom: "16px" }}>Personal & Professional Details</div>
-            
+
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '15px', paddingBottom: '20px' }}>
               {[
                 ["Employee ID / HRMS ID", s.id],
@@ -6174,7 +6445,7 @@ export function useAomState(user, onLogout) {
           <div className="sdom-chart-subtitle" style={{ marginBottom: "18px", color: "#64748b", fontSize: "0.85rem" }}>
             Official configuration, signaling details, geographical references, and logistics profile of the station.
           </div>
-          
+
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: "16px" }}>
             {[
               { label: "Operating Division", val: st.division || "Nagpur", icon: <Layers size={16} /> },
@@ -6192,20 +6463,20 @@ export function useAomState(user, onLogout) {
               { label: "Official Contact", val: st.contactNumber || "+91-712-2560158", icon: <Phone size={16} /> },
               { label: "Official Email ID", val: st.emailId || `station.${(st.code || "NGP").toLowerCase().split('_')[0]}@cr.railnet.gov.in`, icon: <Mail size={16} /> },
             ].map((item, idx) => (
-              <div key={idx} style={{ 
-                background: "#f8fafc", 
-                border: "1px solid #e2e8f0", 
-                borderRadius: "8px", 
+              <div key={idx} style={{
+                background: "#f8fafc",
+                border: "1px solid #e2e8f0",
+                borderRadius: "8px",
                 padding: "12px 16px",
                 display: "flex",
                 alignItems: "center",
                 gap: "12px"
               }}>
-                <div style={{ 
-                  background: "#eff6ff", 
-                  color: "#2563eb", 
-                  borderRadius: "6px", 
-                  width: "36px", 
+                <div style={{
+                  background: "#eff6ff",
+                  color: "#2563eb",
+                  borderRadius: "6px",
+                  width: "36px",
                   height: "36px",
                   display: "flex",
                   alignItems: "center",
@@ -6254,9 +6525,9 @@ export function useAomState(user, onLogout) {
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie data={riskCount} cx="50%" cy="50%" innerRadius={70} outerRadius={105}
-                       dataKey="value" paddingAngle={4}
-                       label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                       labelLine={false}>
+                    dataKey="value" paddingAngle={4}
+                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                    labelLine={false}>
                     {riskCount.map((d, i) => <Cell key={i} fill={RISK_COLORS[d.name]} />)}
                   </Pie>
                   <Legend wrapperStyle={{ fontSize: "0.82rem" }} />
@@ -6404,13 +6675,14 @@ export function useAomState(user, onLogout) {
     try {
       const u = await saDataService.fetchUsers();
       const st = await saDataService.fetchStations(u);
-      
+
       setStations(st);
-      
+
       const mapped = u.map(x => ({
         ...x,
         hrmsId: x.id,
         employeeId: x.id,
+        user_id: x.user_id,
         name: x.name,
         lastScore: x.score,
         safetyScore: x.safetyScore || 85,
@@ -6529,7 +6801,7 @@ export function useAomState(user, onLogout) {
               appearance: answers.appearance || []
             },
             aomRemarks: a.APPROVAL?.remarks || "",
-            auditTrail: a.APPROVAL ? [{ action: "Reviewed", by: a.APPROVAL.USERS?.full_name || "AOM", date: a.APPROVAL.approval_date ? new Date(a.APPROVAL.approval_date).toISOString().slice(0,10) : "", remark: a.APPROVAL.remarks }] : []
+            auditTrail: a.APPROVAL ? [{ action: "Reviewed", by: a.APPROVAL.USERS?.full_name || "AOM", date: a.APPROVAL.approval_date ? new Date(a.APPROVAL.approval_date).toISOString().slice(0, 10) : "", remark: a.APPROVAL.remarks }] : []
           };
         });
         setAomSMList(smMapped);
@@ -6559,13 +6831,13 @@ export function useAomState(user, onLogout) {
               { title: "Emergency Train Protection", score: Math.round(score * 0.25), max: 25 },
               { title: "Written Exam (Knowledge)", score: Math.round(score * 0.20), max: 25 }
             ],
-            auditTrail: a.APPROVAL ? [{ action: "Approved", by: a.APPROVAL.USERS?.full_name || "AOM", date: new Date(a.APPROVAL.approval_date).toISOString().slice(0,10), remark: a.APPROVAL.remarks }] : []
+            auditTrail: a.APPROVAL ? [{ action: "Approved", by: a.APPROVAL.USERS?.full_name || "AOM", date: new Date(a.APPROVAL.approval_date).toISOString().slice(0, 10), remark: a.APPROVAL.remarks }] : []
           };
         });
         setAomTMList(tmMapped);
 
         // Map SS assessments
-        const sss = (assessList || []).filter(a => a.assessment_type === "Station Superintendent Assessment");
+        const sss = (assessList || []).filter(a => a.assessment_type === "Station Superintendent Assessment" || a.assessment_type === "SS Assessment");
         const ssMapped = sss.map(a => {
           const score = a.TEST_ATTEMPT?.[0]?.obtained_marks || 0;
           const cat = a.TEST_ATTEMPT?.[0]?.category || "A";
@@ -6588,25 +6860,31 @@ export function useAomState(user, onLogout) {
               { title: "Communication Standards", score: Math.round(score * 0.15), max: 15 },
               { title: "Documentation Audit", score: Math.round(score * 0.10), max: 10 }
             ],
-            auditTrail: a.APPROVAL ? [{ action: "Approved", by: a.APPROVAL.USERS?.full_name || "AOM", date: new Date(a.APPROVAL.approval_date).toISOString().slice(0,10), remark: a.APPROVAL.remarks }] : []
+            auditTrail: a.APPROVAL ? [{ action: "Approved", by: a.APPROVAL.USERS?.full_name || "AOM", date: new Date(a.APPROVAL.approval_date).toISOString().slice(0, 10), remark: a.APPROVAL.remarks }] : []
           };
         });
         setAomSSList(ssMapped);
 
-        // Map pending assessments for AOM Console (status is 'Pending')
-        const pendingMapped = (assessList || []).filter(a => a.status === "Pending").map(a => {
+        // Map pending/submitted assessments for AOM Console
+        const pendingMapped = (assessList || []).filter(a => a.status === "Pending" || a.status === "Submitted" || a.status === "AVAILABLE").map(a => {
           const roleName = a.employee?.ROLE?.role_name === 'sm' ? 'Station Master' :
-                           a.employee?.ROLE?.role_name === 'tm' ? 'Train Manager' :
-                           a.employee?.ROLE?.role_name === 'ss' ? 'Station Superintendent' :
-                           a.employee?.ROLE?.role_name === 'pointsmen' ? 'Pointsman' : 'Traffic Inspector';
+            a.employee?.ROLE?.role_name === 'tm' ? 'Train Manager' :
+              a.employee?.ROLE?.role_name === 'ss' ? 'Station Superintendent' :
+                a.employee?.ROLE?.role_name === 'pointsmen' ? 'Pointsman' : 'Traffic Inspector';
           const divName = a.employee?.EMPLOYEE_PROFILE?.STATION?.DIVISION?.division_name || "Nagpur";
+          const hasAttempt = a.TEST_ATTEMPT && a.TEST_ATTEMPT.length > 0;
+          // quizMarks is the MCQ score percentage (0-100) set by TI after taking the exam
+          const quizMarks = hasAttempt ? (a.TEST_ATTEMPT[0].obtained_marks ?? null) : null;
           return {
             id: a.assessment_id,
+            employeeId: a.employee_id,
+            hrmsId: a.employee?.hrms_id || a.employee_id,
             title: `${roleName} - ${a.employee?.hrms_id || a.employee_id}`,
-            statusLabel: "Pending Approval",
-            assessedByLine: `Assessed by: ${a.conducted_by_user?.full_name || "TI"} - on ${a.assessment_date ? new Date(a.assessment_date).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10)}`,
+            statusLabel: a.status === 'Submitted' ? "Awaiting AOM Grading" : "Pending Approval",
+            assessedByLine: `Assessed by: ${a.conducted_by_user?.full_name || "AOM"} - on ${a.assessment_date ? new Date(a.assessment_date).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10)}`,
             employeeLine: `Employee: ${a.employee?.full_name || ""} | Division: ${divName}`,
-            actionType: "approval"
+            actionType: a.status === 'Submitted' ? "approval" : "exam_sent",
+            quizMarks: quizMarks
           };
         });
         setPendingAssessments(pendingMapped);
@@ -6614,13 +6892,15 @@ export function useAomState(user, onLogout) {
         // Map approved assessments for AOM Console (status is 'Approved')
         const approvedMapped = (assessList || []).filter(a => a.status === "Approved").map(a => {
           const roleName = a.employee?.ROLE?.role_name === 'sm' ? 'Station Master' :
-                           a.employee?.ROLE?.role_name === 'tm' ? 'Train Manager' :
-                           a.employee?.ROLE?.role_name === 'ss' ? 'Station Superintendent' :
-                           a.employee?.ROLE?.role_name === 'pointsmen' ? 'Pointsman' : 'Traffic Inspector';
+            a.employee?.ROLE?.role_name === 'tm' ? 'Train Manager' :
+              a.employee?.ROLE?.role_name === 'ss' ? 'Station Superintendent' :
+                a.employee?.ROLE?.role_name === 'pointsmen' ? 'Pointsman' : 'Traffic Inspector';
           const score = a.TEST_ATTEMPT?.[0]?.obtained_marks || 0;
           const cat = a.TEST_ATTEMPT?.[0]?.category || "A";
           return {
             id: a.assessment_id,
+            employeeId: a.employee_id,
+            hrmsId: a.employee?.hrms_id || a.employee_id,
             title: `${roleName} - ${a.employee?.hrms_id || a.employee_id}`,
             detail: `Approved by: AOM - on ${a.assessment_date ? new Date(a.assessment_date).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10)}`,
             score: `Score: ${score}/100 - Grade: ${cat}`
@@ -6631,9 +6911,9 @@ export function useAomState(user, onLogout) {
         // Map reportRows from assessList
         const reportsMapped = (assessList || []).map(a => {
           const roleName = a.employee?.ROLE?.role_name === 'sm' ? 'Station Master' :
-                           a.employee?.ROLE?.role_name === 'tm' ? 'Train Manager' :
-                           a.employee?.ROLE?.role_name === 'ss' ? 'Station Superintendent' :
-                           a.employee?.ROLE?.role_name === 'pointsmen' ? 'Pointsman' : 'Traffic Inspector';
+            a.employee?.ROLE?.role_name === 'tm' ? 'Train Manager' :
+              a.employee?.ROLE?.role_name === 'ss' ? 'Station Superintendent' :
+                a.employee?.ROLE?.role_name === 'pointsmen' ? 'Pointsman' : 'Traffic Inspector';
           const score = a.TEST_ATTEMPT?.[0]?.obtained_marks || 0;
           const cat = a.TEST_ATTEMPT?.[0]?.category || "A";
           return {
@@ -6656,6 +6936,10 @@ export function useAomState(user, onLogout) {
 
   useEffect(() => {
     fetchLiveDatabaseData();
+    const interval = setInterval(() => {
+      fetchLiveDatabaseData();
+    }, 4000);
+    return () => clearInterval(interval);
   }, []);
 
   return {
@@ -6986,6 +7270,7 @@ export function useAomState(user, onLogout) {
     computeScoreAndGrade,
     buildAssessmentTableMeta,
     handleViewAssessmentDetails,
+    handleAssignAssessment,
     handleApproveAssessment,
     handleRejectAssessment,
     handleStartAssessment,

@@ -37,7 +37,7 @@ export default function SSDashboard({
           </div>
           <div>
             <label>Latest Score</label>
-            <strong>{latestScore !== null ? `${latestScore}/100` : "—"}</strong>
+            <strong>{latestScore !== null ? (String(latestScore).includes("/") ? latestScore : `${latestScore}/100`) : "—"}</strong>
           </div>
         </article>
 
@@ -58,7 +58,7 @@ export default function SSDashboard({
           <div>
             <label>Current Category</label>
             <strong style={{ color: getCategoryColor(latestCategory) }}>
-              {latestCategory !== "—" ? `Category ${latestCategory}` : "—"}
+              {latestCategory !== "—" ? (latestCategory.includes("Awaiting") ? latestCategory : `Category ${latestCategory}`) : "—"}
             </strong>
           </div>
         </article>

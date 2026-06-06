@@ -3,8 +3,8 @@
  * Centrally manages all state machines, reactive filters, dialog toggles, MCQ quizzes,
  * and local cache synchs for the Traffic Inspector safety console.
  */
-import { useState, useEffect, useMemo } from "react";
-import { 
+import { useState, useEffect, useMemo, useRef } from "react";
+import {
   getCat, getUserRisk, computeSMScore, computeTMScore, computeSSScore
 } from "../../utils/trafficInspectorUtils";
 import {
@@ -41,17 +41,18 @@ export function useTrafficInspectorState(user, onLogout) {
 
   const [stations, setStations] = useState([]);
   const [users, setUsers] = useState([]);
+  const [recentAssessments, setRecentAssessments] = useState([]);
 
   const constructSections = (score, max = 100, role = "PM") => {
     const total = score || 80;
     if (role === "PM") {
       return [
-        { title: "Knowledge of Rules",      score: Math.round(total * 0.25), max: 25 },
+        { title: "Knowledge of Rules", score: Math.round(total * 0.25), max: 25 },
         { title: "Alertness & Observation", score: Math.round(total * 0.25), max: 25 },
-        { title: "Safety Record",           score: Math.round(total * 0.15), max: 15 },
+        { title: "Safety Record", score: Math.round(total * 0.15), max: 15 },
         { title: "Leadership & Management", score: Math.round(total * 0.15), max: 15 },
-        { title: "Discipline",              score: Math.round(total * 0.10), max: 10 },
-        { title: "Appearance & Neatness",   score: Math.round(total * 0.10), max: 10 },
+        { title: "Discipline", score: Math.round(total * 0.10), max: 10 },
+        { title: "Appearance & Neatness", score: Math.round(total * 0.10), max: 10 },
       ];
     } else if (role === "SM") {
       return [
@@ -86,12 +87,20 @@ export function useTrafficInspectorState(user, onLogout) {
     try {
       const u = await saDataService.fetchUsers();
       const st = await saDataService.fetchStations(u);
-      
+
+      const currentUserDb = u.find(x => x.id?.toLowerCase() === user?.hrmsId?.toLowerCase() || x.user_id === user?.userId);
+      const currentTiUserId = currentUserDb?.user_id || user?.userId;
+      if (currentTiUserId && currentTiUserId !== resolvedUserId) {
+        setResolvedUserId(currentTiUserId);
+      }
+      const effectiveUserId = currentTiUserId || resolvedUserId || user?.userId;
+
+
       const rawStations = user?.linkedStations || user?.jurisdiction || "";
       const tiStations = rawStations && rawStations !== "—" ? rawStations.split(",").map(s => s.trim().toLowerCase()) : [];
-      
-      const filteredStations = tiStations.length > 0 
-        ? st.filter(s => tiStations.includes(s.name.toLowerCase())) 
+
+      const filteredStations = tiStations.length > 0
+        ? st.filter(s => tiStations.includes(s.name.toLowerCase()))
         : [];
       setStations(filteredStations);
 
@@ -163,32 +172,32 @@ export function useTrafficInspectorState(user, onLogout) {
             return tiStations.includes(sName.toLowerCase());
           })
           .map(a => {
-          const score = a.TEST_ATTEMPT?.[0]?.obtained_marks || 0;
-          const subDate = a.assessment_date ? new Date(a.assessment_date).toISOString().slice(0, 10) : "";
-          return {
-            id: a.assessment_id,
-            pointsmanName: a.employee?.full_name || "",
-            hrmsId: a.employee?.hrms_id || "",
-            station: a.employee?.EMPLOYEE_PROFILE?.STATION?.station_name || "—",
-            assessingSM: a.conducted_by_user?.full_name || "SM",
-            submissionDate: subDate,
-            status: a.status === 'Pending' ? 'Pending' : a.status,
-            originalSections: constructSections(score, 100, "PM"),
-            finalSections: a.status === "Approved" ? constructSections(score, 100, "PM") : undefined,
-            finalScore: score,
-            category: a.TEST_ATTEMPT?.[0]?.category || getCat(score),
-            tiRemarks: a.APPROVAL?.remarks || "",
-            tiModified: false,
-            approvalDate: a.APPROVAL?.approval_date ? new Date(a.APPROVAL.approval_date).toISOString().slice(0, 10) : "",
-            auditTrail: a.APPROVAL ? [{ action: "Approved", by: a.APPROVAL.USERS?.full_name || "TI", date: new Date(a.APPROVAL.approval_date).toISOString().slice(0,10), remark: a.APPROVAL.remarks }] : []
-          };
-        });
+            const score = a.TEST_ATTEMPT?.[0]?.obtained_marks || 0;
+            const subDate = a.assessment_date ? new Date(a.assessment_date).toISOString().slice(0, 10) : "";
+            return {
+              id: a.assessment_id,
+              pointsmanName: a.employee?.full_name || "",
+              hrmsId: a.employee?.hrms_id || "",
+              station: a.employee?.EMPLOYEE_PROFILE?.STATION?.station_name || "—",
+              assessingSM: a.conducted_by_user?.full_name || "SM",
+              submissionDate: subDate,
+              status: a.status === 'Pending' ? 'Pending' : a.status,
+              originalSections: constructSections(score, 100, "PM"),
+              finalSections: a.status === "Approved" ? constructSections(score, 100, "PM") : undefined,
+              finalScore: score,
+              category: a.TEST_ATTEMPT?.[0]?.category || getCat(score),
+              tiRemarks: a.APPROVAL?.remarks || "",
+              tiModified: false,
+              approvalDate: a.APPROVAL?.approval_date ? new Date(a.APPROVAL.approval_date).toISOString().slice(0, 10) : "",
+              auditTrail: a.APPROVAL ? [{ action: "Approved", by: a.APPROVAL.USERS?.full_name || "TI", date: new Date(a.APPROVAL.approval_date).toISOString().slice(0, 10), remark: a.APPROVAL.remarks }] : []
+            };
+          });
         setPmList(pmMapped);
 
         // 2. Station Master Checklist List (smList)
-        const sms = mapped.filter(u => u.role === "Station Master");
+        const sms = filteredMapped.filter(u => u.role === "Station Master");
         const smMapped = sms.map(u => {
-          const latest = assessList.find(a => a.employee_id === u.user_id && a.assessment_type === "Station Master Assessment");
+          const latest = assessList.find(a => a.employee_id === u.user_id && (a.assessment_type === "Station Master Assessment" || a.assessment_type === "SM Assessment"));
           const score = latest?.TEST_ATTEMPT?.[0]?.obtained_marks || u.score || 0;
           return {
             id: u.user_id,
@@ -208,9 +217,9 @@ export function useTrafficInspectorState(user, onLogout) {
         setSmList(smMapped);
 
         // 3. Train Manager Checklist List (tmList)
-        const tms = mapped.filter(u => u.role === "Train Manager");
+        const tms = filteredMapped.filter(u => u.role === "Train Manager");
         const tmMapped = tms.map(u => {
-          const latest = assessList.find(a => a.employee_id === u.user_id && a.assessment_type === "Train Manager Assessment");
+          const latest = assessList.find(a => a.employee_id === u.user_id && (a.assessment_type === "Train Manager Assessment" || a.assessment_type === "TM Assessment"));
           const score = latest?.TEST_ATTEMPT?.[0]?.obtained_marks || u.score || 0;
           return {
             id: u.user_id,
@@ -230,9 +239,9 @@ export function useTrafficInspectorState(user, onLogout) {
         setTmList(tmMapped);
 
         // 4. Station Superintendent Checklist List (ssList)
-        const sss = mapped.filter(u => u.role === "Station Superintendent");
+        const sss = filteredMapped.filter(u => u.role === "Station Superintendent");
         const ssMapped = sss.map(u => {
-          const latest = assessList.find(a => a.employee_id === u.user_id && a.assessment_type === "Station Superintendent Assessment");
+          const latest = assessList.find(a => a.employee_id === u.user_id && (a.assessment_type === "Station Superintendent Assessment" || a.assessment_type === "SS Assessment"));
           const score = latest?.TEST_ATTEMPT?.[0]?.obtained_marks || u.score || 0;
           return {
             id: u.user_id,
@@ -251,11 +260,12 @@ export function useTrafficInspectorState(user, onLogout) {
         });
         setSsList(ssMapped);
 
-        // 5. TI Self-Assessments (tiAssessments)
-        const tiAssess = assessList.filter(a => a.employee_id === user?.userId);
+        // 5. TI Self-Assessments (tiAssessments) — show all assessments for the current TI
+        const tiAssess = assessList.filter(a => a.employee_id === effectiveUserId && (a.status === 'Submitted' || a.status === 'Approved' || (a.TEST_ATTEMPT && a.TEST_ATTEMPT.length > 0)));
         const tiAssessMapped = tiAssess.map(a => {
           const score = a.TEST_ATTEMPT?.[0]?.obtained_marks || 0;
-          const cat = a.TEST_ATTEMPT?.[0]?.category || "A";
+          const cat = a.TEST_ATTEMPT?.[0]?.category || "Pending";
+          const approval = Array.isArray(a.APPROVAL) ? a.APPROVAL[0] : a.APPROVAL;
           return {
             id: a.assessment_id,
             date: a.assessment_date ? new Date(a.assessment_date).toISOString().slice(0, 10) : "",
@@ -264,22 +274,49 @@ export function useTrafficInspectorState(user, onLogout) {
             totalScore: score,
             category: cat,
             approvalStatus: a.status,
-            aomRemarks: a.APPROVAL?.remarks || "Submitted safety compliance assessment.",
+            aomRemarks: approval?.remarks || (a.status === "Approved" ? "Approved by AOM." : "Submitted safety compliance assessment."),
+            approvalDate: approval?.approval_date ? new Date(approval.approval_date).toISOString().slice(0, 10) : "",
+            approvedBy: approval?.USERS?.full_name || "",
             sections: [
-              { title: "Whistle Codes & Hand Signals", marks: Math.round(score * 0.20), outOf: 20 },
-              { title: "Token & Line Clear Authorities", marks: Math.round(score * 0.20), outOf: 20 },
-              { title: "Station Interlocking & Track Circuits", marks: Math.round(score * 0.20), outOf: 20 },
-              { title: "Shunting Operations & Point Locking", marks: Math.round(score * 0.20), outOf: 20 },
-              { title: "Gate Signals & Siding Isolation", marks: Math.round(score * 0.20), outOf: 20 }
+              { title: "Knowledge of Rules", marks: Math.round(score * 0.25), outOf: 25 },
+              { title: "Alertness & Observation", marks: Math.round(score * 0.25), outOf: 25 },
+              { title: "Safety Record", marks: Math.round(score * 0.15), outOf: 15 },
+              { title: "Leadership & Management", marks: Math.round(score * 0.15), outOf: 15 },
+              { title: "Discipline", marks: Math.round(score * 0.10), outOf: 10 },
+              { title: "Appearance & Neatness", marks: Math.round(score * 0.10), outOf: 10 }
             ],
             userAnswers: []
           };
         });
         setTiAssessments(tiAssessMapped);
 
-        // Check if TI exam is assigned
-        const pendingTIExam = assessList.find(a => a.employee_id === user?.userId && a.status === 'Pending' && a.TEST_ATTEMPT?.length === 0);
+        // 6. Recent Assessments (for Dashboard)
+        const recentAssessmentsMapped = assessList
+          .filter(a => {
+            const sName = a.employee?.EMPLOYEE_PROFILE?.STATION?.station_name || "";
+            return tiStations.includes(sName.toLowerCase()) || a.conducted_by === effectiveUserId;
+          })
+          .slice(0, 5)
+          .map(a => ({
+            id: a.assessment_id,
+            employeeId: a.employee_id,
+            name: a.employee?.full_name || "Unknown",
+            role: a.employee?.EMPLOYEE_PROFILE?.designation || a.assessment_type.replace(" Assessment", "").replace(" Checklist", ""),
+            type: a.assessment_type,
+            status: a.status === 'Approved' ? 'Completed' : (a.status === 'Submitted' ? 'Pending' : a.status),
+            by: a.conducted_by_user?.full_name || "TI",
+            date: a.assessment_date ? new Date(a.assessment_date).toISOString().slice(0, 10) : ""
+          }));
+        setRecentAssessments(recentAssessmentsMapped);
+
+        // Check if TI exam is assigned (Pending status with NO test attempt yet)
+        const pendingTIExam = assessList.find(a => a.employee_id === effectiveUserId && a.status === 'Pending' && (!a.TEST_ATTEMPT || a.TEST_ATTEMPT.length === 0));
+        const wasExamAssigned = isExamAssignedRef.current;
+        isExamAssignedRef.current = !!pendingTIExam;
         setIsExamAssigned(!!pendingTIExam);
+        if (pendingTIExam && !wasExamAssigned) {
+          triggerNotification("info", "Assessment access has been granted. Please complete your safety examination.");
+        }
       }
 
       // 6. Inspections & Counselling from SAFETY_RECORD
@@ -322,8 +359,14 @@ export function useTrafficInspectorState(user, onLogout) {
     }
   };
 
+  const isExamAssignedRef = useRef(false);
+
   useEffect(() => {
     fetchLiveDatabaseData();
+    const interval = setInterval(() => {
+      fetchLiveDatabaseData();
+    }, 4000);
+    return () => clearInterval(interval);
   }, []);
 
   const [pmList, setPmList] = useState([]);
@@ -334,6 +377,7 @@ export function useTrafficInspectorState(user, onLogout) {
   const [counsellings, setCounsellings] = useState([]);
   const [selectedRecord, setSelectedRecord] = useState(null);
   const [tiAssessments, setTiAssessments] = useState([]);
+  const [resolvedUserId, setResolvedUserId] = useState(user?.userId || null);
   const [isExamAssigned, setIsExamAssigned] = useState(false);
 
   // Search/Sort/Filter inputs
@@ -432,20 +476,7 @@ export function useTrafficInspectorState(user, onLogout) {
   const [zoomPopupEndDate, setZoomPopupEndDate] = useState("");
   const [zoomPopupPage, setZoomPopupPage] = useState(1);
 
-  // Sync exam assigned status continuously
-  useEffect(() => {
-    const handleStorageChange = () => {
-      setIsExamAssigned(localStorage.getItem("v2_ti_exam_assigned") === "true");
-    };
-    window.addEventListener("storage", handleStorageChange);
-    const interval = setInterval(() => {
-      setIsExamAssigned(localStorage.getItem("v2_ti_exam_assigned") === "true");
-    }, 1000);
-    return () => {
-      window.removeEventListener("storage", handleStorageChange);
-      clearInterval(interval);
-    };
-  }, []);
+  // Sync exam assigned status removed (handled purely by Supabase data now)
 
   const tiName = user?.name || "R. Khan";
   const tiId = user?.hrmsId || "TI_1001";
@@ -503,8 +534,8 @@ export function useTrafficInspectorState(user, onLogout) {
     });
   }, [stationStats, dbSearchQuery, dbStationFilter]);
 
-  const stBarData = filteredStations.map(st => ({ 
-    name: st.code, nameFull: st.name, avgScore: st.avgScore, safetyPct: st.safetyPct, highRisk: st.highRisk 
+  const stBarData = filteredStations.map(st => ({
+    name: st.code, nameFull: st.name, avgScore: st.avgScore, safetyPct: st.safetyPct, highRisk: st.highRisk
   }));
 
   const pieData = useMemo(() => {
@@ -645,11 +676,11 @@ export function useTrafficInspectorState(user, onLogout) {
 
   const filteredUsers = useMemo(() => {
     return users.filter(u => {
-      const isRoleMatch = 
-        activePage === "pointsmen" ? u.role === "Pointsman" : 
-        activePage === "stationMasters" ? u.role === "Station Master" : 
-        activePage === "stationSuperintendents" ? u.role === "Station Superintendent" : 
-        activePage === "trainManagers" ? u.role === "Train Manager" : true;
+      const isRoleMatch =
+        activePage === "pointsmen" ? u.role === "Pointsman" :
+          activePage === "stationMasters" ? u.role === "Station Master" :
+            activePage === "stationSuperintendents" ? u.role === "Station Superintendent" :
+              activePage === "trainManagers" ? u.role === "Train Manager" : true;
       if (!isRoleMatch) return false;
 
       const q = userSearch.toLowerCase();
@@ -898,25 +929,25 @@ export function useTrafficInspectorState(user, onLogout) {
 
   /* ── PM Review Actions ── */
   const openPmReview = id => {
-    const rec = pmList.find(p=>p.id===id);
+    const rec = pmList.find(p => p.id === id);
     if (!rec) return;
     setSelectedPmId(id);
-    setEditSections(prev=>({...prev,[id]:rec.originalSections.map(s=>({...s}))}));
-    setTiRemarks(prev=>({...prev,[id]:rec.tiRemarks||""}));
-    setRejectMode(prev=>({...prev,[id]:false}));
+    setEditSections(prev => ({ ...prev, [id]: rec.originalSections.map(s => ({ ...s })) }));
+    setTiRemarks(prev => ({ ...prev, [id]: rec.tiRemarks || "" }));
+    setRejectMode(prev => ({ ...prev, [id]: false }));
   };
 
-  const updateSec = (id,idx,val) => {
-    setEditSections(prev=>{
-      const arr=[...prev[id]]; arr[idx]={...arr[idx],score:Math.max(0,Math.min(arr[idx].max,Number(val)||0))};
-      return {...prev,[id]:arr};
+  const updateSec = (id, idx, val) => {
+    setEditSections(prev => {
+      const arr = [...prev[id]]; arr[idx] = { ...arr[idx], score: Math.max(0, Math.min(arr[idx].max, Number(val) || 0)) };
+      return { ...prev, [id]: arr };
     });
   };
 
   const finalizePM = async (id, mode, rejectNote = "") => {
     try {
       const newStatus = mode === "reject" ? "Rejected" : "Approved";
-      
+
       const { error: updateError } = await supabase
         .from("ASSESSMENT")
         .update({ status: newStatus })
@@ -1065,23 +1096,29 @@ export function useTrafficInspectorState(user, onLogout) {
     triggerNotification("success", `Exam unlocked for SM ${sm?.name}. They must complete 25 MCQ questions.`);
   };
 
-  const toggleSMYN = (id,key,idx,val) => {
+  const toggleSMYN = (id, key, idx, val) => {
     if (smLocked[id]) return;
-    setSmForms(prev=>{
-      const f={...prev[id]}; const arr=[...f[key]]; arr[idx]=arr[idx]===val?null:val;
-      return {...prev,[id]:{...f,[key]:arr}};
-    });
+    setSmForms(p => ({
+      ...p,
+      [id]: {
+        ...(p[id] || defaultSMForm()),
+        [key]: (p[id]?.[key] || Array(5).fill(null)).map((v, i) => i === idx ? (v === val ? null : val) : v)
+      }
+    }));
   };
 
-  const setSMField = (id,key,val) => { if(smLocked[id])return; setSmForms(p=>({...p,[id]:{...p[id],[key]:val}})); };
+  const setSMField = (id, key, val) => {
+    if (smLocked[id]) return;
+    setSmForms(p => ({ ...p, [id]: { ...(p[id] || defaultSMForm()), [key]: val } }));
+  };
 
   const submitSMAssessment = async (id, knowledgeMarksOverride) => {
     const f = smForms[id];
-    if (!f?.alcoholicStatus){ setStatusMsg("Alcoholic/Non-Alcoholic status is mandatory."); return; }
+    if (!f?.alcoholicStatus) { setStatusMsg("Alcoholic/Non-Alcoholic status is mandatory."); return; }
 
     // Validate all 6 TI sections are fully answered
     const unanswered = TI_SM_CRITERIA.filter(sec =>
-      !(f[sec.key]?.every(v => v === "Yes" || v === "No"))
+      !(f[sec.key] && f[sec.key].length === sec.count && f[sec.key].every(v => v === "Yes" || v === "No"))
     ).map(sec => sec.label);
     if (unanswered.length > 0) {
       setStatusMsg(`Please answer all questions in: ${unanswered.join(", ")}`);
@@ -1089,8 +1126,8 @@ export function useTrafficInspectorState(user, onLogout) {
     }
     // Use the override if provided (prevents React state batching race condition)
     const fToSubmit = knowledgeMarksOverride !== undefined ? { ...f, knowledgeMarks: knowledgeMarksOverride } : f;
-    const {total} = computeSMScore(fToSubmit, TI_SM_CRITERIA);
-    
+    const { total } = computeSMScore(fToSubmit, TI_SM_CRITERIA);
+
     const isAlcoholic = fToSubmit.alcoholicStatus === "Alcoholic";
     const cat = isAlcoholic ? "D" : getCat(total);
     const targetUser = users.find(u => u.id === id || u.user_id === id);
@@ -1109,7 +1146,7 @@ export function useTrafficInspectorState(user, onLogout) {
           employee_id: targetUser?.user_id || id,
           conducted_by: user.userId,
           assessment_type: "Station Master Assessment",
-          status: "Pending",
+          status: "Submitted",
           assessment_date: new Date().toISOString()
         }])
         .select()
@@ -1119,6 +1156,8 @@ export function useTrafficInspectorState(user, onLogout) {
 
       await assessmentService.submitTestAttempt({
         assessment_id: newAssess.assessment_id,
+        employee_id: targetUser?.user_id || id,
+        conducted_by: user.userId,
         obtained_marks: total,
         total_marks: 100,
         percentage: total,
@@ -1196,17 +1235,18 @@ export function useTrafficInspectorState(user, onLogout) {
 
   const toggleTMYN = (id, key, idx, val) => {
     if (tmLocked[id]) return;
-    setTmForms(prev => {
-      const f = { ...prev[id] };
-      const arr = [...f[key]];
-      arr[idx] = arr[idx] === val ? null : val;
-      return { ...prev, [id]: { ...f, [key]: arr } };
-    });
+    setTmForms(p => ({
+      ...p,
+      [id]: {
+        ...(p[id] || defaultTMForm()),
+        [key]: (p[id]?.[key] || Array(5).fill(null)).map((v, i) => i === idx ? (v === val ? null : val) : v)
+      }
+    }));
   };
 
   const setTMField = (id, key, val) => {
     if (tmLocked[id]) return;
-    setTmForms(p => ({ ...p, [id]: { ...p[id], [key]: val } }));
+    setTmForms(p => ({ ...p, [id]: { ...(p[id] || defaultTMForm()), [key]: val } }));
   };
 
   const submitTMAssessment = async id => {
@@ -1215,6 +1255,16 @@ export function useTrafficInspectorState(user, onLogout) {
       setStatusMsg("Alcoholic/Non-Alcoholic status is mandatory.");
       return;
     }
+
+    // Validate all 5 TI sections are fully answered
+    const unanswered = TI_TM_CRITERIA.filter(sec =>
+      !(f[sec.key] && f[sec.key].length === sec.count && f[sec.key].every(v => v === "Yes" || v === "No"))
+    ).map(sec => sec.label);
+    if (unanswered.length > 0) {
+      setStatusMsg(`Please answer all questions in: ${unanswered.join(", ")}`);
+      return;
+    }
+
     const { total } = computeTMScore(f, TI_TM_CRITERIA);
 
     const isAlcoholic = f.alcoholicStatus === "Alcoholic";
@@ -1228,7 +1278,7 @@ export function useTrafficInspectorState(user, onLogout) {
           employee_id: targetUser.user_id,
           conducted_by: user.userId,
           assessment_type: "Train Manager Assessment",
-          status: "Pending",
+          status: "Submitted",
           assessment_date: new Date().toISOString()
         }])
         .select()
@@ -1238,6 +1288,8 @@ export function useTrafficInspectorState(user, onLogout) {
 
       await assessmentService.submitTestAttempt({
         assessment_id: newAssess.assessment_id,
+        employee_id: targetUser.user_id,
+        conducted_by: user.userId,
         obtained_marks: total,
         total_marks: 100,
         percentage: total,
@@ -1275,6 +1327,15 @@ export function useTrafficInspectorState(user, onLogout) {
   };
 
   const handleSendSSExamAccess = (id) => {
+    const ss = ssList.find(s => s.id === id);
+    if (ss?.hrmsId) {
+      localStorage.setItem(`ss_test_activated_${ss.hrmsId}`, "true");
+      const existing = localStorage.getItem(`ss_test_assigned_${ss.hrmsId}`);
+      if (!existing || existing === "Not Assigned") {
+        localStorage.setItem(`ss_test_assigned_${ss.hrmsId}`, "Assigned");
+      }
+      window.dispatchEvent(new Event("storage"));
+    }
     setSsList(prev => prev.map(s => s.id === id ? { ...s, status: "Exam Sent" } : s));
     triggerNotification("info", "Exam access link sent to Station Superintendent.");
   };
@@ -1298,6 +1359,16 @@ export function useTrafficInspectorState(user, onLogout) {
       setStatusMsg("Alcoholic/Non-Alcoholic status is mandatory.");
       return;
     }
+
+    // Validate all 5 TI sections are fully answered
+    const unanswered = TI_SS_CRITERIA.filter(sec =>
+      !(f[sec.key] && f[sec.key].length === sec.count && f[sec.key].every(v => v === "Yes" || v === "No"))
+    ).map(sec => sec.label);
+    if (unanswered.length > 0) {
+      setStatusMsg(`Please answer all questions in: ${unanswered.join(", ")}`);
+      return;
+    }
+
     const { total } = computeSSScore(f, TI_SS_CRITERIA);
     const isAlcoholic = f.alcoholicStatus === "Alcoholic";
     const cat = isAlcoholic ? "D" : getCat(total);
@@ -1310,7 +1381,7 @@ export function useTrafficInspectorState(user, onLogout) {
           employee_id: targetUser.user_id,
           conducted_by: user.userId,
           assessment_type: "Station Superintendent Assessment",
-          status: "Pending",
+          status: "Submitted",
           assessment_date: new Date().toISOString()
         }])
         .select()
@@ -1320,6 +1391,8 @@ export function useTrafficInspectorState(user, onLogout) {
 
       await assessmentService.submitTestAttempt({
         assessment_id: newAssess.assessment_id,
+        employee_id: targetUser.user_id,
+        conducted_by: user.userId,
         obtained_marks: total,
         total_marks: 100,
         percentage: total,
@@ -1394,7 +1467,7 @@ export function useTrafficInspectorState(user, onLogout) {
 
       if (error) throw error;
 
-      addAuditLog("Logged Counselling Session", `Staff: ${newCoun.staffName}, Topics: ${newCoun.topics.slice(0,25)}...`);
+      addAuditLog("Logged Counselling Session", `Staff: ${newCoun.staffName}, Topics: ${newCoun.topics.slice(0, 25)}...`);
       triggerNotification("success", `Counselling session registered for ${newCoun.staffName}.`);
       setStatusMsg(`Staff safety counseling briefing registered for ${newCoun.staffName}.`);
       setNewCoun({ staffName: "", designation: "Pointsman Grade I", station: "Parbhani Junction", topics: "", duration: "30 mins", progress: "Under Monitor" });
@@ -1426,65 +1499,78 @@ export function useTrafficInspectorState(user, onLogout) {
     quizAnswers.forEach((ans, idx) => {
       if (ans === TI_QUIZ[idx].ans) correctCount++;
     });
-    const finalScore = correctCount * 4;
-    setLatestQuizScore(finalScore);
-    
-    const getDomainScore = (startIdx, endIdx) => {
-      let score = 0;
-      for (let i = startIdx; i <= endIdx; i++) {
-        if (quizAnswers[i] === TI_QUIZ[i].ans) score += 4;
-      }
-      return score;
-    };
+    const obtainedMarks = correctCount;
+    const totalMarks = 25;
+    const percentage = Math.round((obtainedMarks / totalMarks) * 100);
+    setLatestQuizScore(percentage);
 
     const today = new Date().toISOString().slice(0, 10);
-    
-    try {
-      const { data: pendingAssessments } = await supabase
-        .from("ASSESSMENT")
-        .select("assessment_id")
-        .eq("employee_id", user.userId)
-        .eq("status", "Pending");
 
-      let assessId = pendingAssessments?.[0]?.assessment_id;
-      if (!assessId) {
-        const { data: newAssess, error: assessError } = await supabase
-          .from("ASSESSMENT")
-          .insert([{
-            employee_id: user.userId,
-            conducted_by: user.userId,
-            assessment_type: "Safety Exam",
-            status: "Approved",
-            assessment_date: new Date().toISOString()
-          }])
-          .select()
+    try {
+      // Step 1: Resolve the TI's UUID robustly
+      let effectiveId = resolvedUserId || user?.userId;
+      if (!effectiveId && user?.hrmsId) {
+        const { data: uData } = await supabase
+          .from("USERS")
+          .select("user_id")
+          .eq("hrms_id", user.hrmsId)
           .single();
-        if (assessError) throw assessError;
-        assessId = newAssess.assessment_id;
-      } else {
-        await supabase
-          .from("ASSESSMENT")
-          .update({ status: "Approved" })
-          .eq("assessment_id", assessId);
+        if (uData?.user_id) {
+          effectiveId = uData.user_id;
+          setResolvedUserId(effectiveId);
+        }
+      }
+      if (!effectiveId) {
+        throw new Error("Could not resolve your user ID. Please log in again.");
       }
 
-      await assessmentService.submitTestAttempt({
-        assessment_id: assessId,
-        obtained_marks: finalScore,
-        total_marks: 100,
-        percentage: finalScore,
-        category: getCat(finalScore),
-        answers: quizAnswers
-      });
+      // Step 2: Find the pending assessment assigned by AOM
+      const { data: pendingList, error: pendingErr } = await supabase
+        .from("ASSESSMENT")
+        .select("assessment_id")
+        .eq("employee_id", effectiveId)
+        .eq("status", "Pending");
+
+      if (pendingErr) throw pendingErr;
+
+      const assessId = pendingList?.[0]?.assessment_id;
+      if (!assessId) {
+        throw new Error("No active pending assessment authorized by AOM.");
+      }
+
+      // Step 3: Insert the TEST_ATTEMPT record directly
+      const { data: attemptData, error: attemptErr } = await supabase
+        .from("TEST_ATTEMPT")
+        .insert([{
+          assessment_id: assessId,
+          employee_id: effectiveId,
+          total_marks: totalMarks,
+          obtained_marks: obtainedMarks,
+          percentage: percentage,
+          category: getCat(percentage),
+          submitted_at: new Date().toISOString()
+        }])
+        .select()
+        .single();
+
+      if (attemptErr) throw attemptErr;
+
+      // Step 4: Update assessment status to "Submitted" so it appears in AOM queue
+      const { error: updateErr } = await supabase
+        .from("ASSESSMENT")
+        .update({ status: "Submitted" })
+        .eq("assessment_id", assessId);
+
+      if (updateErr) throw updateErr;
 
       setIsExamAssigned(false);
-      addAuditLog("Assigned Assessment Completed", `Score: ${finalScore}/100`);
-      triggerNotification("success", `Compliance check complete: Scored ${finalScore}%`);
+      addAuditLog("Assigned Assessment Completed", `Score: ${percentage}/100`);
+      triggerNotification("success", `Compliance check complete: Scored ${percentage}%`);
       setQuizState("result");
       await fetchLiveDatabaseData();
     } catch (err) {
       console.error("Error submitting TI quiz:", err);
-      setStatusMsg("Failed to submit quiz results to database.");
+      setStatusMsg(`Failed to submit quiz results: ${err.message || "Unknown error"}`);
     }
   };
 
@@ -1592,6 +1678,7 @@ export function useTrafficInspectorState(user, onLogout) {
     roleF, setRoleF,
     repF, setRepF,
     fullscreenChart, setFullscreenChart,
+    recentAssessments,
 
     // Helper functions
     triggerNotification, addAuditLog, exportAlert,

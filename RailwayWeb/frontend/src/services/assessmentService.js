@@ -128,6 +128,8 @@ export const assessmentService = {
           .single();
         if (!cErr && cData) {
           resolvedConductedBy = cData.user_id;
+        } else {
+          resolvedConductedBy = null;
         }
       }
 
@@ -139,11 +141,11 @@ export const assessmentService = {
       // Try running the PostgreSQL RPC function to ensure atomic transactional integrity
       try {
         const rpcAnswers = answersArray.map(ans => ({
-          question_id: ans.questionId,
-          selected_option: ans.selectedOption || "A",
-          is_correct: ans.isCorrect !== undefined ? ans.isCorrect : true,
-          correct_option: ans.correctOption || "A",
-          marks_obtained: ans.marksObtained !== undefined ? ans.marksObtained : 4
+          questionId: ans.questionId,
+          selectedOption: ans.selectedOption || "A",
+          isCorrect: ans.isCorrect !== undefined ? ans.isCorrect : true,
+          correctOption: ans.correctOption || "A",
+          marksObtained: ans.marksObtained !== undefined ? ans.marksObtained : 4
         }));
 
         const { data: rpcData, error: rpcError } = await supabase.rpc("submit_test_attempt_rpc", {
