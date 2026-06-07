@@ -1,8 +1,8 @@
 import React, { useState, useMemo } from "react";
-import { ShieldCheck, Clock, ClipboardList, Award, TrendingUp, FileBarChart2 } from "lucide-react";
+import { ShieldCheck, Clock, ClipboardList, Award, TrendingUp, FileBarChart2, Lock } from "lucide-react";
 import { getCategory, getCategoryColor, getCategoryBg, formatQuarterPeriod } from "../../utils/tmUtils";
 import { testQuestions, TEST_NAME } from "../../data/mockTMData";
-import { dbService } from "../../supabaseClient";
+import { dbService, isSupabaseConfigured } from "../../supabaseClient";
 
 export function TMMyAssessment({
   employeeId,
@@ -44,7 +44,7 @@ export function TMMyAssessment({
       const secIdx = Math.floor(i / 5);
       if (r === testQuestions[i].answer) {
         correctCount++;
-        secMarks[secIdx] += 4;
+        secMarks[secIdx] += 1;
       }
     });
 
@@ -72,13 +72,13 @@ export function TMMyAssessment({
       assessmentPeriod: "Q2 2026",
       name: TEST_NAME,
       assessedBy: "Online Self-Exam",
-      totalScore: correctCount * 4,
+      totalScore: correctCount,
       sections: [
-        { title: "Signal Rules",          marks: secMarks[0], outOf: 20 },
-        { title: "Track Handling",         marks: secMarks[1], outOf: 20 },
-        { title: "Communication",          marks: secMarks[2], outOf: 20 },
-        { title: "Safety Response",        marks: secMarks[3], outOf: 20 },
-        { title: "Operational Judgement",  marks: secMarks[4], outOf: 20 }
+        { title: "Signal Rules",          marks: secMarks[0], outOf: 5 },
+        { title: "Track Handling",         marks: secMarks[1], outOf: 5 },
+        { title: "Communication",          marks: secMarks[2], outOf: 5 },
+        { title: "Safety Response",        marks: secMarks[3], outOf: 5 },
+        { title: "Operational Judgement",  marks: secMarks[4], outOf: 5 }
       ],
       responses: [...tmTestResponses],
       approvalStatus: "Completed",
@@ -89,16 +89,36 @@ export function TMMyAssessment({
     setHistory(newHistory);
     localStorage.setItem(`tm_history_${employeeId}`, JSON.stringify(newHistory));
     
-    try {
-      await dbService.submitTestAttempt(employeeId, record);
-    } catch (e) {
-      console.error("Supabase fail:", e);
+    if (isSupabaseConfigured) {
+      const attemptData = {
+        employeeId: employeeId,
+        obtainedMarks: correctCount,
+        percentage: percentage,
+        category: getCategory(correctCount * 4),
+        totalMarks: 25,
+        conductedBy: employeeId,
+        isOnlineExam: true
+      };
+
+      const answersArray = tmTestResponses.map((selected, idx) => ({
+        questionId: idx + 1,
+        selectedOption: selected !== null && selected !== undefined ? ["A", "B", "C", "D"][selected] : "A",
+        isCorrect: selected === testQuestions[idx].answer,
+        correctOption: ["A", "B", "C", "D"][testQuestions[idx].answer],
+        marksObtained: selected === testQuestions[idx].answer ? 1 : 0
+      }));
+
+      try {
+        await dbService.submitTestAttempt(attemptData, answersArray);
+      } catch (e) {
+        console.error("Supabase fail:", e);
+      }
     }
     
     setViewMode("dashboard");
-    setStatusText(`Assessment submitted! Score: ${percentage}% (${correctCount}/25). Status: Completed.`);
-    logActivity("Assessment", `Submitted test with score ${percentage}%`);
-    triggerNotification("success", `Assessment complete! Score: ${percentage}/100. Grade: Category ${getCategory(correctCount * 4)}`);
+    setStatusText(`Assessment submitted! Score: ${correctCount}/25 (${percentage}%). Status: Completed.`);
+    logActivity("Assessment", `Submitted test with score ${correctCount}/25 (${percentage}%)`);
+    triggerNotification("success", `Assessment complete! Score: ${correctCount}/25 (${percentage}%). Grade: Category ${getCategory(correctCount * 4)}`);
   };
 
   /* ─── Dynamic Performance Summary ─── */
@@ -250,7 +270,9 @@ export function TMMyAssessment({
 
   if (myAssessSelected) {
     const sc = myAssessSelected;
-    const cat = getCategory(sc.totalScore);
+    // Use AOM-approved category from DB if available (after AOM finalization), else compute locally
+    const localCat = getCategory(sc.isOnlineExam ? sc.totalScore * 4 : sc.totalScore);
+    const cat = (sc.isApproved && sc.dbCategory) ? sc.dbCategory : localCat;
     const liveTotal = sc.totalScore || 0;
     const performanceSummary = performanceSummaryText;
 
@@ -264,11 +286,11 @@ export function TMMyAssessment({
         <div className="pm-scorecard-hero" style={{ background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: "12px", padding: "20px", display: "flex", alignItems: "center", gap: "24px", marginBottom: "24px" }}>
           <div className="pm-sc-score-circle" style={{ width: "90px", height: "90px", borderRadius: "50%", border: `6px solid ${getCategoryColor(cat) || "#2563eb"}`, display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", flexShrink: 0, background: "#fff" }}>
             <strong style={{ fontSize: "24px", color: getCategoryColor(cat) || "#2563eb", fontWeight: "800" }}>{liveTotal}</strong>
-            <span style={{ fontSize: "10px", color: "#64748b", fontWeight: "600", marginTop: "-2px" }}>/100</span>
+            <span style={{ fontSize: "10px", color: "#64748b", fontWeight: "600", marginTop: "-2px" }}>/{sc.isOnlineExam ? 25 : 100}</span>
           </div>
           <div>
             <span className="pm-cat-badge-lg" style={{ background: getCategoryBg(cat), color: getCategoryColor(cat), display: "inline-block", padding: "4px 10px", borderRadius: "999px", fontSize: "12px", fontWeight: "700", marginBottom: "6px" }}>
-              Final Category: Category {cat}
+              {sc.isApproved && sc.dbCategory ? `✅ AOM Approved Category: Category ${cat}` : `Final Category: Category ${cat}`}
             </span>
             <p className="pm-sc-period" style={{ margin: "2px 0", fontSize: "14px", color: "#1e293b", fontWeight: "600" }}>{sc.assessmentPeriod} - Self-Compliance Audit</p>
             <p className="pm-sc-date" style={{ margin: "2px 0 0", fontSize: "12px", color: "#64748b" }}>Attempt Completed: {sc.date} &nbsp;·&nbsp; Assessed By: {sc.assessedBy || "Traffic Inspector"}</p>
@@ -278,7 +300,7 @@ export function TMMyAssessment({
         {/* Dynamic Performance Summary */}
         <div className="pm-performance-summary-box" style={{ background: "#eff6ff", borderLeft: "4px solid #2563eb", padding: "16px", borderRadius: "8px", marginBottom: "24px" }}>
           <h4 style={{ margin: "0 0 6px 0", fontSize: "14px", color: "#1e3a8a", display: "flex", alignItems: "center", gap: "6px" }}>📊 Official Performance Evaluation Summary</h4>
-          <p style={{ margin: 0, fontSize: "13px", color: "#1e3a8a", lineHeight: "1.5" }}>{performanceSummary || `Assessment score: ${liveTotal}/100. Periodic evaluation completed.`}</p>
+          <p style={{ margin: 0, fontSize: "13px", color: "#1e3a8a", lineHeight: "1.5" }}>{performanceSummary || `Assessment score: ${liveTotal}/${sc.isOnlineExam ? 25 : 100}. Periodic evaluation completed.`}</p>
         </div>
 
         {/* Competency Module Breakdown */}
@@ -302,66 +324,139 @@ export function TMMyAssessment({
         </div>
 
         {/* Complete MCQ Question Review */}
-        <div className="pm-mcq-review-panel" style={{ borderTop: "1px solid #e2e8f0", paddingTop: "24px" }}>
-          <div className="pm-chart-header" style={{ marginBottom: "16px", display: "flex", alignItems: "center", gap: "6px" }}>
-            <Clock size={16} color="#475569"/>
-            <h3 style={{ margin: 0, fontSize: "15px", color: "#0f172a", fontWeight: "700" }}>Complete Assessment Question Review</h3>
-          </div>
-          <p className="pm-subtitle" style={{ fontSize: "12px", color: "#64748b", marginTop: "-10px", marginBottom: "20px" }}>
-            Below is the detailed response evaluation for all 25 compulsory questions. Correct responses are highlighted in green; incorrect choices are highlighted in red.
-          </p>
-          <div className="pm-review-questions-list" style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-            {testQuestions.map((q, qIndex) => {
-              const selectedOpt = sc.responses ? sc.responses[qIndex] : null;
-              const isCorrect = selectedOpt === q.answer;
-              return (
-                <div key={qIndex} className={`pm-review-question-card ${isCorrect ? "correct-card" : "wrong-card"}`}>
-                  <div className="pm-rq-header">
-                    <span className="pm-rq-number">Question {qIndex + 1}</span>
-                    {isCorrect ? (
-                      <span className="pm-rq-badge success">Correct (+1 Marks)</span>
-                    ) : (
-                      <span className="pm-rq-badge danger">Incorrect (0 Marks)</span>
+        {sc.isOnlineExam && (
+          <div className="pm-mcq-review-panel" style={{ borderTop: "1px solid #e2e8f0", paddingTop: "24px" }}>
+            <div className="pm-chart-header" style={{ marginBottom: "16px", display: "flex", alignItems: "center", gap: "6px" }}>
+              <Clock size={16} color="#475569"/>
+              <h3 style={{ margin: 0, fontSize: "15px", color: "#0f172a", fontWeight: "700" }}>Complete Assessment Question Review</h3>
+            </div>
+            <p className="pm-subtitle" style={{ fontSize: "12.5px", color: "#64748b", marginTop: "-10px", marginBottom: "20px", fontWeight: "500" }}>
+              Below is the detailed response evaluation for all 25 compulsory questions.
+              <span style={{ display: "block", marginTop: "4px", color: "#1e3a8a", fontWeight: "700" }}>
+                🎯 Marking Scheme: +1 for correct response, 0 for incorrect/unattempted response (Maximum Marks: 25).
+              </span>
+            </p>
+            <div className="pm-review-questions-list" style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+              {testQuestions.map((q, qIndex) => {
+                const selectedOpt = sc.responses ? sc.responses[qIndex] : null;
+                let selectedOptIdx = null;
+                if (selectedOpt !== null && selectedOpt !== undefined) {
+                  if (typeof selectedOpt === "number") {
+                    selectedOptIdx = selectedOpt;
+                  } else if (typeof selectedOpt === "string") {
+                    const trimmed = selectedOpt.trim().toUpperCase();
+                    if (["A", "B", "C", "D"].includes(trimmed)) {
+                      selectedOptIdx = ["A", "B", "C", "D"].indexOf(trimmed);
+                    } else if (!isNaN(trimmed)) {
+                      selectedOptIdx = parseInt(trimmed, 10);
+                    }
+                  }
+                }
+                const isCorrect = selectedOptIdx === q.answer;
+                return (
+                  <div key={qIndex} className={`pm-review-question-card ${isCorrect ? "correct-card" : "wrong-card"}`}>
+                    <div className="pm-rq-header">
+                      <span className="pm-rq-number">Question {qIndex + 1}</span>
+                      {isCorrect ? (
+                        <span className="pm-rq-badge success">Correct (+1 Marks)</span>
+                      ) : (
+                        <span className="pm-rq-badge danger">Incorrect (0 Marks)</span>
+                      )}
+                    </div>
+                    <h4 className="pm-rq-text">{q.text}</h4>
+
+                    {/* Summary of answers */}
+                    <div className="pm-rq-answers-summary" style={{ margin: "0 0 16px 0", fontSize: "14px", fontWeight: "600", display: "flex", gap: "20px", background: "#f8fafc", padding: "10px 16px", borderRadius: "8px", border: "1px solid #e2edf8" }}>
+                      <span style={{ color: isCorrect ? "#16a34a" : "#dc2626", display: "flex", alignItems: "center", gap: "6px" }}>
+                        Your Answer: <strong style={{ textDecoration: isCorrect ? "none" : "line-through" }}>{selectedOptIdx !== null ? ["A", "B", "C", "D"][selectedOptIdx] : "None"}</strong>
+                      </span>
+                      <span style={{ color: "#16a34a" }}>
+                        Correct Answer: <strong>{["A", "B", "C", "D"][q.answer]}</strong>
+                      </span>
+                    </div>
+
+                    <div className="pm-rq-options-grid">
+                      {q.options.map((opt, oIdx) => {
+                        const wasSelected = selectedOptIdx === oIdx;
+                        const isOptCorrect = q.answer === oIdx;
+                        let optClass = "";
+                        if (wasSelected) optClass = isCorrect ? "opt-selected-correct" : "opt-selected-wrong";
+                        else if (isOptCorrect) optClass = "opt-correct-unselected";
+                        return (
+                          <div key={oIdx} className={`pm-rq-option-item ${optClass}`}>
+                            <span className="font-mono opt-prefix">{["A","B","C","D"][oIdx]}</span>
+                            <span className="opt-label-text">{opt}</span>
+                            {wasSelected && <span className="opt-user-tag">{isCorrect ? "✓ Your Answer" : "✗ Your Answer"}</span>}
+                            {!wasSelected && isOptCorrect && <span className="opt-correct-tag">✓ Correct Key</span>}
+                          </div>
+                        );
+                      })}
+                    </div>
+                    {q.explanation && (
+                      <div style={{ marginTop: "16px", background: "#f8fafc", padding: "12px 16px", borderRadius: "8px", borderLeft: "4px solid #f97316", fontSize: "12.5px", color: "#334155" }}>
+                        <strong style={{ color: "#c2410c" }}>💡 Operational Safety Explanation: </strong> {q.explanation}
+                      </div>
                     )}
                   </div>
-                  <h4 className="pm-rq-text">{q.text}</h4>
-                  <div className="pm-rq-options-grid">
-                    {q.options.map((opt, oIdx) => {
-                      const wasSelected = selectedOpt === oIdx;
-                      const isOptCorrect = q.answer === oIdx;
-                      let optClass = "";
-                      if (wasSelected) optClass = isCorrect ? "opt-selected-correct" : "opt-selected-wrong";
-                      else if (isOptCorrect) optClass = "opt-correct-unselected";
-                      return (
-                        <div key={oIdx} className={`pm-rq-option-item ${optClass}`}>
-                          <span className="font-mono opt-prefix">{["A","B","C","D"][oIdx]}</span>
-                          <span className="opt-label-text">{opt}</span>
-                          {wasSelected && <span className="opt-user-tag">{isCorrect ? "✓ Selected" : "✗ Selected"}</span>}
-                          {!wasSelected && isOptCorrect && <span className="opt-correct-tag">✓ Correct Key</span>}
-                        </div>
-                      );
-                    })}
-                  </div>
-                  {q.explanation && (
-                    <div style={{ marginTop: "16px", background: "#f8fafc", padding: "12px 16px", borderRadius: "8px", borderLeft: "4px solid #f97316", fontSize: "12.5px", color: "#334155" }}>
-                      <strong style={{ color: "#c2410c" }}>💡 Operational Safety Explanation: </strong> {q.explanation}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
-        </div>
+        )}
       </div>
     );
   }
 
-  const testActive = testAssigned === "Assigned" && (!tmMcqTest || !tmMcqTest.completed);
+  const isTestActivated = localStorage.getItem("tm_test_activated_" + employeeId) === "true";
+  const testActive = isTestActivated && testAssigned === "Assigned" && (!tmMcqTest || !tmMcqTest.completed);
 
   return (
     <section className="sm2-card">
       {/* MCQ Assessment Assignment Banner */}
-      {testActive ? (
+      {!isTestActivated && (!tmMcqTest || !tmMcqTest.completed) ? (
+        <div style={{
+          background: "linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)",
+          border: "1.5px solid #cbd5e1",
+          borderRadius: 12,
+          padding: 20,
+          marginBottom: 24,
+          boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)"
+        }}>
+          <div style={{display: "flex", gap: 16, alignItems: "start"}}>
+            <div style={{
+              background: "#e2e8f0",
+              borderRadius: 50,
+              width: 42,
+              height: 42,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              flexShrink: 0
+            }}>
+              <Lock size={22} color="#64748b"/>
+            </div>
+            <div style={{flex: 1}}>
+              <h3 style={{margin: "0 0 6px", fontSize: 16, fontWeight: 700, color: "#334155"}}>
+                🔒 Competency Assessment Locked
+              </h3>
+              <p style={{margin: "0 0 14px", fontSize: 13, color: "#475569", lineHeight: 1.4}}>
+                Your periodic evaluation is currently locked. Please request your Traffic Inspector (TI) to activate the assessment.
+              </p>
+              <div style={{
+                display: "inline-block",
+                background: "#e2e8f0",
+                color: "#475569",
+                padding: "8px 16px",
+                borderRadius: 6,
+                fontSize: 12.5,
+                fontWeight: 600
+              }}>
+                Locked: Contact Traffic Inspector to activate your assessment
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : testActive ? (
         <div style={{
           background:"linear-gradient(135deg, #fffbeb 0%, #fff7ed 100%)",
           border:"1.5px solid #fed7aa",
@@ -467,7 +562,7 @@ export function TMMyAssessment({
               <strong>{history[0]?.totalScore ?? "—"}/{history[0]?.isOnlineExam ? 25 : 100}</strong>
             </div>
             <div className="sm2-report-mini">
-              <label>Average SM Score</label>
+              <label>Average TI Score</label>
               <strong>{
                 (() => {
                   const regs = history.filter(h => !h.isOnlineExam);
@@ -476,10 +571,21 @@ export function TMMyAssessment({
               }</strong>
             </div>
             <div className="sm2-report-mini">
-              <label>Latest Assessment</label>
-              <strong style={{color: getCategoryColor(getCategory(history[0]?.totalScore || 0))}}>
-                {history[0]?.isOnlineExam ? "Online CBT" : `Category ${getCategory(history[0]?.totalScore || 0)}`}
-              </strong>
+              {/* Use AOM-approved category from DB when assessment is approved */}
+              {(() => {
+                const latest = history.find(h => !h.isOnlineExam) || history[0];
+                const localCat = getCategory(latest?.isOnlineExam ? (latest?.totalScore || 0) * 4 : (latest?.totalScore || 0));
+                const finalCat = (latest?.isApproved && latest?.dbCategory) ? latest.dbCategory : localCat;
+                const isAomApproved = latest?.isApproved && latest?.dbCategory;
+                return (
+                  <>
+                    <label>{isAomApproved ? "AOM Approved Category" : "Latest Assessment"}</label>
+                    <strong style={{color: getCategoryColor(finalCat)}}>
+                      {latest?.isOnlineExam ? "Online CBT" : `Category ${finalCat}`}
+                    </strong>
+                  </>
+                );
+              })()}
             </div>
           </div>
 
@@ -490,14 +596,18 @@ export function TMMyAssessment({
                 <span key={h}>{h}</span>)}
             </div>
             {history.map(sc => {
-              const cat = getCategory(sc.totalScore);
+              // Use AOM-approved category from DB if available, otherwise calculate locally
+              const localCat = getCategory(sc.isOnlineExam ? sc.totalScore * 4 : sc.totalScore);
+              const cat = (sc.isApproved && sc.dbCategory) ? sc.dbCategory : localCat;
+              // Score display: for TI field evaluation always show out of 100
+              const outOf = sc.isOnlineExam ? 25 : 100;
               return (
                 <button key={sc.id} className="sm2-myassess-row" onClick={() => setMyAssessSelected(sc)}>
                   <span title={`Cycle: ${sc.assessmentPeriod}\nDuration: ${formatQuarterPeriod(sc.assessmentPeriod)}`}>
                     <strong>{formatQuarterPeriod(sc.assessmentPeriod)}</strong>
                   </span>
                   <span>{sc.date}</span>
-                  <span><strong>{sc.totalScore}/{sc.isOnlineExam ? 25 : 100}</strong></span>
+                  <span><strong>{sc.totalScore}/{outOf}</strong></span>
                   <span>
                     <span className="sm2-badge" style={{background:getCategoryBg(cat),color:getCategoryColor(cat)}}>
                       {sc.isOnlineExam ? "CBT Exam" : `Cat. ${cat}`}

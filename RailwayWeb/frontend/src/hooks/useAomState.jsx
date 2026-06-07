@@ -10,6 +10,8 @@ import {
 import { Bar, BarChart, Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis, LineChart, Line, CartesianGrid, LabelList } from 'recharts';
 import { saDataService } from '../services/saDataService';
 import { supabase, isSupabaseConfigured } from '../supabaseClient';
+import { TI_TM_CRITERIA } from '../constants/trafficInspectorConstants';
+
 export function useAomState(user, onLogout) {
   const [activePage, setActivePage] = useState("Dashboard");
   const [pmModal, setPmModal] = useState(null);
@@ -482,7 +484,7 @@ export function useAomState(user, onLogout) {
 
     let builtSecs = [];
     // Priority 1: Use real sections stored from Supabase TEST_ATTEMPT answers
-    if (rec.sections && rec.sections.length > 0 && rec.sections.some(s => (s.marks ?? s.score) > 0)) {
+    if (rec.sections && rec.sections.length > 0) {
       builtSecs = rec.sections.map(s => ({
         title: s.title,
         score: s.marks !== undefined ? s.marks : (s.score || 0),
@@ -504,41 +506,24 @@ export function useAomState(user, onLogout) {
       // Fallback: distribute proportionally (no real section data available)
       const total = rec.score || 0;
       builtSecs = [
-        { title: "Station Safety", score: Math.round(total * 0.30), max: 30 },
-        { title: "Rule Compliance", score: Math.round(total * 0.25), max: 25 },
-        { title: "Incident Management", score: Math.round(total * 0.20), max: 20 },
-        { title: "Communication Standards", score: Math.round(total * 0.15), max: 15 },
-        { title: "Documentation Audit", score: Math.round(total * 0.10), max: 10 }
+        { title: "Station Operations & Supervision", score: Math.round(total * 0.25), max: 25 },
+        { title: "Staff Management & Discipline", score: Math.round(total * 0.20), max: 20 },
+        { title: "Records & Documentation", score: Math.round(total * 0.15), max: 15 },
+        { title: "Safety Compliance & Emergency", score: Math.round(total * 0.25), max: 25 },
+        { title: "Infrastructure & Asset Maintenance", score: Math.round(total * 0.15), max: 15 },
+        { title: "Written Exam (Knowledge)", score: 0, max: 25 }
       ];
     } else {
-      // Train Manager criteria
-      const trainSafetyScore = (form?.trainSafety || []).filter(v => v === "Yes").length * 5;
-      const signalingScore = (form?.signaling || []).filter(v => v === "Yes").length * 4;
-      const shuntingScore = (form?.shunting || []).filter(v => v === "Yes").length * 3;
-      const documentationScore = (form?.documentation || []).filter(v => v === "Yes").length * 3;
-      const emergencyScore = (form?.emergency || []).filter(v => v === "Yes").length * 5;
-      const knowledgeScore = parseInt(form?.knowledgeMarks) || 0;
-
-      if (!form) {
-        const total = rec.score || 80;
-        builtSecs = [
-          { title: "Train Safety & Brake Inspection", score: Math.round(total * 0.25), max: 25 },
-          { title: "Signaling & Whistle Compliance", score: Math.round(total * 0.20), max: 20 },
-          { title: "Shunting & Coupling Ops", score: Math.round(total * 0.15), max: 15 },
-          { title: "Train Log & Guard Certificates", score: Math.round(total * 0.15), max: 15 },
-          { title: "Emergency Train Protection", score: Math.round(total * 0.25), max: 25 },
-          { title: "Written Exam (Knowledge)", score: Math.round(total * 0.20), max: 25 }
-        ];
-      } else {
-        builtSecs = [
-          { title: "Train Safety & Brake Inspection", score: trainSafetyScore, max: 25 },
-          { title: "Signaling & Whistle Compliance", score: signalingScore, max: 20 },
-          { title: "Shunting & Coupling Ops", score: shuntingScore, max: 15 },
-          { title: "Train Log & Guard Certificates", score: documentationScore, max: 15 },
-          { title: "Emergency Train Protection", score: emergencyScore, max: 25 },
-          { title: "Written Exam (Knowledge)", score: knowledgeScore, max: 25 }
-        ];
-      }
+      // Train Manager criteria fallback
+      const total = rec.score || 0;
+      builtSecs = [
+        { title: "Train Safety & Brake Inspection", score: Math.round(total * 0.15), max: 15 },
+        { title: "Signaling & Whistle Compliance", score: Math.round(total * 0.15), max: 15 },
+        { title: "Shunting & Coupling Ops", score: Math.round(total * 0.15), max: 15 },
+        { title: "Train Log & Guard Certificates", score: Math.round(total * 0.15), max: 15 },
+        { title: "Emergency Train Protection", score: Math.round(total * 0.15), max: 15 },
+        { title: "Written Exam (Knowledge)", score: 0, max: 25 }
+      ];
     }
 
     setAomEditSections(prev => ({ ...prev, [id]: builtSecs }));
@@ -591,11 +576,61 @@ export function useAomState(user, onLogout) {
         const secs = aomEditSections[id] || [];
         const total = secs.reduce((s, x) => s + x.score, 0);
 
+        const isAlcoholic = targetAssess?.alcoholicStatus === "Alcoholic";
+        const finalCat = isAlcoholic ? "D" : aomGetCat(total);
+
+        // Retrieve existing TEST_ATTEMPT record
+        const { data: existingAttempt } = await supabase
+          .from("TEST_ATTEMPT")
+          .select("answers, total_marks")
+          .eq("assessment_id", id)
+          .maybeSingle();
+
+        let originalAnswers = {};
+        if (existingAttempt?.answers) {
+          originalAnswers = existingAttempt.answers;
+          if (typeof originalAnswers === "string") {
+            try { originalAnswers = JSON.parse(originalAnswers); } catch (e) {}
+          }
+        }
+
+        const isOnline = targetAssess?.isOnlineExam || (existingAttempt?.total_marks === 25);
+        const finalTotalMarks = isOnline ? (existingAttempt?.total_marks || 25) : 100;
+
+        const mcqSec = secs.find(s => s.title.includes("MCQ") || s.title.includes("Written Exam") || s.title.includes("Knowledge"));
+        const newMcqScore = mcqSec ? mcqSec.score : (isOnline ? total : 0);
+
+        let updatedAnswers;
+        if (Array.isArray(originalAnswers)) {
+          updatedAnswers = {
+            questions: originalAnswers,
+            sections: secs.map(s => ({
+              title: s.title,
+              marks: s.score,
+              outOf: s.max
+            })),
+            mcqScore: newMcqScore,
+            knowledgeMarks: newMcqScore.toString()
+          };
+        } else {
+          updatedAnswers = {
+            ...originalAnswers,
+            sections: secs.map(s => ({
+              title: s.title,
+              marks: s.score,
+              outOf: s.max
+            })),
+            mcqScore: newMcqScore,
+            knowledgeMarks: newMcqScore.toString()
+          };
+        }
+
         await supabase.from("TEST_ATTEMPT").update({
           obtained_marks: total,
           percentage: total,
-          category: aomGetCat(total),
-          total_marks: 100
+          category: finalCat,
+          total_marks: finalTotalMarks,
+          answers: updatedAnswers
         }).eq("assessment_id", id);
 
         if (targetAssess?.hrmsId) {
@@ -603,13 +638,13 @@ export function useAomState(user, onLogout) {
           if (emp?.user_id) {
             await supabase.from("EMPLOYEE_PROFILE").update({
               current_score: total,
-              category: aomGetCat(total)
+              category: finalCat
             }).eq("user_id", emp.user_id);
           }
         }
 
-        // Trigger Category D auto-protocol if score is Category D
-        if (total < 50 || aomGetCat(total) === 'D') {
+        // Trigger Category D auto-protocol if score is Category D or is alcoholic
+        if (total < 50 || finalCat === 'D') {
           try {
             const { data: aData } = await supabase
               .from("ASSESSMENT")
@@ -618,7 +653,7 @@ export function useAomState(user, onLogout) {
               .single();
             const condBy = aData?.conducted_by || user.userId;
             const empId = aData?.employee_id || targetAssess?.hrmsId;
-            await assessmentService.triggerCategoryDProtocol(empId, id, total, 'D', condBy);
+            await assessmentService.triggerCategoryDProtocol(empId, id, total, finalCat, condBy);
           } catch (dErr) {
             console.error("Failed to trigger Category D protocol during AOM finalize:", dErr);
           }
@@ -1203,10 +1238,21 @@ export function useAomState(user, onLogout) {
   };
 
   const getTiSectionScore = (criterionKey, answers, quizMarks = null) => {
-    if (criterionKey === "knowledgeOfRules") {
+    if (criterionKey === "knowledgeOfRules" || criterionKey === "knowledgeMarks") {
       return (quizMarks !== null && quizMarks !== undefined) ? Number(quizMarks) : (answers.knowledgeOfRules === "yes" ? 25 : 0);
     }
     let score = 0;
+    
+    const tmKeys = ["trainSafety", "signaling", "shunting", "documentation", "emergency"];
+    if (tmKeys.includes(criterionKey)) {
+      for (let i = 0; i < 5; i++) {
+        const arrVal = Array.isArray(answers[criterionKey]) ? answers[criterionKey][i] : null;
+        const val = answers[`${criterionKey}_${i}`] || arrVal;
+        if (val === "yes" || val === "Yes") score += 3;
+      }
+      return score;
+    }
+
     if (criterionKey === "alertnessAndObservation") {
       for (let i = 0; i < 5; i++) {
         if (answers[`alertnessAndObservation_${i}`] === "yes") score += 5;
@@ -1231,13 +1277,20 @@ export function useAomState(user, onLogout) {
     return score;
   };
 
-  const calculateAssessmentScore = (answers = {}, isMultiSection = false, quizMarks = null) => {
-    if (isMultiSection) {
-      return assessmentCriteria.reduce((total, criterion) => {
+  const calculateAssessmentScore = (answers = {}, isMultiSection = false, quizMarks = null, tab = "TI") => {
+    let criteriaToUse = assessmentCriteria;
+    if (tab === "TM") criteriaToUse = TI_TM_CRITERIA;
+
+    if (isMultiSection || tab === "TM") {
+      let sum = criteriaToUse.reduce((total, criterion) => {
         return total + getTiSectionScore(criterion.key, answers, quizMarks);
       }, 0);
+      if (tab === "TM") {
+        sum += getTiSectionScore("knowledgeMarks", answers, quizMarks);
+      }
+      return sum;
     }
-    return assessmentCriteria.reduce((total, criterion) => {
+    return criteriaToUse.reduce((total, criterion) => {
       return total + (answers[criterion.key] === "yes" ? criterion.marks : 0);
     }, 0);
   };
@@ -1251,8 +1304,8 @@ export function useAomState(user, onLogout) {
   const computeScoreAndGrade = (target) => {
     const effectiveAnswers = answersByAssessment[target.id] || buildPrefilledAnswers(target.title);
     const tab = resolveAssessmentTab(target.title);
-    const isMultiSection = tab === "TI" || tab === "SS";
-    
+    const isMultiSection = tab === "TI" || tab === "SS" || tab === "TM";
+
     let effectiveQuizMarks = target.quizMarks;
     if (effectiveQuizMarks === null || effectiveQuizMarks === undefined) {
       const hrmsId = target.hrmsId || target.employeeId || target.id;
@@ -1267,7 +1320,7 @@ export function useAomState(user, onLogout) {
       else if (offlinePm && offlinePm.correctCount !== undefined) effectiveQuizMarks = offlinePm.correctCount;
     }
     
-    const score = calculateAssessmentScore(effectiveAnswers, isMultiSection, effectiveQuizMarks);
+    const score = calculateAssessmentScore(effectiveAnswers, isMultiSection, effectiveQuizMarks, tab);
     let grade = score >= 90 ? "A" : score >= 80 ? "B" : "C";
     if (effectiveAnswers.alcoholicStatus === "Alcoholic") {
       grade = "D";
@@ -1319,10 +1372,10 @@ export function useAomState(user, onLogout) {
     try {
       const typeMap = {
         'Traffic Inspector': 'Safety Exam',
-        'Station Superintendent': 'SS Assessment',
-        'Station Master': 'SM Assessment',
-        'Train Manager': 'TM Assessment',
-        'Pointsman': 'PM Assessment'
+        'Station Superintendent': 'Station Superintendent Assessment',
+        'Station Master': 'Station Master Assessment',
+        'Train Manager': 'Train Manager Assessment',
+        'Pointsman': 'Checklist Evaluation'
       };
       const assessmentType = typeMap[roleName] || 'Assessment';
 
@@ -1422,30 +1475,26 @@ export function useAomState(user, onLogout) {
       }
 
       if (employeeHrmsId) {
-        if (roleName === "Station Superintendent" || assessmentType === "SS Assessment") {
+        if (roleName === "Station Superintendent" || assessmentType === "Station Superintendent Assessment" || assessmentType === "SS Assessment") {
           localStorage.setItem(`ss_test_activated_${employeeHrmsId}`, "true");
-          const existing = localStorage.getItem(`ss_test_assigned_${employeeHrmsId}`);
-          if (!existing || existing === "Not Assigned") {
-            localStorage.setItem(`ss_test_assigned_${employeeHrmsId}`, "Assigned");
-          }
-        } else if (roleName === "Station Master" || assessmentType === "SM Assessment") {
+          localStorage.setItem(`ss_test_activated_time_${employeeHrmsId}`, Date.now().toString());
+          localStorage.setItem(`ss_test_assigned_${employeeHrmsId}`, "Assigned");
+          localStorage.removeItem(`ss_mcq_test_${employeeHrmsId}`);
+        } else if (roleName === "Station Master" || assessmentType === "Station Master Assessment" || assessmentType === "SM Assessment") {
           localStorage.setItem(`sm_test_activated_${employeeHrmsId}`, "true");
-          const existing = localStorage.getItem(`sm_test_assigned_${employeeHrmsId}`);
-          if (!existing || existing === "Not Assigned") {
-            localStorage.setItem(`sm_test_assigned_${employeeHrmsId}`, "Assigned");
-          }
-        } else if (roleName === "Train Manager" || assessmentType === "TM Assessment") {
+          localStorage.setItem(`sm_test_activated_time_${employeeHrmsId}`, Date.now().toString());
+          localStorage.setItem(`sm_test_assigned_${employeeHrmsId}`, "Assigned");
+          localStorage.removeItem(`sm_mcq_test_${employeeHrmsId}`);
+        } else if (roleName === "Train Manager" || assessmentType === "Train Manager Assessment" || assessmentType === "TM Assessment") {
           localStorage.setItem(`tm_test_activated_${employeeHrmsId}`, "true");
-          const existing = localStorage.getItem(`tm_test_assigned_${employeeHrmsId}`);
-          if (!existing || existing === "Not Assigned") {
-            localStorage.setItem(`tm_test_assigned_${employeeHrmsId}`, "Assigned");
-          }
-        } else if (roleName === "Pointsman" || assessmentType === "PM Assessment") {
+          localStorage.setItem(`tm_test_activated_time_${employeeHrmsId}`, Date.now().toString());
+          localStorage.setItem(`tm_test_assigned_${employeeHrmsId}`, "Assigned");
+          localStorage.removeItem(`tm_mcq_test_${employeeHrmsId}`);
+        } else if (roleName === "Pointsman" || assessmentType === "Checklist Evaluation" || assessmentType === "PM Assessment" || assessmentType === "Pointsman Checklist") {
           localStorage.setItem(`pm_test_activated_${employeeHrmsId}`, "true");
-          const existing = localStorage.getItem(`pm_test_assigned_${employeeHrmsId}`);
-          if (!existing || existing === "Not Assigned") {
-            localStorage.setItem(`pm_test_assigned_${employeeHrmsId}`, "Assigned");
-          }
+          localStorage.setItem(`pm_test_activated_time_${employeeHrmsId}`, Date.now().toString());
+          localStorage.setItem(`pm_test_assigned_${employeeHrmsId}`, "Assigned");
+          localStorage.removeItem(`pm_mcq_test_${employeeHrmsId}`);
         }
         window.dispatchEvent(new Event("storage"));
       }
@@ -6782,30 +6831,46 @@ export function useAomState(user, onLogout) {
         const sms = (assessList || []).filter(a => a.assessment_type === "Station Master Assessment");
         const smMapped = sms.map(a => {
           const score = a.TEST_ATTEMPT?.[0]?.obtained_marks || 0;
-          const cat = a.TEST_ATTEMPT?.[0]?.category || "A";
-          const subDate = a.assessment_date ? new Date(a.assessment_date).toISOString().slice(0, 10) : "";
-          // Read actual section breakdown stored by TI
           const answers = a.TEST_ATTEMPT?.[0]?.answers || {};
-          const storedSections = answers.sections || [];
-          const mcqScore = answers.mcqScore || 0;
+          let parsedAnswers = answers;
+          if (typeof parsedAnswers === "string") {
+            try { parsedAnswers = JSON.parse(parsedAnswers); } catch (e) {}
+          }
+          const subDate = a.assessment_date ? new Date(a.assessment_date).toISOString().slice(0, 10) : "";
+          const storedSections = parsedAnswers.sections || [];
+          const mcqScore = parsedAnswers.mcqScore !== undefined ? parsedAnswers.mcqScore : (parsedAnswers.knowledgeMarks !== undefined ? parsedAnswers.knowledgeMarks : 0);
+          const isAlc = parsedAnswers.alcoholicStatus === "Alcoholic";
+          const cat = isAlc ? "D" : (a.TEST_ATTEMPT?.[0]?.category || "A");
 
-          // Build sections: MCQ first, then TI evaluation sections
           let sections = [];
           if (storedSections.length > 0) {
-            sections = [
-              { title: "Knowledge of Rules (MCQ)", marks: mcqScore, outOf: 25 },
-              ...storedSections
-            ];
+            sections = storedSections.map(s => ({
+              title: s.title || s.label || "",
+              score: s.marks !== undefined ? s.marks : (s.score || 0),
+              max: s.outOf !== undefined ? s.outOf : (s.max || 0),
+              marks: s.marks !== undefined ? s.marks : (s.score || 0),
+              outOf: s.outOf !== undefined ? s.outOf : (s.max || 0)
+            }));
+            const hasMcq = sections.some(s => s.title.includes("MCQ") || s.title.includes("Written Exam") || s.title.includes("Knowledge"));
+            if (!hasMcq) {
+              sections.unshift({
+                title: "Knowledge of Rules (MCQ)",
+                score: Number(mcqScore) || 0,
+                max: 25,
+                marks: Number(mcqScore) || 0,
+                outOf: 25
+              });
+            }
           } else {
             // Fallback proportional
             sections = [
-              { title: "Knowledge of Rules (MCQ)", marks: Math.round(score * 0.25), outOf: 25 },
-              { title: "Knowledge of Rules", marks: Math.round(score * 0.15), outOf: 15 },
-              { title: "Alertness and Observance of Rules", marks: Math.round(score * 0.15), outOf: 15 },
-              { title: "Safety Record", marks: Math.round(score * 0.15), outOf: 15 },
-              { title: "Leadership and Management", marks: Math.round(score * 0.10), outOf: 10 },
-              { title: "Discipline", marks: Math.round(score * 0.10), outOf: 10 },
-              { title: "Appearance and Neatness", marks: Math.round(score * 0.10), outOf: 10 }
+              { title: "Knowledge of Rules (MCQ)", score: Math.round(score * 0.25), max: 25, marks: Math.round(score * 0.25), outOf: 25 },
+              { title: "Knowledge of Rules", score: Math.round(score * 0.15), max: 15, marks: Math.round(score * 0.15), outOf: 15 },
+              { title: "Alertness and Observance of Rules", score: Math.round(score * 0.15), max: 15, marks: Math.round(score * 0.15), outOf: 15 },
+              { title: "Safety Record", score: Math.round(score * 0.15), max: 15, marks: Math.round(score * 0.15), outOf: 15 },
+              { title: "Leadership and Management", score: Math.round(score * 0.10), max: 10, marks: Math.round(score * 0.10), outOf: 10 },
+              { title: "Discipline", score: Math.round(score * 0.10), max: 10, marks: Math.round(score * 0.10), outOf: 10 },
+              { title: "Appearance and Neatness", score: Math.round(score * 0.10), max: 10, marks: Math.round(score * 0.10), outOf: 10 }
             ];
           }
 
@@ -6818,19 +6883,19 @@ export function useAomState(user, onLogout) {
             status: a.status === 'Pending' ? 'Submitted' : a.status,
             score: score,
             category: cat,
-            pmeStatus: answers.pmeStatus || "Fit",
-            refStatus: answers.refStatus || "Cleared",
-            remarks: answers.remarks || "",
-            alcoholicStatus: answers.alcoholicStatus || "",
+            isOnlineExam: Array.isArray(answers) || a.TEST_ATTEMPT?.[0]?.total_marks === 25,
+            pmeStatus: parsedAnswers.pmeStatus || "Fit",
+            refStatus: parsedAnswers.refStatus || "Cleared",
+            remarks: parsedAnswers.remarks || "",
+            alcoholicStatus: parsedAnswers.alcoholicStatus || "",
             sections,
-            // TI Y/N answers for AOM display
             tiAnswers: {
-              knowledgeOfRules: answers.knowledgeOfRules || [],
-              alertness: answers.alertness || [],
-              safetyRecord: answers.safetyRecord || [],
-              leadership: answers.leadership || [],
-              discipline: answers.discipline || [],
-              appearance: answers.appearance || []
+              knowledgeOfRules: parsedAnswers.knowledgeOfRules || [],
+              alertness: parsedAnswers.alertness || [],
+              safetyRecord: parsedAnswers.safetyRecord || [],
+              leadership: parsedAnswers.leadership || [],
+              discipline: parsedAnswers.discipline || [],
+              appearance: parsedAnswers.appearance || []
             },
             aomRemarks: a.APPROVAL?.remarks || "",
             auditTrail: a.APPROVAL ? [{ action: "Reviewed", by: a.APPROVAL.USERS?.full_name || "AOM", date: a.APPROVAL.approval_date ? new Date(a.APPROVAL.approval_date).toISOString().slice(0, 10) : "", remark: a.APPROVAL.remarks }] : []
@@ -6839,11 +6904,69 @@ export function useAomState(user, onLogout) {
         setAomSMList(smMapped);
 
         // Map TM assessments
-        const tms = (assessList || []).filter(a => a.assessment_type === "Train Manager Assessment");
+        const tms = (assessList || []).filter(a => a.assessment_type === "Train Manager Assessment" || a.assessment_type === "TM Assessment");
         const tmMapped = tms.map(a => {
           const score = a.TEST_ATTEMPT?.[0]?.obtained_marks || 0;
-          const cat = a.TEST_ATTEMPT?.[0]?.category || "A";
           const subDate = a.assessment_date ? new Date(a.assessment_date).toISOString().slice(0, 10) : "";
+          const answers = a.TEST_ATTEMPT?.[0]?.answers || {};
+
+          let parsedAnswers = answers;
+          if (typeof parsedAnswers === "string") {
+            try { parsedAnswers = JSON.parse(parsedAnswers); } catch (e) {}
+          }
+
+          const isOnlineExam = Array.isArray(parsedAnswers) || a.TEST_ATTEMPT?.[0]?.total_marks === 25 || (parsedAnswers && !parsedAnswers.trainSafety && !parsedAnswers.alcoholicStatus);
+          const isAlc = parsedAnswers.alcoholicStatus === "Alcoholic";
+          const cat = isAlc ? "D" : (a.TEST_ATTEMPT?.[0]?.category || "A");
+
+          let sections = [];
+          if (parsedAnswers && parsedAnswers.sections && parsedAnswers.sections.length > 0) {
+            sections = parsedAnswers.sections.map(s => ({
+              title: s.title || s.label || "",
+              score: s.marks !== undefined ? s.marks : (s.score || 0),
+              max: s.outOf !== undefined ? s.outOf : (s.max || 0),
+              marks: s.marks !== undefined ? s.marks : (s.score || 0),
+              outOf: s.outOf !== undefined ? s.outOf : (s.max || 0)
+            }));
+          } else if (isOnlineExam && Array.isArray(parsedAnswers)) {
+            let s1 = 0, s2 = 0, s3 = 0, s4 = 0, s5 = 0;
+            parsedAnswers.forEach((item, idx) => {
+              const secIdx = Math.floor(idx / 5);
+              const itemCorrect = item.isCorrect || item.is_correct || (item.marksObtained > 0) || (item.marks_obtained > 0);
+              if (itemCorrect) {
+                if (secIdx === 0) s1++;
+                else if (secIdx === 1) s2++;
+                else if (secIdx === 2) s3++;
+                else if (secIdx === 3) s4++;
+                else if (secIdx === 4) s5++;
+              }
+            });
+            sections = [
+              { title: "Signal Rules", score: s1, max: 5, marks: s1, outOf: 5 },
+              { title: "Track Handling", score: s2, max: 5, marks: s2, outOf: 5 },
+              { title: "Communication", score: s3, max: 5, marks: s3, outOf: 5 },
+              { title: "Safety Response", score: s4, max: 5, marks: s4, outOf: 5 },
+              { title: "Operational Judgement", score: s5, max: 5, marks: s5, outOf: 5 }
+            ];
+          } else {
+            // Compute YN Yes counts
+            const countYes = arr => (arr || []).filter(v => v === "Yes").length;
+            const s1 = countYes(parsedAnswers.trainSafety) * 3;
+            const s2 = countYes(parsedAnswers.signaling) * 3;
+            const s3 = countYes(parsedAnswers.shunting) * 3;
+            const s4 = countYes(parsedAnswers.documentation) * 3;
+            const s5 = countYes(parsedAnswers.emergency) * 3;
+            const mcqScore = Math.min(parseInt(parsedAnswers.knowledgeMarks || parsedAnswers.mcqScore) || 0, 25);
+            sections = [
+              { title: "Train Safety & Brake Inspection", score: s1, max: 15, marks: s1, outOf: 15 },
+              { title: "Signaling & Whistle Compliance", score: s2, max: 15, marks: s2, outOf: 15 },
+              { title: "Shunting & Coupling Ops", score: s3, max: 15, marks: s3, outOf: 15 },
+              { title: "Train Log & Guard Certificates", score: s4, max: 15, marks: s4, outOf: 15 },
+              { title: "Emergency Train Protection", score: s5, max: 15, marks: s5, outOf: 15 },
+              { title: "Written Exam (Knowledge)", score: mcqScore, max: 25, marks: mcqScore, outOf: 25 }
+            ];
+          }
+
           return {
             id: a.assessment_id,
             name: a.employee?.full_name || "",
@@ -6853,17 +6976,21 @@ export function useAomState(user, onLogout) {
             status: a.status === 'Pending' ? 'Submitted' : a.status,
             score: score,
             category: cat,
-            pmeStatus: "Fit",
-            refStatus: "Cleared",
-            sections: [
-              { title: "Train Safety & Brake Inspection", score: Math.round(score * 0.25), max: 25 },
-              { title: "Signaling & Whistle Compliance", score: Math.round(score * 0.20), max: 20 },
-              { title: "Shunting & Coupling Ops", score: Math.round(score * 0.15), max: 15 },
-              { title: "Train Log & Guard Certificates", score: Math.round(score * 0.15), max: 15 },
-              { title: "Emergency Train Protection", score: Math.round(score * 0.25), max: 25 },
-              { title: "Written Exam (Knowledge)", score: Math.round(score * 0.20), max: 25 }
-            ],
-            auditTrail: a.APPROVAL ? [{ action: "Approved", by: a.APPROVAL.USERS?.full_name || "AOM", date: new Date(a.APPROVAL.approval_date).toISOString().slice(0, 10), remark: a.APPROVAL.remarks }] : []
+            isOnlineExam: isOnlineExam,
+            pmeStatus: parsedAnswers.pmeStatus || "Fit",
+            refStatus: parsedAnswers.refStatus || "Cleared",
+            remarks: parsedAnswers.remarks || "",
+            alcoholicStatus: parsedAnswers.alcoholicStatus || "",
+            sections,
+            tiAnswers: {
+              trainSafety: parsedAnswers.trainSafety || [],
+              signaling: parsedAnswers.signaling || [],
+              shunting: parsedAnswers.shunting || [],
+              documentation: parsedAnswers.documentation || [],
+              emergency: parsedAnswers.emergency || []
+            },
+            aomRemarks: a.APPROVAL?.remarks || "",
+            auditTrail: a.APPROVAL ? [{ action: "Reviewed", by: a.APPROVAL.USERS?.full_name || "AOM", date: a.APPROVAL.approval_date ? new Date(a.APPROVAL.approval_date).toISOString().slice(0, 10) : "", remark: a.APPROVAL.remarks }] : []
           };
         });
         setAomTMList(tmMapped);
@@ -6872,8 +6999,47 @@ export function useAomState(user, onLogout) {
         const sss = (assessList || []).filter(a => a.assessment_type === "Station Superintendent Assessment" || a.assessment_type === "SS Assessment");
         const ssMapped = sss.map(a => {
           const score = a.TEST_ATTEMPT?.[0]?.obtained_marks || 0;
-          const cat = a.TEST_ATTEMPT?.[0]?.category || "A";
           const subDate = a.assessment_date ? new Date(a.assessment_date).toISOString().slice(0, 10) : "";
+          const answers = a.TEST_ATTEMPT?.[0]?.answers || {};
+
+          let parsedAnswers = answers;
+          if (typeof parsedAnswers === "string") {
+            try { parsedAnswers = JSON.parse(parsedAnswers); } catch (e) {}
+          }
+
+          const isAlc = parsedAnswers.alcoholicStatus === "Alcoholic";
+          const cat = isAlc ? "D" : (a.TEST_ATTEMPT?.[0]?.category || "A");
+
+          let sections = [];
+          if (parsedAnswers && parsedAnswers.sections && parsedAnswers.sections.length > 0) {
+            sections = parsedAnswers.sections.map(s => ({
+              title: s.title || s.label || "",
+              score: s.marks !== undefined ? s.marks : (s.score || 0),
+              max: s.outOf !== undefined ? s.outOf : (s.max || 0),
+              marks: s.marks !== undefined ? s.marks : (s.score || 0),
+              outOf: s.outOf !== undefined ? s.outOf : (s.max || 0)
+            }));
+          } else {
+            // Compute YN Yes counts
+            const countYes = arr => (arr || []).filter(v => v === "Yes").length;
+            
+            const s1 = countYes(parsedAnswers.stationOps) * 5;
+            const s2 = countYes(parsedAnswers.staffMgmt) * 4;
+            const s3 = countYes(parsedAnswers.records) * 3;
+            const s4 = countYes(parsedAnswers.safety) * 5;
+            const s5 = countYes(parsedAnswers.infra) * 3;
+            const mcqScore = Math.min(parseInt(parsedAnswers.knowledgeMarks || parsedAnswers.mcqScore) || 0, 25);
+
+            sections = [
+              { title: "Station Operations & Supervision", score: s1, max: 25, marks: s1, outOf: 25 },
+              { title: "Staff Management & Discipline", score: s2, max: 20, marks: s2, outOf: 20 },
+              { title: "Records & Documentation", score: s3, max: 15, marks: s3, outOf: 15 },
+              { title: "Safety Compliance & Emergency", score: s4, max: 25, marks: s4, outOf: 25 },
+              { title: "Infrastructure & Asset Maintenance", score: s5, max: 15, marks: s5, outOf: 15 },
+              { title: "Written Exam (Knowledge)", score: mcqScore, max: 25, marks: mcqScore, outOf: 25 }
+            ];
+          }
+
           return {
             id: a.assessment_id,
             name: a.employee?.full_name || "",
@@ -6883,15 +7049,20 @@ export function useAomState(user, onLogout) {
             status: a.status === 'Pending' ? 'Submitted' : a.status,
             score: score,
             category: cat,
-            pmeStatus: "Fit",
-            refStatus: "Cleared",
-            sections: [
-              { title: "Station Safety", score: Math.round(score * 0.30), max: 30 },
-              { title: "Rule Compliance", score: Math.round(score * 0.25), max: 25 },
-              { title: "Incident Management", score: Math.round(score * 0.20), max: 20 },
-              { title: "Communication Standards", score: Math.round(score * 0.15), max: 15 },
-              { title: "Documentation Audit", score: Math.round(score * 0.10), max: 10 }
-            ],
+            isOnlineExam: Array.isArray(answers) || a.TEST_ATTEMPT?.[0]?.total_marks === 25,
+            pmeStatus: parsedAnswers.pmeStatus || "Fit",
+            refStatus: parsedAnswers.refStatus || "Cleared",
+            remarks: parsedAnswers.remarks || "",
+            alcoholicStatus: parsedAnswers.alcoholicStatus || "",
+            sections,
+            tiAnswers: {
+              stationOps: parsedAnswers.stationOps || [],
+              staffMgmt: parsedAnswers.staffMgmt || [],
+              records: parsedAnswers.records || [],
+              safety: parsedAnswers.safety || [],
+              infra: parsedAnswers.infra || []
+            },
+            aomRemarks: a.APPROVAL?.remarks || "",
             auditTrail: a.APPROVAL ? [{ action: "Approved", by: a.APPROVAL.USERS?.full_name || "AOM", date: new Date(a.APPROVAL.approval_date).toISOString().slice(0, 10), remark: a.APPROVAL.remarks }] : []
           };
         });

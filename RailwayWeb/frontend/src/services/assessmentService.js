@@ -54,19 +54,17 @@ export const assessmentService = {
    * @param {object} attemptData 
    * @param {array} answers - List of option selections
    */
-  /**
-   * Submits a completed assessment exam (MCQ) or checklist.
-   * Best practice: Calls a Supabase RPC to ensure transactional integrity 
-   * across TEST_ATTEMPT and ANSWER_HISTORY tables.
-   * @param {object} attemptData 
-   * @param {array} answers - List of option selections
-   */
   async submitTestAttempt(attemptData, answers = []) {
-    if (!isSupabaseConfigured) return null;
+    if (!isSupabaseConfigured) {
+      return { success: false, error: "Supabase is not configured." };
+    }
+
     try {
       let normData = {};
       let answersArray = [];
+      let checklistAnswers = null;
 
+      // 1. Normalize parameters depending on caller syntax
       if (typeof attemptData === "string") {
         // Caller passed (employeeId, record)
         const employeeId = attemptData;
@@ -84,7 +82,7 @@ export const assessmentService = {
           answersArray = record.responses.map((selected, idx) => ({
             questionId: idx + 1,
             selectedOption: selected,
-            isCorrect: true, // fallback to true/default
+            isCorrect: true,
             correctOption: selected,
             marksObtained: 4
           }));
@@ -100,10 +98,18 @@ export const assessmentService = {
           category: attemptData.category || "A",
           conductedBy: attemptData.conductedBy || attemptData.conducted_by
         };
-        answersArray = Array.isArray(answers) ? answers : [];
+        
+        // Checklist answers can be embedded as attemptData.answers object
+        if (attemptData.answers && !Array.isArray(attemptData.answers)) {
+          checklistAnswers = attemptData.answers;
+        } else if (Array.isArray(answers)) {
+          answersArray = answers;
+        } else if (Array.isArray(attemptData.answers)) {
+          answersArray = attemptData.answers;
+        }
       }
 
-      // Resolve employeeId HRMS ID to USERS UUID if needed
+      // 2. Resolve employeeId HRMS ID to USERS UUID if needed
       let resolvedEmployeeId = normData.employeeId;
       if (resolvedEmployeeId && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(resolvedEmployeeId)) {
         const { data: uData, error: uErr } = await supabase
@@ -118,7 +124,7 @@ export const assessmentService = {
         }
       }
 
-      // Resolve conductedBy HRMS ID to USERS UUID if needed
+      // 3. Resolve conductedBy HRMS ID to USERS UUID if needed
       let resolvedConductedBy = normData.conductedBy;
       if (resolvedConductedBy && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(resolvedConductedBy)) {
         const { data: cData, error: cErr } = await supabase
@@ -138,7 +144,7 @@ export const assessmentService = {
         throw new Error(`Validation Error: Out-of-bounds competency score of ${score}.`);
       }
 
-      // Resolve assessment_id if not provided BEFORE attempting RPC
+      // 4. Resolve assessment_id if not provided BEFORE attempting RPC
       let assessmentId = normData.assessmentId;
       if (!assessmentId && resolvedEmployeeId) {
         const { data: activeAssessments, error: activeErr } = await supabase
@@ -151,7 +157,6 @@ export const assessmentService = {
         if (!activeErr && activeAssessments && activeAssessments.length > 0) {
           assessmentId = activeAssessments[0].assessment_id;
         } else {
-          // If none exists, auto-create one to preserve referential integrity
           const conductedByUuid = resolvedConductedBy || resolvedEmployeeId;
           const { data: newAssess, error: newAssessErr } = await supabase
             .from("ASSESSMENT")
@@ -168,194 +173,56 @@ export const assessmentService = {
         }
       }
 
-      // Try running the PostgreSQL RPC function to ensure atomic transactional integrity
-      // If RPC fails for ANY reason, we fall through to the client-side sequential fallback below
-      let rpcSucceeded = false;
-      try {
-        const rpcAnswers = answersArray.map(ans => ({
-          questionId: ans.questionId,
-          selectedOption: ans.selectedOption || "A",
-          isCorrect: ans.isCorrect !== undefined ? ans.isCorrect : true,
-          correctOption: ans.correctOption || "A",
-          marksObtained: ans.marksObtained !== undefined ? ans.marksObtained : 4
+      // 5. Select the right answers format to send to database
+      let pAnswersToSend = null;
+      if (answersArray && answersArray.length > 0) {
+        pAnswersToSend = answersArray.map(ans => ({
+          questionId: ans.questionId || ans.question_id,
+          selectedOption: ans.selectedOption || ans.selected_option || "A",
+          isCorrect: ans.isCorrect !== undefined ? ans.isCorrect : (ans.is_correct !== undefined ? ans.is_correct : true),
+          correctOption: ans.correctOption || ans.correct_option || "A",
+          marksObtained: ans.marksObtained !== undefined ? ans.marksObtained : (ans.marks_obtained !== undefined ? ans.marks_obtained : 1)
         }));
-
-        const { data: rpcData, error: rpcError } = await supabase.rpc("submit_test_attempt_rpc", {
-          p_employee_id: resolvedEmployeeId,
-          p_assessment_id: assessmentId || null,
-          p_total_marks: Number(normData.totalMarks || 100),
-          p_obtained_marks: Number(normData.obtainedMarks !== undefined ? normData.obtainedMarks : score),
-          p_percentage: Number(normData.percentage !== undefined ? normData.percentage : score),
-          p_category: normData.category || "A",
-          p_conducted_by: resolvedConductedBy || resolvedEmployeeId,
-          p_answers: rpcAnswers
-        });
-
-        if (!rpcError && rpcData) {
-          logger.info("Successfully submitted test attempt using atomic database RPC function.");
-          // Update parent assessment status to Submitted
-          if (assessmentId) {
-            await supabase
-              .from("ASSESSMENT")
-              .update({ status: 'Submitted' })
-              .eq("assessment_id", assessmentId);
-          }
-          return { success: true, attempt: { attempt_id: rpcData.attempt_id, assessment_id: rpcData.assessment_id } };
-        }
-
-        if (rpcError) {
-          // Log and fall through to sequential fallback regardless of error type
-          logger.warn("RPC submit_test_attempt_rpc failed (code:", rpcError.code, "), falling back to client-side sequence:", rpcError.message);
-        }
-      } catch (rpcExc) {
-        // Any exception from the RPC call — fall through to sequential fallback
-        logger.warn("RPC submission threw an exception, falling back to client-side sequence:", rpcExc.message);
+      } else if (checklistAnswers) {
+        pAnswersToSend = checklistAnswers;
+      } else {
+        pAnswersToSend = [];
       }
 
-      // --- FALLBACK CLIENT-SIDE SEQUENTIAL FLOW ---
-      logger.info("Executing client-side sequential fallback transaction.");
+      // 6. Execute PostgreSQL RPC transaction
+      logger.info(`Invoking submit_test_attempt_rpc for assessmentId ${assessmentId}...`);
+      const { data: rpcData, error: rpcError } = await supabase.rpc("submit_test_attempt_rpc", {
+        p_employee_id: resolvedEmployeeId,
+        p_assessment_id: assessmentId || null,
+        p_total_marks: Number(normData.totalMarks || 100),
+        p_obtained_marks: Number(normData.obtainedMarks !== undefined ? normData.obtainedMarks : score),
+        p_percentage: Number(normData.percentage !== undefined ? normData.percentage : score),
+        p_category: normData.category || "A",
+        p_conducted_by: resolvedConductedBy || resolvedEmployeeId,
+        p_answers: pAnswersToSend
+      });
 
-      const attemptPayload = {
-        assessment_id: assessmentId,
-        employee_id: resolvedEmployeeId,
-        total_marks: normData.totalMarks || 100,
-        obtained_marks: normData.obtainedMarks !== undefined ? normData.obtainedMarks : score,
-        percentage: normData.percentage || score,
-        category: normData.category || "A",
-        submitted_at: new Date().toISOString()
+      if (rpcError) {
+        throw new Error(`submit_test_attempt_rpc transaction failed: ${rpcError.message} (code: ${rpcError.code})`);
+      }
+
+      // Handle table return types: PostgREST returns table functions as an array
+      const resultData = Array.isArray(rpcData) ? rpcData[0] : rpcData;
+      if (!resultData) {
+        throw new Error("RPC returned no data.");
+      }
+
+      logger.info("Successfully completed atomic test attempt submission via RPC.");
+      return { 
+        success: true, 
+        attempt: { 
+          attempt_id: resultData.attempt_id, 
+          assessment_id: resultData.assessment_id || assessmentId 
+        } 
       };
 
-      const { data: testData, error: testError } = await supabase
-        .from("TEST_ATTEMPT")
-        .insert([attemptPayload])
-        .select()
-        .single();
-      
-      if (testError) throw testError;
-
-      // Bulk insert answers if provided
-      if (answersArray && answersArray.length > 0) {
-        const answerPayloads = answersArray.map(ans => ({
-          attempt_id: testData.attempt_id,
-          question_id: ans.questionId,
-          selected_option: ans.selectedOption || "A",
-          is_correct: ans.isCorrect !== undefined ? ans.isCorrect : true,
-          correct_option: ans.correctOption || "A",
-          marks_obtained: ans.marksObtained !== undefined ? ans.marksObtained : (ans.isCorrect ? 1 : 0)
-        }));
-
-        const { error: ansError } = await supabase.from("ANSWER_HISTORY").insert(answerPayloads);
-        if (ansError) {
-          logger.warn("Test Attempt saved, but Answer History failed to bulk insert:", ansError);
-        }
-      }
-
-      // Update parent assessment status to Submitted
-      await supabase
-        .from("ASSESSMENT")
-        .update({ status: 'Submitted' })
-        .eq("assessment_id", assessmentId);
-
-      // --- OFFICIAL BUSINESS LOGIC: CATEGORY D AUTO-TRIGGER ---
-      if (attemptPayload.category === "D" || score < 50) {
-        try {
-          // 1. Create a COUNSELLING_RECORD
-          await supabase.from("COUNSELLING_RECORD").insert([{
-            user_id: resolvedEmployeeId,
-            assessment_id: assessmentId,
-            counsellor_id: resolvedConductedBy || null,
-            remarks: `System Auto-Generated: Score was ${score}%. Category D: Immediate safety counselling required.`,
-            status: 'Pending'
-          }]);
-
-          // 2. Schedule Retest after 1 Month
-          const retestDate = new Date();
-          retestDate.setMonth(retestDate.getMonth() + 1);
-          const retestDateStr = retestDate.toISOString().split('T')[0];
-
-          // 2a. Insert into RETEST_SCHEDULING table
-          try {
-            await supabase.from("RETEST_SCHEDULING").insert([{
-              employee_id: resolvedEmployeeId,
-              original_assessment_id: assessmentId,
-              scheduled_date: retestDateStr,
-              status: 'Scheduled'
-            }]);
-          } catch (retestTableErr) {
-            logger.warn("Failed to insert into RETEST_SCHEDULING table:", retestTableErr.message);
-          }
-
-          // 2b. Create a new locked assessment for the retest
-          await supabase.from("ASSESSMENT").insert([{
-            employee_id: resolvedEmployeeId,
-            conducted_by: resolvedConductedBy || resolvedEmployeeId,
-            assessment_type: "Mandatory Retest (Category D)",
-            due_date: retestDateStr,
-            status: "LOCKED"
-          }]);
-
-          // 3. Update Profile to High Risk monitoring status & Category D
-          await supabase
-            .from("EMPLOYEE_PROFILE")
-            .update({ 
-              monitoring_status: 'High Risk',
-              category: 'D',
-              current_score: score
-            })
-            .eq("user_id", resolvedEmployeeId);
-
-          // 4. Update MONITORING table risk level
-          try {
-            await supabase.from("MONITORING").upsert([{
-              user_id: resolvedEmployeeId,
-              monitoring_status: 'Under Observation',
-              risk_level: 'High',
-              remarks: `Automated high risk observation triggered after scoring ${score}% (Category D) on assessment.`
-            }], { onConflict: 'user_id' });
-          } catch (monitoringErr) {
-            logger.warn("Failed to update MONITORING table:", monitoringErr.message);
-          }
-
-          // 5. Generate Notifications
-          // 5a. Notification for Employee
-          await supabase.from("NOTIFICATION").insert([{
-            user_id: resolvedEmployeeId,
-            title: "Mandatory Counselling & Retest Scheduled",
-            message: `You have scored Category D (${score}%). Mandatory safety counselling has been scheduled, your profile is marked as High Risk, and a retest is scheduled in 1 month.`,
-            is_read: false
-          }]);
-
-          // 5b. Notification for Evaluator/Supervisor
-          if (resolvedConductedBy && resolvedConductedBy !== resolvedEmployeeId) {
-            await supabase.from("NOTIFICATION").insert([{
-              user_id: resolvedConductedBy,
-              title: "Category D Safety Warning: Employee graded D",
-              message: `Safety Alert: Employee graded Category D with score of ${score}%. Counselling and high-risk monitoring protocols have been automatically triggered.`,
-              is_read: false
-            }]);
-          }
-
-          // 6. Write to Audit Log
-          try {
-            await supabase.from("AUDIT_LOG").insert([{
-              user_id: resolvedConductedBy || resolvedEmployeeId,
-              action: 'CATEGORY_D_AUTO_TRIGGER',
-              table_name: 'TEST_ATTEMPT',
-              record_id: testData.attempt_id
-            }]);
-          } catch (auditErr) {
-            logger.warn("Failed to write to AUDIT_LOG table:", auditErr.message);
-          }
-
-          logger.info(`Category D Auto-Triggers successfully executed for employee: ${resolvedEmployeeId}`);
-        } catch (catDError) {
-          logger.error("Failed to execute Category D Auto-Triggers:", catDError);
-        }
-      }
-
-      return { success: true, attempt: testData };
     } catch (err) {
-      logger.error("Error saving test attempt in sequential fallback:", err);
+      logger.error("Transaction submission failed:", err.message);
       return { success: false, error: err.message };
     }
   },
@@ -381,7 +248,8 @@ export const assessmentService = {
         .from("TEST_ATTEMPT")
         .select(`
           *, 
-          ASSESSMENT (assessment_type, assessment_date, status)
+          ASSESSMENT (assessment_type, assessment_date, status),
+          ANSWER_HISTORY (*)
         `)
         .eq("employee_id", resolvedUserId)
         .order("started_at", { ascending: false });

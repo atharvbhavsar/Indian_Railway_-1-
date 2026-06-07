@@ -46,7 +46,11 @@ export function TMDashboard({
           </div>
           <div>
             <label>Latest Score</label>
-            <strong>{latestScore !== null && latestScore > 0 ? `${latestScore}/100` : "—"}</strong>
+            <strong>{
+              (latestScore !== null && latestScore !== undefined && latestScore !== "") 
+                ? (typeof latestScore === "string" && latestScore.includes("/") ? latestScore : `${latestScore}/100`)
+                : "—"
+            }</strong>
           </div>
         </article>
 

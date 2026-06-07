@@ -45,7 +45,7 @@ import {
   Legend
 } from "recharts";
 import "./sdom.css";
-import { dbService } from "./supabaseClient";
+import { dbService, supabase, isSupabaseConfigured } from "./supabaseClient";
 
 /* â”€â”€â”€ Navigation â”€â”€â”€ */
 const navItems = [
@@ -87,34 +87,162 @@ function TrainManagerModule({ user, onLogout }) {
 
   const [activeNav, setActiveNav] = useState("dashboard");
   const [screenMode, setScreenMode] = useState("default");
-  
-  const [history, setHistory] = useState(() => {
-    const saved = sessionStorage.getItem(`tm_history_${employeeId}`);
-    return saved ? JSON.parse(saved) : [];
-  });
 
+  const [history, setHistory] = useState(() => {
+    try {
+      const saved = sessionStorage.getItem(`tm_history_${employeeId}`);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) return parsed;
+      }
+    } catch (e) {
+      console.error("Error parsing history from sessionStorage", e);
+    }
+    return [];
+  });
+  
   useEffect(() => {
     async function loadHistory() {
       if (employeeId) {
         try {
           const data = await dbService.getTestHistory(employeeId);
           if (data && data.length > 0) {
-            const mapped = data.map(attempt => ({
-              id: attempt.attempt_id,
-              date: attempt.submitted_at ? attempt.submitted_at.slice(0, 10) : new Date().toISOString().slice(0, 10),
-              assessmentPeriod: attempt.ASSESSMENT?.assessment_type || "Periodic Exam",
-              name: "CBT Exam",
-              assessedBy: "Online Exam",
-              totalScore: attempt.obtained_marks || attempt.percentage || 0,
-              sections: [
-                { title: "Competency Score", marks: attempt.obtained_marks || attempt.percentage || 0, outOf: 100 }
-              ],
-              responses: [],
-              approvalStatus: "Completed",
-              isOnlineExam: true
-            }));
-            setHistory(mapped);
-            sessionStorage.setItem(`tm_history_${employeeId}`, JSON.stringify(mapped));
+            const mapped = data.map(attempt => {
+              const isApproved = attempt.ASSESSMENT?.status === "Approved";
+              const type = attempt.ASSESSMENT?.assessment_type || "";
+              let parsedAnswers = attempt.answers || attempt.ANSWER_HISTORY;
+              if (typeof parsedAnswers === "string") {
+                try { parsedAnswers = JSON.parse(parsedAnswers); } catch (e) {}
+              }
+              if (Array.isArray(parsedAnswers)) {
+                parsedAnswers = [...parsedAnswers].sort((a, b) => {
+                  const qIdA = a.questionId || a.question_id || 0;
+                  const qIdB = b.questionId || b.question_id || 0;
+                  return qIdA - qIdB;
+                });
+              }
+              const isOnlineExam = Array.isArray(parsedAnswers) || attempt.total_marks === 25 || (parsedAnswers && !parsedAnswers.trainSafety && !parsedAnswers.alcoholicStatus);
+              const score = attempt.obtained_marks !== null && attempt.obtained_marks !== undefined ? attempt.obtained_marks : (attempt.percentage || 0);
+
+              let totalScoreVal = score;
+              if (isOnlineExam) {
+                totalScoreVal = score > 25 ? Math.round(score / 4) : score;
+              }
+
+              const responses = (parsedAnswers && Array.isArray(parsedAnswers)) ? parsedAnswers.map(a => a.selectedOption || a.selected_option) : [];
+              
+              const ans = parsedAnswers || {};
+              const countYes = arr => (arr && Array.isArray(arr)) ? arr.filter(v => v === "Yes").length : 0;
+              
+              let s1 = 0, s2 = 0, s3 = 0, s4 = 0, s5 = 0, mcqScore = 0;
+              if (isOnlineExam && Array.isArray(parsedAnswers)) {
+                parsedAnswers.forEach((item, idx) => {
+                  const secIdx = Math.floor(idx / 5);
+                  const itemCorrect = item.isCorrect || item.is_correct || (item.marksObtained > 0) || (item.marks_obtained > 0);
+                  if (itemCorrect) {
+                    if (secIdx === 0) s1++;
+                    else if (secIdx === 1) s2++;
+                    else if (secIdx === 2) s3++;
+                    else if (secIdx === 3) s4++;
+                    else if (secIdx === 4) s5++;
+                  }
+                });
+              } else if (ans && typeof ans === "object" && !Array.isArray(ans) && (ans.trainSafety !== undefined || ans.signaling !== undefined)) {
+                s1 = countYes(ans.trainSafety) * 3;
+                s2 = countYes(ans.signaling) * 3;
+                s3 = countYes(ans.shunting) * 3;
+                s4 = countYes(ans.documentation) * 3;
+                s5 = countYes(ans.emergency) * 3;
+                mcqScore = Math.min(parseInt(ans.knowledgeMarks) || 0, 25);
+              } else if (ans && typeof ans === "object" && !Array.isArray(ans) && ans.sections && Array.isArray(ans.sections)) {
+                // AOM approved — sections embedded in answers JSON
+                ans.sections.forEach((sec, i) => {
+                  const m = sec.marks || 0;
+                  if (i === 0) s1 = m;
+                  else if (i === 1) s2 = m;
+                  else if (i === 2) s3 = m;
+                  else if (i === 3) s4 = m;
+                  else if (i === 4) s5 = m;
+                  else if (i === 5) mcqScore = m;
+                });
+              } else {
+                s1 = Math.round(score * 0.15);
+                s2 = Math.round(score * 0.15);
+                s3 = Math.round(score * 0.15);
+                s4 = Math.round(score * 0.15);
+                s5 = Math.round(score * 0.15);
+                mcqScore = Math.round(score * 0.25);
+              }
+
+              const sections = !isOnlineExam ? [
+                { title: "Train Safety & Brake Inspection",   marks: s1, outOf: 15 },
+                { title: "Signaling & Whistle Compliance",    marks: s2, outOf: 15 },
+                { title: "Shunting & Coupling Ops",           marks: s3, outOf: 15 },
+                { title: "Train Log & Guard Certificates",     marks: s4, outOf: 15 },
+                { title: "Emergency Train Protection",        marks: s5, outOf: 15 },
+                { title: "Written Exam (Knowledge)",          marks: mcqScore, outOf: 25 }
+              ] : [
+                { title: "Signal Rules",          marks: Array.isArray(parsedAnswers) ? s1 : Math.round(totalScoreVal * 0.20), outOf: 5 },
+                { title: "Track Handling",         marks: Array.isArray(parsedAnswers) ? s2 : Math.round(totalScoreVal * 0.20), outOf: 5 },
+                { title: "Communication",          marks: Array.isArray(parsedAnswers) ? s3 : Math.round(totalScoreVal * 0.20), outOf: 5 },
+                { title: "Safety Response",        marks: Array.isArray(parsedAnswers) ? s4 : Math.round(totalScoreVal * 0.20), outOf: 5 },
+                { title: "Operational Judgement",  marks: Array.isArray(parsedAnswers) ? s5 : Math.round(totalScoreVal * 0.20), outOf: 5 }
+              ];
+
+              // Use AOM-approved category from DB if approved, else calculate
+              const dbCategory = attempt.category || null;
+              const approvalStatus = attempt.ASSESSMENT?.status || "Submitted";
+
+              return {
+                id: attempt.attempt_id,
+                assessmentId: attempt.assessment_id,
+                date: attempt.submitted_at ? attempt.submitted_at.slice(0, 10) : new Date().toISOString().slice(0, 10),
+                assessmentPeriod: attempt.ASSESSMENT?.assessment_type || "Periodic Exam",
+                name: isOnlineExam ? "CBT Exam" : "Field Evaluation",
+                assessedBy: isOnlineExam ? "Online Exam" : "Traffic Inspector",
+                totalScore: totalScoreVal,
+                sections,
+                responses,
+                approvalStatus,
+                isOnlineExam,
+                dbCategory,         // AOM-approved category stored in DB
+                isApproved          // whether AOM has finalized
+              };
+            });
+
+            // ── Deduplicate: one entry per assessment_id ──────────────────────
+            // If same assessment_id has both a TI field evaluation and a CBT attempt,
+            // keep only the field evaluation (non-online). CBT is a sub-exam, not a
+            // separate full assessment record.
+            const assessMap = new Map();
+            for (const rec of mapped) {
+              const key = rec.assessmentId || rec.id; // fallback to attempt_id if no assessment_id
+              if (!assessMap.has(key)) {
+                assessMap.set(key, rec);
+              } else {
+                const existing = assessMap.get(key);
+                // Prefer field-evaluation (non-online) over CBT (online)
+                if (existing.isOnlineExam && !rec.isOnlineExam) {
+                  assessMap.set(key, rec);
+                }
+                // If both are the same type, keep the more recent one (already sorted desc)
+              }
+            }
+            const deduped = Array.from(assessMap.values());
+            // Sort by date descending
+            deduped.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+            // ── Second pass: hide standalone CBT rows when TI field evals exist ──
+            // The CBT is a sub-exam. Once the TI has conducted at least one field
+            // evaluation, the standalone CBT row (different assessment_id, isOnlineExam=true)
+            // must be hidden — its marks are already embedded in the TI evaluation score.
+            const hasFieldEval = deduped.some(r => !r.isOnlineExam);
+            const finalHistory = hasFieldEval
+              ? deduped.filter(r => !r.isOnlineExam)  // only TI evaluations
+              : deduped;                               // fallback: show CBT if no TI eval yet
+
+            setHistory(finalHistory);
+            sessionStorage.setItem(`tm_history_${employeeId}`, JSON.stringify(finalHistory));
           } else {
             setHistory([]);
           }
@@ -128,10 +256,77 @@ function TrainManagerModule({ user, onLogout }) {
     const interval = setInterval(loadHistory, 4000);
     return () => clearInterval(interval);
   }, [employeeId]);
-  
+
+  // Read assessment status from database and update local storage/states to unlock automatically for TM
+  useEffect(() => {
+    async function checkDatabaseAssessment() {
+      if (!employeeId || !isSupabaseConfigured) return;
+      try {
+        // Resolve the employee's user_id from their HRMS ID
+        let resolvedEmployeeId = employeeId;
+        const { data: uData } = await supabase
+          .from('USERS')
+          .select('user_id')
+          .eq('hrms_id', employeeId)
+          .single();
+        if (uData?.user_id) {
+          resolvedEmployeeId = uData.user_id;
+        }
+
+        // Fetch active/pending assessments for this user
+        const { data: assessments, error } = await supabase
+          .from('ASSESSMENT')
+          .select('assessment_id, status, assessment_type, conducted_by')
+          .eq('employee_id', resolvedEmployeeId)
+          .in('assessment_type', ['Train Manager Assessment', 'TM Assessment'])
+          .in('status', ['Pending', 'AVAILABLE', 'LOCKED', 'IN_PROGRESS'])
+          .order('created_at', { ascending: false })
+          .limit(1);
+
+        const activatedTime = Number(localStorage.getItem(`tm_test_activated_time_${employeeId}`)) || 0;
+        const isRecent = Date.now() - activatedTime < 15000; // 15 seconds guard
+
+        if (!error && assessments && assessments.length > 0) {
+          const activeAssess = assessments[0];
+          if (activeAssess.status === 'Pending' || activeAssess.status === 'AVAILABLE' || activeAssess.status === 'IN_PROGRESS') {
+            const currentActivated = localStorage.getItem(`tm_test_activated_${employeeId}`);
+            if (currentActivated !== "true") {
+              localStorage.setItem(`tm_test_activated_${employeeId}`, "true");
+              window.dispatchEvent(new Event("storage"));
+            }
+          } else {
+            if (!isRecent) {
+              const currentActivated = localStorage.getItem(`tm_test_activated_${employeeId}`);
+              if (currentActivated !== "false") {
+                localStorage.setItem(`tm_test_activated_${employeeId}`, "false");
+                window.dispatchEvent(new Event("storage"));
+              }
+            }
+          }
+        } else {
+          if (!error && assessments && assessments.length === 0) {
+            if (!isRecent) {
+              const currentActivated = localStorage.getItem(`tm_test_activated_${employeeId}`);
+              if (currentActivated !== "false") {
+                localStorage.setItem(`tm_test_activated_${employeeId}`, "false");
+                window.dispatchEvent(new Event("storage"));
+              }
+            }
+          }
+        }
+      } catch (err) {
+        console.error("Error checking database assessment for TM:", err);
+      }
+    }
+
+    checkDatabaseAssessment();
+    const dbInterval = setInterval(checkDatabaseAssessment, 4000);
+    return () => clearInterval(dbInterval);
+  }, [employeeId]);
+
   const [statusText, setStatusText] = useState("");
 
-  /* â”€â”€â”€ Extra State Additions â”€â”€â”€ */
+  /* ─── Extra State Additions ─── */
 
   // 2. Secure Login Session Timer (15 minutes = 900 seconds)
   const [sessionTimeLeft, setSessionTimeLeft] = useState(900);
@@ -165,7 +360,7 @@ function TrainManagerModule({ user, onLogout }) {
   // Track user notifications unread count
   const unreadNotificationsCount = notifications.filter(n => !n.read).length;
 
-  /* â”€â”€â”€ EFFECT: Secure Session CountDown â”€â”€â”€ */
+  /* ─── EFFECT: Secure Session CountDown ─── */
   useEffect(() => {
     const sessionTimer = setInterval(() => {
       setSessionTimeLeft(prev => {
@@ -183,22 +378,60 @@ function TrainManagerModule({ user, onLogout }) {
   }, [onLogout]);
 
   /* ——— Derived metrics ——— */
-  const latestScore = history.length ? history[0].totalScore : null;
-  const latestCategory = latestScore !== null ? getCategory(latestScore) : "—";
-  const averageScore = history.length
-    ? Math.round(history.reduce((s, i) => s + i.totalScore, 0) / history.length)
-    : 0;
+  // Helper: get the effective score for a history record.
+  // After AOM approval, obtained_marks in DB is the final authoritative mark.
+  // For CBT/online exams, scale up to /100 for comparison purposes.
+  const getScaledScore = (r) => {
+    if (!r) return 0;
+    return r.isOnlineExam ? r.totalScore * 4 : r.totalScore;
+  };
+
+  // Helper: get the category for a history record, using AOM-approved category when available.
+  const getEffectiveCategory = (r) => {
+    if (!r) return "—";
+    if (r.isApproved && r.dbCategory) return r.dbCategory;
+    return getCategory(getScaledScore(r));
+  };
+
+  // Latest attempt is the most recent (first in array — sorted desc by date)
+  // Prefer the most recent field evaluation (non-online) for dashboard display
+  const latestFieldAttempt = history.find(h => !h.isOnlineExam) || history[0];
+  const latestAttempt = latestFieldAttempt || history[0];
+
+  // Latest score: show AOM-finalized mark / total
+  const latestScore = latestAttempt
+    ? (latestAttempt.isOnlineExam
+        ? `${latestAttempt.totalScore}/25`
+        : `${latestAttempt.totalScore}/100`)
+    : null;
+
+  // Latest category: use AOM-approved dbCategory if available
+  const latestCategory = latestAttempt
+    ? getEffectiveCategory(latestAttempt)
+    : "—";
+
+  // Average score: only from non-online (field evaluation) records, using final marks
+  const fieldHistory = history.filter(h => !h.isOnlineExam);
+  const averageScore = fieldHistory.length
+    ? Math.round(fieldHistory.reduce((s, r) => s + r.totalScore, 0) / fieldHistory.length)
+    : (history.length
+        ? Math.round(history.reduce((s, r) => s + getScaledScore(r), 0) / history.length)
+        : 0);
 
   /* ——— Chart data ——— */
   const trendData = useMemo(() =>
     [...history].reverse().map(r => ({
-      date: r.assessmentPeriod.slice(0, 7),
-      score: r.totalScore
+      date: r.assessmentPeriod ? r.assessmentPeriod.slice(0, 7) : r.date,
+      score: r.isOnlineExam ? r.totalScore * 4 : r.totalScore
     })), [history]);
 
   const pieData = useMemo(() => {
     const counts = { A: 0, B: 0, C: 0, D: 0 };
-    history.forEach(r => { counts[getCategory(r.totalScore)]++; });
+    history.forEach(r => {
+      // Use AOM-approved category if available, else compute locally
+      const cat = getEffectiveCategory(r);
+      if (counts[cat] !== undefined) counts[cat]++;
+    });
     const total = history.length || 1;
     return Object.entries(counts)
       .filter(([, c]) => c > 0)
@@ -207,6 +440,7 @@ function TrainManagerModule({ user, onLogout }) {
         value: Math.round((count / total) * 100),
         count
       }));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [history]);
 
 

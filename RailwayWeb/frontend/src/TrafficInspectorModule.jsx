@@ -2626,15 +2626,19 @@ export default function TrafficInspectorModule({ user, onLogout }) {
       
       const mcqDataStr = localStorage.getItem(`sm_mcq_test_${sm?.hrmsId}`);
       const mcqData = mcqDataStr ? JSON.parse(mcqDataStr) : null;
-      const isMcqCompleted = !!(mcqData && mcqData.completed);
+      const dbExamScore = sm?.examScore !== undefined && sm?.examScore !== null
+        ? (sm.examScore > 25 ? Math.round(sm.examScore / 4) : sm.examScore)
+        : null;
+      const isMcqCompleted = !!(mcqData && mcqData.completed) || dbExamScore !== null || sm?.status === "Submitted" || sm?.status === "Approved";
       const isActivated = localStorage.getItem(`sm_test_activated_${sm?.hrmsId}`) === "true";
       
-      const knowledge = isMcqCompleted ? (mcqData?.correctCount || 22) : (parseInt(f.knowledgeMarks) || 0);
-      let ynScore = 0;
-      TI_SM_CRITERIA.forEach(sec => {
-        f[sec.key]?.forEach(v => { if (v === "Yes") ynScore += sec.weight; });
-      });
-      const total = knowledge + ynScore;
+      const knowledge = dbExamScore !== null 
+        ? dbExamScore 
+        : (isMcqCompleted ? (mcqData?.correctCount || 0) : (parseInt(f.knowledgeMarks) || 0));
+      const displayScore = dbExamScore !== null ? dbExamScore : (mcqData?.correctCount || 0);
+      const displayPercentage = dbExamScore !== null ? Math.round((dbExamScore / 25) * 100) : (mcqData?.percentage || 0);
+      const fWithKnowledge = { ...f, knowledgeMarks: knowledge.toString() };
+      const { ynScore, total } = computeSMScore(fWithKnowledge, TI_SM_CRITERIA);
       const isAlcoholic = f.alcoholicStatus === "Alcoholic";
       const liveCat = isAlcoholic ? "D" : getCat(total);
 
@@ -2686,11 +2690,11 @@ export default function TrafficInspectorModule({ user, onLogout }) {
                   <div className="sm2-mcq-card-body">
                     <div className="sm2-mcq-score-display">
                       <div className="sm2-mcq-large-score">
-                        <strong>{mcqData?.correctCount || 22}</strong>
+                        <strong>{displayScore}</strong>
                         <span>/ 25</span>
                       </div>
                       <div className="sm2-mcq-percentage-badge">
-                        {mcqData?.percentage || 88}% Score
+                        {displayPercentage}% Score
                       </div>
                       <button 
                         type="button"
@@ -2939,15 +2943,19 @@ export default function TrafficInspectorModule({ user, onLogout }) {
       
       const mcqDataStr = localStorage.getItem(`ss_mcq_test_${ss?.hrmsId}`);
       const mcqData = mcqDataStr ? JSON.parse(mcqDataStr) : null;
-      const isMcqCompleted = !!(mcqData && mcqData.completed);
+      const dbExamScore = ss?.examScore !== undefined && ss?.examScore !== null
+        ? (ss.examScore > 25 ? Math.round(ss.examScore / 4) : ss.examScore)
+        : null;
+      const isMcqCompleted = !!(mcqData && mcqData.completed) || dbExamScore !== null || ss?.status === "Submitted" || ss?.status === "Approved";
       const isActivated = localStorage.getItem(`ss_test_activated_${ss?.hrmsId}`) === "true";
       
-      const knowledge = isMcqCompleted ? (mcqData?.correctCount || 21) : (parseInt(f.knowledgeMarks) || 0);
-      let ynScore = 0;
-      TI_SS_CRITERIA.forEach(sec => {
-        f[sec.key]?.forEach(v => { if (v === "Yes") ynScore += sec.weight; });
-      });
-      const total = knowledge + ynScore;
+      const knowledge = dbExamScore !== null 
+        ? dbExamScore 
+        : (isMcqCompleted ? (mcqData?.correctCount || 0) : (parseInt(f.knowledgeMarks) || 0));
+      const displayScore = dbExamScore !== null ? dbExamScore : (mcqData?.correctCount || 0);
+      const displayPercentage = dbExamScore !== null ? Math.round((dbExamScore / 25) * 100) : (mcqData?.percentage || 0);
+      const fWithKnowledge = { ...f, knowledgeMarks: knowledge.toString() };
+      const { ynScore, total } = computeSSScore(fWithKnowledge, TI_SS_CRITERIA);
       const isAlcoholic = f.alcoholicStatus === "Alcoholic";
       const liveCat = isAlcoholic ? "D" : getCat(total);
 
@@ -2999,11 +3007,11 @@ export default function TrafficInspectorModule({ user, onLogout }) {
                   <div className="sm2-mcq-card-body">
                     <div className="sm2-mcq-score-display">
                       <div className="sm2-mcq-large-score">
-                        <strong>{mcqData?.correctCount || 21}</strong>
+                        <strong>{displayScore}</strong>
                         <span>/ 25</span>
                       </div>
                       <div className="sm2-mcq-percentage-badge">
-                        {mcqData?.percentage || 84}% Score
+                        {displayPercentage}% Score
                       </div>
                       <button 
                         type="button"
@@ -3247,15 +3255,19 @@ export default function TrafficInspectorModule({ user, onLogout }) {
       
       const mcqDataStr = localStorage.getItem(`tm_mcq_test_${tm?.hrmsId}`);
       const mcqData = mcqDataStr ? JSON.parse(mcqDataStr) : null;
-      const isMcqCompleted = !!(mcqData && mcqData.completed);
+      const dbExamScore = tm?.examScore !== undefined && tm?.examScore !== null
+        ? (tm.examScore > 25 ? Math.round(tm.examScore / 4) : tm.examScore)
+        : null;
+      const isMcqCompleted = !!(mcqData && mcqData.completed) || dbExamScore !== null || tm?.status === "Submitted" || tm?.status === "Approved";
       const isActivated = localStorage.getItem(`tm_test_activated_${tm?.hrmsId}`) === "true";
       
-      const knowledge = isMcqCompleted ? (mcqData?.correctCount || 23) : (parseInt(f.knowledgeMarks) || 0);
-      let ynScore = 0;
-      TI_TM_CRITERIA.forEach(sec => {
-        f[sec.key]?.forEach(v => { if (v === "Yes") ynScore += sec.weight; });
-      });
-      const total = knowledge + ynScore;
+      const knowledge = dbExamScore !== null 
+        ? dbExamScore 
+        : (isMcqCompleted ? (mcqData?.correctCount || 0) : (parseInt(f.knowledgeMarks) || 0));
+      const displayScore = dbExamScore !== null ? dbExamScore : (mcqData?.correctCount || 0);
+      const displayPercentage = dbExamScore !== null ? Math.round((dbExamScore / 25) * 100) : (mcqData?.percentage || 0);
+      const fWithKnowledge = { ...f, knowledgeMarks: knowledge.toString() };
+      const { ynScore, total } = computeTMScore(fWithKnowledge, TI_TM_CRITERIA);
       const isAlcoholic = f.alcoholicStatus === "Alcoholic";
       const liveCat = isAlcoholic ? "D" : getCat(total);
 
@@ -3307,11 +3319,11 @@ export default function TrafficInspectorModule({ user, onLogout }) {
                   <div className="sm2-mcq-card-body">
                     <div className="sm2-mcq-score-display">
                       <div className="sm2-mcq-large-score">
-                        <strong>{mcqData?.correctCount || 23}</strong>
+                        <strong>{displayScore}</strong>
                         <span>/ 25</span>
                       </div>
                       <div className="sm2-mcq-percentage-badge">
-                        {mcqData?.percentage || 92}% Score
+                        {displayPercentage}% Score
                       </div>
                       <button 
                         type="button"
@@ -3330,8 +3342,8 @@ export default function TrafficInspectorModule({ user, onLogout }) {
                         <div 
                           className="sm2-mcq-progress-fill" 
                           style={{ 
-                            width: `${mcqData?.percentage || 92}%`,
-                            background: (mcqData?.percentage || 92) >= 80 ? "#16a34a" : (mcqData?.percentage || 92) >= 50 ? "#2563eb" : "#dc2626"
+                            width: `${displayPercentage}%`,
+                            background: displayPercentage >= 80 ? "#16a34a" : displayPercentage >= 50 ? "#2563eb" : "#dc2626"
                           }}
                         />
                       </div>
@@ -3340,7 +3352,7 @@ export default function TrafficInspectorModule({ user, onLogout }) {
                     <div className="sm2-mcq-meta-grid">
                       <div className="sm2-mcq-meta-item">
                         <span className="sm2-mcq-meta-label">Submitted On</span>
-                        <strong className="sm2-mcq-meta-val">{mcqData?.submittedDate || "30 May 2026"}</strong>
+                        <strong className="sm2-mcq-meta-val">{tm?.submissionDate || mcqData?.submittedDate || "30 May 2026"}</strong>
                       </div>
                       <div className="sm2-mcq-meta-item">
                         <span className="sm2-mcq-meta-label">Assessed Entity</span>
@@ -3928,7 +3940,10 @@ export default function TrafficInspectorModule({ user, onLogout }) {
                           {item.lastDate || "—"}
                         </td>
                         <td style={{ padding: "14px 16px", color: "#0f172a", fontWeight: "800", fontSize: "14px" }}>
-                          {item.score ? `${item.score}/100` : "—"}
+                          {item.score !== undefined && item.score !== null ? `${item.score}/100` : (
+                            item.status === "Pending" ? "Not Attempted" : 
+                            item.status === "Exam Sent" ? "Pending Assessment" : "No Score"
+                          )}
                         </td>
                         <td style={{ padding: "14px 16px" }}>
                           <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>

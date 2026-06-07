@@ -5,7 +5,7 @@ import {
   smTestQuestions 
 } from '../../data/mockStationMasterData';
 import { saDataService } from '../../services/saDataService';
-import { supabase, isSupabaseConfigured } from "../../supabaseClient";
+import { supabase, isSupabaseConfigured, dbService } from "../../supabaseClient";
 
 export function useStationMasterState(user, onLogout) {
 
@@ -133,17 +133,27 @@ export function useStationMasterState(user, onLogout) {
                 const mappedHistory = myAssessList.map(a => {
                   const ta = a.TEST_ATTEMPT?.[0];
                   const answers = ta?.answers || {};
+                  const isApproved = a.status === "Approved";
+                  const isOnlineExam = ta?.total_marks === 25 || (a.assessment_type || "").includes("MCQ") || !isApproved;
+                  
+                  let sections = answers.sections || [];
+                  if (isOnlineExam && sections.length === 0) {
+                    sections = [
+                      { title: "MCQ Safety & Rule Exam", marks: ta?.obtained_marks || 0, outOf: 25 }
+                    ];
+                  }
+
                   return {
                     id: a.assessment_id,
                     date: a.assessment_date ? new Date(a.assessment_date).toISOString().slice(0, 10) : new Date(a.created_at).toISOString().slice(0, 10),
                     period: "Current",
-                    assessedBy: "Traffic Inspector",
+                    assessedBy: isOnlineExam ? "Online Exam" : "Traffic Inspector",
                     totalScore: ta?.obtained_marks || 0,
                     category: ta?.category || "A",
                     approvalStatus: a.status,
                     tiRemarks: answers.remarks || "",
-                    sections: answers.sections || [],
-                    isOnlineExam: false
+                    sections: sections,
+                    isOnlineExam: isOnlineExam
                   };
                 });
                 
@@ -329,8 +339,16 @@ export function useStationMasterState(user, onLogout) {
 
   // History State
   const [history, setHistory] = useState(() => {
-    const saved = localStorage.getItem(`sm_history_${smId}`);
-    return saved ? JSON.parse(saved) : [];
+    try {
+      const saved = localStorage.getItem(`sm_history_${smId}`);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) return parsed;
+      }
+    } catch (e) {
+      console.error("Error reading SM history:", e);
+    }
+    return [];
   });
 
   // MCQ Test State
@@ -371,6 +389,73 @@ export function useStationMasterState(user, onLogout) {
     };
   }, [smId]);
 
+  // Read assessment status from database and update local storage/states to unlock automatically
+  useEffect(() => {
+    async function checkDatabaseAssessment() {
+      if (!smId || !isSupabaseConfigured) return;
+      try {
+        // Resolve the employee's user_id from their HRMS ID
+        let resolvedEmployeeId = smId;
+        const { data: uData } = await supabase
+          .from('USERS')
+          .select('user_id')
+          .eq('hrms_id', smId)
+          .single();
+        if (uData?.user_id) {
+          resolvedEmployeeId = uData.user_id;
+        }
+
+        // Fetch active/pending assessments for this user
+        const { data: assessments, error } = await supabase
+          .from('ASSESSMENT')
+          .select('assessment_id, status, assessment_type, conducted_by')
+          .eq('employee_id', resolvedEmployeeId)
+          .in('assessment_type', ['Station Master Assessment', 'SM Assessment'])
+          .in('status', ['Pending', 'AVAILABLE', 'LOCKED', 'IN_PROGRESS'])
+          .order('created_at', { ascending: false })
+          .limit(1);
+
+        const activatedTime = Number(localStorage.getItem(`sm_test_activated_time_${smId}`)) || 0;
+        const isRecent = Date.now() - activatedTime < 15000; // 15 seconds guard
+
+        if (!error && assessments && assessments.length > 0) {
+          const activeAssess = assessments[0];
+          if (activeAssess.status === 'Pending' || activeAssess.status === 'AVAILABLE' || activeAssess.status === 'IN_PROGRESS') {
+            const currentActivated = localStorage.getItem(`sm_test_activated_${smId}`);
+            if (currentActivated !== "true") {
+              localStorage.setItem(`sm_test_activated_${smId}`, "true");
+              window.dispatchEvent(new Event("storage"));
+            }
+          } else {
+            if (!isRecent) {
+              const currentActivated = localStorage.getItem(`sm_test_activated_${smId}`);
+              if (currentActivated !== "false") {
+                localStorage.setItem(`sm_test_activated_${smId}`, "false");
+                window.dispatchEvent(new Event("storage"));
+              }
+            }
+          }
+        } else {
+          if (!error && assessments && assessments.length === 0) {
+            if (!isRecent) {
+              const currentActivated = localStorage.getItem(`sm_test_activated_${smId}`);
+              if (currentActivated !== "false") {
+                localStorage.setItem(`sm_test_activated_${smId}`, "false");
+                window.dispatchEvent(new Event("storage"));
+              }
+            }
+          }
+        }
+      } catch (err) {
+        console.error("Error checking database assessment for SM:", err);
+      }
+    }
+
+    checkDatabaseAssessment();
+    const dbInterval = setInterval(checkDatabaseAssessment, 4000);
+    return () => clearInterval(dbInterval);
+  }, [smId]);
+
   // Active MCQ Attempt States
   const [activeQIdx, setActiveQIdx] = useState(0);
   const [testResponses, setTestResponses] = useState(() => Array(25).fill(null));
@@ -381,7 +466,7 @@ export function useStationMasterState(user, onLogout) {
     setPageMode("takeTest");
   };
 
-  const handleSubmitTestAttempt = () => {
+  const handleSubmitTestAttempt = async () => {
     const correctCount = testResponses.filter((r, idx) => r === smTestQuestions[idx].answer).length;
     const percentage = Math.round((correctCount / 25) * 100);
     const passStatus = percentage >= 60 ? "PASSED" : "FAILED";
@@ -423,6 +508,32 @@ export function useStationMasterState(user, onLogout) {
     const newHistory = [record, ...history];
     setHistory(newHistory);
     localStorage.setItem(`sm_history_${smId}`, JSON.stringify(newHistory));
+
+    // Submit to database under status Submitted
+    if (isSupabaseConfigured) {
+      const attemptData = {
+        employeeId: smId,
+        obtainedMarks: correctCount,
+        percentage: percentage,
+        category: getCat(percentage),
+        totalMarks: 25,
+        conductedBy: "AOM"
+      };
+
+      const answersArray = testResponses.map((selected, idx) => ({
+        questionId: idx + 1,
+        selectedOption: selected !== null && selected !== undefined ? ["A", "B", "C", "D"][selected] : "A",
+        isCorrect: selected === smTestQuestions[idx].answer,
+        correctOption: ["A", "B", "C", "D"][smTestQuestions[idx].answer],
+        marksObtained: selected === smTestQuestions[idx].answer ? 1 : 0
+      }));
+
+      try {
+        await dbService.submitTestAttempt(attemptData, answersArray);
+      } catch (dbErr) {
+        console.error("Database error on SM test attempt submission:", dbErr);
+      }
+    }
 
     // Also notify TI list in localStorage!
     let tiSmListStr = localStorage.getItem("ti_sm_list");

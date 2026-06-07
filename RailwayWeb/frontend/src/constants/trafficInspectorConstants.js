@@ -204,12 +204,13 @@ export const computeSMScore = (form, criteria) => {
 };
 
 export const computeTMScore = (form, criteria) => {
-  let total = 0;
+  let yesCount = 0;
   criteria.forEach(c => {
-    form[c.key]?.forEach(v => { if (v === "Yes") total += c.weight; });
+    form[c.key]?.forEach(v => { if (v === "Yes") yesCount += 1; });
   });
+  const ynScore = yesCount * 3;
   const km = Math.min(parseInt(form.knowledgeMarks) || 0, 25);
-  return { ynScore: Math.min(total, 75), knowledge: km, total: Math.min(total, 75) + km };
+  return { ynScore: Math.min(ynScore, 75), knowledge: km, total: Math.min(ynScore, 75) + km };
 };
 
 export const computeSSScore = (form, criteria) => {

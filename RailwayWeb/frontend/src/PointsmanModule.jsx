@@ -170,8 +170,16 @@ function PointsmanModule({ user, onLogout }) {
   const [screenMode, setScreenMode] = useState("default");
   
   const [history, setHistory] = useState(() => {
-    const saved = localStorage.getItem(`pm_history_${employeeId}`);
-    return saved ? JSON.parse(saved) : initialHistory;
+    try {
+      const saved = localStorage.getItem(`pm_history_${employeeId}`);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) return parsed;
+      }
+    } catch (e) {
+      console.error("Error reading PM history:", e);
+    }
+    return initialHistory;
   });
   
   const [historyDateSearch, setHistoryDateSearch] = useState("");

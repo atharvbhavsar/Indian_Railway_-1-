@@ -2793,10 +2793,14 @@ function AOmModule({ user, onLogout }) {
           }
 
           const activeAnswers = answersByAssessment[activeAssessment.id] || buildPrefilledAnswers(activeAssessment.title);
-          const liveScore = calculateAssessmentScore(activeAnswers, true, effectiveQuizMarks);
+          const liveScore = calculateAssessmentScore(activeAnswers, true, effectiveQuizMarks, assessmentRoleTab);
+            
+          const roleCriteria = assessmentRoleTab === "TM" ? TI_TM_CRITERIA : 
+                              (assessmentRoleTab === "SS" ? TI_SS_CRITERIA : 
+                              (assessmentRoleTab === "SM" ? TI_SM_CRITERIA : assessmentCriteria));
 
           let ynScore = 0;
-          assessmentCriteria.forEach(sec => { if (sec.key !== "knowledgeOfRules") ynScore += getTiSectionScore(sec.key, activeAnswers); });
+          roleCriteria.forEach(sec => { if (sec.key !== "knowledgeOfRules" && sec.key !== "knowledgeMarks") ynScore += getTiSectionScore(sec.key, activeAnswers); });
           const isAlcoholic = activeAnswers.alcoholicStatus === "Alcoholic";
           const liveCat = isAlcoholic ? "D" : (liveScore >= 90 ? "A" : liveScore >= 80 ? "B" : "C");
 
@@ -2999,11 +3003,11 @@ function AOmModule({ user, onLogout }) {
               </div>
 
               {/* ── Sections 02-06: Yes/No blocks ── */}
-              {assessmentCriteria.filter(x => x.key !== "knowledgeOfRules").map((sec, si) => {
-                const checklist = checklistDetails[sec.key] || [];
+              {roleCriteria.filter(x => x.key !== "knowledgeOfRules" && x.key !== "knowledgeMarks").map((sec, si) => {
+                const checklist = sec.criteria || checklistDetails[sec.key] || [];
                 const count = checklist.length;
                 const sectionScore = getTiSectionScore(sec.key, activeAnswers);
-                const sectionMax = sec.marks;
+                const sectionMax = sec.marks || (sec.weight ? sec.weight * 3 : 15);
                 const weight = count > 0 ? (sectionMax / count).toFixed(2) : 0;
 
                 return (
@@ -3019,7 +3023,8 @@ function AOmModule({ user, onLogout }) {
                     <div className="sm2-yn-grid">
                       {checklist.map((itemText, idx) => {
                         const itemKey = `${sec.key}_${idx}`;
-                        const currentAnswer = activeAnswers[itemKey] || "";
+                        const arrVal = Array.isArray(activeAnswers[sec.key]) ? activeAnswers[sec.key][idx] : null;
+                        const currentAnswer = activeAnswers[itemKey] || arrVal || "";
 
                         return (
                           <div key={idx} className="sm2-yn-row">
@@ -4371,9 +4376,6 @@ function AOmModule({ user, onLogout }) {
         if (aomSelectedItem) {
           const secs = aomEditSections[aomSelectedItem.id] || [];
           const liveTotal = secs.reduce((s, x) => s + x.score, 0);
-          const liveCat = aomGetCat(liveTotal);
-          const locked = aomSelectedItem.status !== "Submitted" && aomSelectedItem.status !== "Pending";
-          const reject = aomRejectMode[aomSelectedItem.id] || false;
 
           const savedForms = aomApprovalTab === "SM"
             ? (localStorage.getItem("ti_sm_forms") ? JSON.parse(localStorage.getItem("ti_sm_forms")) : {})
@@ -4384,6 +4386,10 @@ function AOmModule({ user, onLogout }) {
           const pme = form.pmeStatus || aomSelectedItem.pmeStatus || (aomSelectedItem.meta?.pmeStatus) || "Fit";
           const ref = form.refStatus || aomSelectedItem.refStatus || (aomSelectedItem.meta?.refStatus) || "Cleared";
           const alc = form.alcoholicStatus || aomSelectedItem.alcoholicStatus || (aomSelectedItem.meta?.alcoholicStatus) || "Non-Alcoholic";
+
+          const liveCat = alc === "Alcoholic" ? "D" : aomGetCat(liveTotal);
+          const locked = aomSelectedItem.status !== "Submitted" && aomSelectedItem.status !== "Pending";
+          const reject = aomRejectMode[aomSelectedItem.id] || false;
 
           return (
             <div className="ti2-card animate-fade-in">
@@ -4461,7 +4467,7 @@ function AOmModule({ user, onLogout }) {
 
               {/* Live score — same ti2-live-score as TI */}
               <div className="ti2-live-score">
-                <div><label>Grand Total</label><strong style={{ color: aomCAT_C[liveCat], fontSize: 22 }}>{liveTotal}/100</strong></div>
+                <div><label>Grand Total</label><strong style={{ color: aomCAT_C[liveCat], fontSize: 22 }}>{aomSelectedItem.isOnlineExam ? `${liveTotal}/25` : `${liveTotal}/100`}</strong></div>
                 <div><label>Category</label><span className="ti2-badge" style={{ background: aomCAT_B[liveCat], color: aomCAT_C[liveCat], fontSize: 13, padding: "4px 14px" }}>Category {liveCat}</span></div>
               </div>
 
@@ -4607,7 +4613,7 @@ function AOmModule({ user, onLogout }) {
                     <span>{item.station}</span>
                     <span>Traffic Inspector</span>
                     <span>{item.lastDate}</span>
-                    <span><strong style={{ color: aomCAT_C[cat] }}>{score}/100</strong></span>
+                    <span><strong style={{ color: aomCAT_C[cat] }}>{item.isOnlineExam ? `${score}/25` : `${score}/100`}</strong></span>
                     <span>
                       <span className={`ti2-status-pill ti2-status-${item.status.toLowerCase() === "submitted" ? "pending" : item.status.toLowerCase()}`}>
                         {item.status === "Submitted" ? "Pending" : item.status}

@@ -198,7 +198,20 @@ export function useTrafficInspectorState(user, onLogout) {
         const sms = filteredMapped.filter(u => u.role === "Station Master");
         const smMapped = sms.map(u => {
           const latest = assessList.find(a => a.employee_id === u.user_id && (a.assessment_type === "Station Master Assessment" || a.assessment_type === "SM Assessment"));
-          const score = latest?.TEST_ATTEMPT?.[0]?.obtained_marks || u.score || 0;
+          const score = (latest?.TEST_ATTEMPT?.[0]?.obtained_marks !== undefined && latest?.TEST_ATTEMPT?.[0]?.obtained_marks !== null) ? latest.TEST_ATTEMPT[0].obtained_marks : null;
+          
+          const isLocalActive = localStorage.getItem(`sm_test_activated_${u.hrmsId}`) === "true";
+          let statusVal = 'Pending';
+          if (latest) {
+            if (latest.status === 'Approved') statusVal = 'Approved';
+            else if (latest.status === 'Rejected') statusVal = 'Rejected';
+            else if (latest.status === 'AVAILABLE' || latest.status === 'IN_PROGRESS') statusVal = 'Exam Sent';
+            else statusVal = 'Submitted';
+          }
+          if (isLocalActive && (statusVal === 'Pending' || latest?.status === 'LOCKED')) {
+            statusVal = 'Exam Sent';
+          }
+
           return {
             id: u.user_id,
             name: u.name,
@@ -207,8 +220,9 @@ export function useTrafficInspectorState(user, onLogout) {
             contact: u.contact,
             score: score,
             cat: latest?.TEST_ATTEMPT?.[0]?.category || u.cat || "A",
-            status: latest ? (latest.status === 'Approved' ? 'Approved' : (latest.status === 'Rejected' ? 'Rejected' : 'Submitted')) : 'Pending',
+            status: statusVal,
             examScore: latest?.TEST_ATTEMPT?.[0]?.obtained_marks,
+            examTotalMarks: latest?.TEST_ATTEMPT?.[0]?.total_marks,
             submissionDate: latest?.assessment_date ? new Date(latest.assessment_date).toISOString().slice(0, 10) : undefined,
             pmeStatus: u.pmeStatus || 'Fit',
             refStatus: u.refStatus || 'Cleared'
@@ -220,7 +234,20 @@ export function useTrafficInspectorState(user, onLogout) {
         const tms = filteredMapped.filter(u => u.role === "Train Manager");
         const tmMapped = tms.map(u => {
           const latest = assessList.find(a => a.employee_id === u.user_id && (a.assessment_type === "Train Manager Assessment" || a.assessment_type === "TM Assessment"));
-          const score = latest?.TEST_ATTEMPT?.[0]?.obtained_marks || u.score || 0;
+          const score = (latest?.TEST_ATTEMPT?.[0]?.obtained_marks !== undefined && latest?.TEST_ATTEMPT?.[0]?.obtained_marks !== null) ? latest.TEST_ATTEMPT[0].obtained_marks : null;
+          
+          const isLocalActive = localStorage.getItem(`tm_test_activated_${u.hrmsId}`) === "true";
+          let statusVal = 'Pending';
+          if (latest) {
+            if (latest.status === 'Approved') statusVal = 'Approved';
+            else if (latest.status === 'Rejected') statusVal = 'Rejected';
+            else if (latest.status === 'AVAILABLE' || latest.status === 'IN_PROGRESS') statusVal = 'Exam Sent';
+            else statusVal = 'Submitted';
+          }
+          if (isLocalActive && (statusVal === 'Pending' || latest?.status === 'LOCKED')) {
+            statusVal = 'Exam Sent';
+          }
+
           return {
             id: u.user_id,
             name: u.name,
@@ -229,8 +256,9 @@ export function useTrafficInspectorState(user, onLogout) {
             contact: u.contact,
             score: score,
             cat: latest?.TEST_ATTEMPT?.[0]?.category || u.cat || "A",
-            status: latest ? (latest.status === 'Approved' ? 'Approved' : (latest.status === 'Rejected' ? 'Rejected' : 'Submitted')) : 'Pending',
+            status: statusVal,
             examScore: latest?.TEST_ATTEMPT?.[0]?.obtained_marks,
+            examTotalMarks: latest?.TEST_ATTEMPT?.[0]?.total_marks,
             submissionDate: latest?.assessment_date ? new Date(latest.assessment_date).toISOString().slice(0, 10) : undefined,
             pmeStatus: u.pmeStatus || 'Fit',
             refStatus: u.refStatus || 'Cleared'
@@ -242,7 +270,20 @@ export function useTrafficInspectorState(user, onLogout) {
         const sss = filteredMapped.filter(u => u.role === "Station Superintendent");
         const ssMapped = sss.map(u => {
           const latest = assessList.find(a => a.employee_id === u.user_id && (a.assessment_type === "Station Superintendent Assessment" || a.assessment_type === "SS Assessment"));
-          const score = latest?.TEST_ATTEMPT?.[0]?.obtained_marks || u.score || 0;
+          const score = (latest?.TEST_ATTEMPT?.[0]?.obtained_marks !== undefined && latest?.TEST_ATTEMPT?.[0]?.obtained_marks !== null) ? latest.TEST_ATTEMPT[0].obtained_marks : null;
+          
+          const isLocalActive = localStorage.getItem(`ss_test_activated_${u.hrmsId}`) === "true";
+          let statusVal = 'Pending';
+          if (latest) {
+            if (latest.status === 'Approved') statusVal = 'Approved';
+            else if (latest.status === 'Rejected') statusVal = 'Rejected';
+            else if (latest.status === 'AVAILABLE' || latest.status === 'IN_PROGRESS') statusVal = 'Exam Sent';
+            else statusVal = 'Submitted';
+          }
+          if (isLocalActive && (statusVal === 'Pending' || latest?.status === 'LOCKED')) {
+            statusVal = 'Exam Sent';
+          }
+
           return {
             id: u.user_id,
             name: u.name,
@@ -251,8 +292,9 @@ export function useTrafficInspectorState(user, onLogout) {
             contact: u.contact,
             score: score,
             cat: latest?.TEST_ATTEMPT?.[0]?.category || u.cat || "A",
-            status: latest ? (latest.status === 'Approved' ? 'Approved' : (latest.status === 'Rejected' ? 'Rejected' : 'Submitted')) : 'Pending',
+            status: statusVal,
             examScore: latest?.TEST_ATTEMPT?.[0]?.obtained_marks,
+            examTotalMarks: latest?.TEST_ATTEMPT?.[0]?.total_marks,
             submissionDate: latest?.assessment_date ? new Date(latest.assessment_date).toISOString().slice(0, 10) : undefined,
             pmeStatus: u.pmeStatus || 'Fit',
             refStatus: u.refStatus || 'Cleared'
@@ -948,6 +990,21 @@ export function useTrafficInspectorState(user, onLogout) {
     try {
       const newStatus = mode === "reject" ? "Rejected" : "Approved";
 
+      let approvedByUuid = user.userId;
+      if (!approvedByUuid || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(approvedByUuid)) {
+        const tiHrms = user.hrmsId || user.hrms_id;
+        if (tiHrms) {
+          const { data: tiData } = await supabase
+            .from("USERS")
+            .select("user_id")
+            .eq("hrms_id", tiHrms)
+            .single();
+          if (tiData?.user_id) {
+            approvedByUuid = tiData.user_id;
+          }
+        }
+      }
+
       const { error: updateError } = await supabase
         .from("ASSESSMENT")
         .update({ status: newStatus })
@@ -964,7 +1021,7 @@ export function useTrafficInspectorState(user, onLogout) {
         await supabase
           .from("APPROVAL")
           .update({
-            approved_by: user.userId,
+            approved_by: approvedByUuid,
             approval_date: new Date().toISOString(),
             remarks: mode === "reject" ? rejectNote : (tiRemarks[id] || "Approved by TI")
           })
@@ -974,7 +1031,7 @@ export function useTrafficInspectorState(user, onLogout) {
           .from("APPROVAL")
           .insert([{
             assessment_id: id,
-            approved_by: user.userId,
+            approved_by: approvedByUuid,
             approval_level: "Traffic Inspector",
             remarks: mode === "reject" ? rejectNote : (tiRemarks[id] || "Approved by TI")
           }]);
@@ -1032,7 +1089,20 @@ export function useTrafficInspectorState(user, onLogout) {
               .select("conducted_by, employee_id")
               .eq("assessment_id", id)
               .single();
-            const condBy = aData?.conducted_by || user.userId;
+            let condBy = aData?.conducted_by || user.userId;
+            if (!condBy || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(condBy)) {
+              const tiHrms = user.hrmsId || user.hrms_id;
+              if (tiHrms) {
+                const { data: tiData } = await supabase
+                  .from("USERS")
+                  .select("user_id")
+                  .eq("hrms_id", tiHrms)
+                  .single();
+                if (tiData?.user_id) {
+                  condBy = tiData.user_id;
+                }
+              }
+            }
             const empId = aData?.employee_id || targetAssess?.hrmsId;
             await assessmentService.triggerCategoryDProtocol(empId, id, total, 'D', condBy);
           } catch (dErr) {
@@ -1063,12 +1133,13 @@ export function useTrafficInspectorState(user, onLogout) {
     }));
     setSmForms(prev => {
       const existing = prev[id] || defaultSMForm();
-      if (smAssess && smAssess.examScore !== undefined) {
+      if (smAssess && smAssess.examScore !== undefined && smAssess.examScore !== null) {
+        const finalExamScore = smAssess.examScore > 25 ? Math.round(smAssess.examScore / 4) : smAssess.examScore;
         return {
           ...prev,
           [id]: {
             ...existing,
-            knowledgeMarks: smAssess.examScore.toString()
+            knowledgeMarks: finalExamScore.toString()
           }
         };
       }
@@ -1079,19 +1150,68 @@ export function useTrafficInspectorState(user, onLogout) {
     });
   };
 
-  const handleSendExamAccess = (id) => {
+  const handleSendExamAccess = async (id) => {
     const sm = smList.find(s => s.id === id);
     // Set localStorage flags so SM portal detects activation immediately
     if (sm?.hrmsId) {
       localStorage.setItem(`sm_test_activated_${sm.hrmsId}`, "true");
-      const existing = localStorage.getItem(`sm_test_assigned_${sm.hrmsId}`);
-      if (!existing || existing === "Not Assigned") {
-        localStorage.setItem(`sm_test_assigned_${sm.hrmsId}`, "Assigned");
-      }
+      localStorage.setItem(`sm_test_activated_time_${sm.hrmsId}`, Date.now().toString());
+      localStorage.setItem(`sm_test_assigned_${sm.hrmsId}`, "Assigned");
+      localStorage.removeItem(`sm_mcq_test_${sm.hrmsId}`);
       window.dispatchEvent(new Event("storage"));
+
+      // Also update or insert in Supabase
+      if (isSupabaseConfigured) {
+        try {
+          let conductedByUuid = resolvedUserId;
+          if (!conductedByUuid || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(conductedByUuid)) {
+            const tiHrms = user.hrmsId || user.hrms_id;
+            if (tiHrms) {
+              const { data: tiData } = await supabase
+                .from("USERS")
+                .select("user_id")
+                .eq("hrms_id", tiHrms)
+                .single();
+              if (tiData?.user_id) {
+                conductedByUuid = tiData.user_id;
+                setResolvedUserId(conductedByUuid);
+              }
+            }
+          }
+          if (!conductedByUuid) conductedByUuid = id;
+
+          const { data: existingAssess } = await supabase
+            .from("ASSESSMENT")
+            .select("*")
+            .eq("employee_id", id)
+            .in("status", ["LOCKED", "Draft", "Scheduled", "AVAILABLE", "IN_PROGRESS"])
+            .order("created_at", { ascending: false })
+            .limit(1);
+
+          if (existingAssess && existingAssess.length > 0) {
+            await supabase
+              .from("ASSESSMENT")
+              .update({ status: "AVAILABLE", conducted_by: conductedByUuid })
+              .eq("assessment_id", existingAssess[0].assessment_id);
+          } else {
+            await supabase
+              .from("ASSESSMENT")
+              .insert([{
+                employee_id: id,
+                conducted_by: conductedByUuid,
+                assessment_type: "Station Master Assessment",
+                status: "AVAILABLE",
+                assessment_date: new Date().toISOString().slice(0, 10)
+              }]);
+          }
+        } catch (dbErr) {
+          console.error("Failed to update database assessment status to AVAILABLE:", dbErr);
+        }
+      }
     }
     setSmList(prev => prev.map(s => s.id === id ? { ...s, status: "Exam Sent" } : s));
-    setStatusMsg(`Exam access sent to ${sm?.name || "Station Master"}. They can now attempt the MCQ test.`);
+    window.alert("test is been send");
+    setStatusMsg("test is been send");
     addAuditLog("Sent Exam Access", `Exam activated for SM: ${sm?.name} (${sm?.hrmsId})`);
     triggerNotification("success", `Exam unlocked for SM ${sm?.name}. They must complete 25 MCQ questions.`);
   };
@@ -1130,7 +1250,22 @@ export function useTrafficInspectorState(user, onLogout) {
 
     const isAlcoholic = fToSubmit.alcoholicStatus === "Alcoholic";
     const cat = isAlcoholic ? "D" : getCat(total);
-    const targetUser = users.find(u => u.id === id || u.user_id === id);
+    let targetUser = users.find(u => u.id === id || u.user_id === id);
+    if (!targetUser) {
+      const { data: dbUser, error: dbErr } = await supabase
+        .from("USERS")
+        .select("user_id, hrms_id, full_name")
+        .or(`user_id.eq.${id},hrms_id.eq.${id}`)
+        .maybeSingle();
+      if (!dbErr && dbUser) {
+        targetUser = {
+          user_id: dbUser.user_id,
+          hrmsId: dbUser.hrms_id,
+          name: dbUser.full_name
+        };
+      }
+    }
+    const resolvedEmployeeId = targetUser?.user_id || id;
 
     // Build sections breakdown for permanent audit record
     const sectionBreakdown = TI_SM_CRITERIA.map(sec => ({
@@ -1140,47 +1275,152 @@ export function useTrafficInspectorState(user, onLogout) {
     }));
 
     try {
-      const { data: newAssess, error: assessError } = await supabase
-        .from("ASSESSMENT")
-        .insert([{
-          employee_id: targetUser?.user_id || id,
-          conducted_by: user.userId,
-          assessment_type: "Station Master Assessment",
-          status: "Submitted",
-          assessment_date: new Date().toISOString()
-        }])
-        .select()
-        .single();
-
-      if (assessError) throw assessError;
-
-      await assessmentService.submitTestAttempt({
-        assessment_id: newAssess.assessment_id,
-        employee_id: targetUser?.user_id || id,
-        conducted_by: user.userId,
-        obtained_marks: total,
-        total_marks: 100,
-        percentage: total,
-        category: cat,
-        answers: {
-          alcoholicStatus: fToSubmit.alcoholicStatus,
-          pmeStatus: fToSubmit.pmeStatus,
-          refStatus: fToSubmit.refStatus,
-          counselling: fToSubmit.counselling,
-          automaticTraining: fToSubmit.automaticTraining,
-          remarks: fToSubmit.remarks,
-          mcqScore: parseInt(fToSubmit.knowledgeMarks) || 0,
-          sections: sectionBreakdown,
-          // Store full YN responses for each section
-          knowledgeOfRules: fToSubmit.knowledgeOfRules,
-          alertness: fToSubmit.alertness,
-          safetyRecord: fToSubmit.safetyRecord,
-          leadership: fToSubmit.leadership,
-          discipline: fToSubmit.discipline,
-          appearance: fToSubmit.appearance,
-          knowledgeMarks: fToSubmit.knowledgeMarks
+      // Identity Resolution & Defensive Validation
+      let resolvedEmployeeId = targetUser?.user_id || id;
+      if (resolvedEmployeeId && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(resolvedEmployeeId)) {
+        const { data: uData } = await supabase
+          .from("USERS")
+          .select("user_id")
+          .eq("hrms_id", resolvedEmployeeId)
+          .single();
+        if (uData?.user_id) {
+          resolvedEmployeeId = uData.user_id;
+        } else {
+          throw new Error(`Could not resolve UUID for Station Master HRMS ID: ${resolvedEmployeeId}`);
         }
-      });
+      }
+
+      let conductedByUuid = user.userId;
+      if (!conductedByUuid || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(conductedByUuid)) {
+        const tiHrms = user.hrmsId || user.hrms_id;
+        if (tiHrms) {
+          const { data: tiData } = await supabase
+            .from("USERS")
+            .select("user_id")
+            .eq("hrms_id", tiHrms)
+            .single();
+          if (tiData?.user_id) {
+            conductedByUuid = tiData.user_id;
+          }
+        }
+        if (!conductedByUuid || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(conductedByUuid)) {
+          conductedByUuid = resolvedEmployeeId;
+        }
+      }
+
+      const { data: existingAssess, error: findError } = await supabase
+        .from("ASSESSMENT")
+        .select("assessment_id")
+        .eq("employee_id", resolvedEmployeeId)
+        .eq("assessment_type", "Station Master Assessment")
+        .neq("status", "Approved")
+        .order("created_at", { ascending: false })
+        .limit(1);
+
+      let assessmentId;
+      if (!findError && existingAssess && existingAssess.length > 0) {
+        assessmentId = existingAssess[0].assessment_id;
+      } else {
+        const { data: newAssess, error: assessError } = await supabase
+          .from("ASSESSMENT")
+          .insert([{
+            employee_id: resolvedEmployeeId,
+            conducted_by: conductedByUuid,
+            assessment_type: "Station Master Assessment",
+            status: "IN_PROGRESS",
+            assessment_date: new Date().toISOString()
+          }])
+          .select()
+          .single();
+
+        if (assessError) throw assessError;
+        assessmentId = newAssess.assessment_id;
+      }
+
+      const { data: existingAttempt } = await supabase
+        .from("TEST_ATTEMPT")
+        .select("*")
+        .eq("assessment_id", assessmentId)
+        .maybeSingle();
+
+      const newAnswers = {
+        alcoholicStatus: fToSubmit.alcoholicStatus,
+        pmeStatus: fToSubmit.pmeStatus,
+        refStatus: fToSubmit.refStatus,
+        counselling: fToSubmit.counselling,
+        automaticTraining: fToSubmit.automaticTraining,
+        remarks: fToSubmit.remarks,
+        mcqScore: parseInt(fToSubmit.knowledgeMarks) || 0,
+        sections: sectionBreakdown,
+        knowledgeOfRules: fToSubmit.knowledgeOfRules,
+        alertness: fToSubmit.alertness,
+        safetyRecord: fToSubmit.safetyRecord,
+        leadership: fToSubmit.leadership,
+        discipline: fToSubmit.discipline,
+        appearance: fToSubmit.appearance,
+        knowledgeMarks: fToSubmit.knowledgeMarks
+      };
+
+      let res;
+      if (existingAttempt) {
+        let prevAnswers = existingAttempt.answers || {};
+        if (typeof prevAnswers === "string") {
+          try { prevAnswers = JSON.parse(prevAnswers); } catch (e) {}
+        }
+        let mergedAnswers = Array.isArray(prevAnswers)
+          ? { questions: prevAnswers, ...newAnswers }
+          : { ...prevAnswers, ...newAnswers };
+
+        const { error: updateErr } = await supabase
+          .from("TEST_ATTEMPT")
+          .update({
+            obtained_marks: total,
+            total_marks: 100,
+            percentage: total,
+            category: cat,
+            answers: mergedAnswers,
+            submitted_at: new Date().toISOString()
+          })
+          .eq("attempt_id", existingAttempt.attempt_id);
+
+        if (updateErr) throw updateErr;
+
+        const { error: updateAssessErr } = await supabase
+          .from("ASSESSMENT")
+          .update({
+            status: "Submitted",
+            conducted_by: conductedByUuid,
+            assessment_date: new Date().toISOString().slice(0, 10)
+          })
+          .eq("assessment_id", assessmentId);
+
+        if (updateAssessErr) throw updateAssessErr;
+
+        if (cat === "D" || total < 50) {
+          try {
+            await assessmentService.triggerCategoryDProtocol(resolvedEmployeeId, assessmentId, total, cat, conductedByUuid);
+          } catch (dErr) {
+            console.error("Failed manual trigger of Category D protocol:", dErr);
+          }
+        }
+
+        res = { success: true };
+      } else {
+        res = await assessmentService.submitTestAttempt({
+          assessment_id: assessmentId,
+          employee_id: resolvedEmployeeId,
+          conducted_by: conductedByUuid,
+          obtained_marks: total,
+          total_marks: 100,
+          percentage: total,
+          category: cat,
+          answers: newAnswers
+        });
+      }
+
+      if (!res.success) {
+        throw new Error(res.error);
+      }
 
       // Clear activation flags so SM can't re-attempt
       const smHrmsId = targetUser?.hrmsId || targetUser?.id;
@@ -1210,12 +1450,13 @@ export function useTrafficInspectorState(user, onLogout) {
     }));
     setTmForms(prev => {
       const existing = prev[id] || defaultTMForm();
-      if (tmAssess && tmAssess.examScore !== undefined) {
+      if (tmAssess && tmAssess.examScore !== undefined && tmAssess.examScore !== null) {
+        const finalExamScore = tmAssess.examScore > 25 ? Math.round(tmAssess.examScore / 4) : tmAssess.examScore;
         return {
           ...prev,
           [id]: {
             ...existing,
-            knowledgeMarks: tmAssess.examScore.toString()
+            knowledgeMarks: finalExamScore.toString()
           }
         };
       }
@@ -1226,11 +1467,69 @@ export function useTrafficInspectorState(user, onLogout) {
     });
   };
 
-  const handleSendTMExamAccess = (id) => {
+  const handleSendTMExamAccess = async (id) => {
+    const tm = tmList.find(t => t.id === id);
+    if (tm?.hrmsId) {
+      localStorage.setItem(`tm_test_activated_${tm.hrmsId}`, "true");
+      localStorage.setItem(`tm_test_activated_time_${tm.hrmsId}`, Date.now().toString());
+      localStorage.setItem(`tm_test_assigned_${tm.hrmsId}`, "Assigned");
+      localStorage.removeItem(`tm_mcq_test_${tm.hrmsId}`);
+      window.dispatchEvent(new Event("storage"));
+
+      // Also update or insert in Supabase
+      if (isSupabaseConfigured) {
+        try {
+          let conductedByUuid = resolvedUserId;
+          if (!conductedByUuid || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(conductedByUuid)) {
+            const tiHrms = user.hrmsId || user.hrms_id;
+            if (tiHrms) {
+              const { data: tiData } = await supabase
+                .from("USERS")
+                .select("user_id")
+                .eq("hrms_id", tiHrms)
+                .single();
+              if (tiData?.user_id) {
+                conductedByUuid = tiData.user_id;
+                setResolvedUserId(conductedByUuid);
+              }
+            }
+          }
+          if (!conductedByUuid) conductedByUuid = id;
+
+          const { data: existingAssess } = await supabase
+            .from("ASSESSMENT")
+            .select("*")
+            .eq("employee_id", id)
+            .in("status", ["LOCKED", "Draft", "Scheduled", "AVAILABLE", "IN_PROGRESS"])
+            .order("created_at", { ascending: false })
+            .limit(1);
+
+          if (existingAssess && existingAssess.length > 0) {
+            await supabase
+              .from("ASSESSMENT")
+              .update({ status: "AVAILABLE", conducted_by: conductedByUuid })
+              .eq("assessment_id", existingAssess[0].assessment_id);
+          } else {
+            await supabase
+              .from("ASSESSMENT")
+              .insert([{
+                employee_id: id,
+                conducted_by: conductedByUuid,
+                assessment_type: "Train Manager Assessment",
+                status: "AVAILABLE",
+                assessment_date: new Date().toISOString().slice(0, 10)
+              }]);
+          }
+        } catch (dbErr) {
+          console.error("Failed to update database assessment status to AVAILABLE:", dbErr);
+        }
+      }
+    }
     setTmList(prev => prev.map(t => t.id === id ? { ...t, status: "Exam Sent" } : t));
-    setStatusMsg("Exam access link sent successfully to the Train Manager.");
-    addAuditLog("Sent Exam Access", `Exam sent to TM: ${tmList.find(t => t.id === id)?.name}`);
-    triggerNotification("success", `Exam access granted to TM ${tmList.find(t => t.id === id)?.name}`);
+    window.alert("test is been send");
+    setStatusMsg("test is been send");
+    addAuditLog("Sent Exam Access", `Exam activated for TM: ${tm?.name} (${tm?.hrmsId})`);
+    triggerNotification("success", `Exam unlocked for TM ${tm?.name}. They must complete 25 MCQ questions.`);
   };
 
   const toggleTMYN = (id, key, idx, val) => {
@@ -1269,43 +1568,178 @@ export function useTrafficInspectorState(user, onLogout) {
 
     const isAlcoholic = f.alcoholicStatus === "Alcoholic";
     const cat = isAlcoholic ? "D" : getCat(total);
-    const targetUser = users.find(u => u.id === id);
+    let targetUser = users.find(u => u.id === id || u.user_id === id);
+    if (!targetUser) {
+      const { data: dbUser, error: dbErr } = await supabase
+        .from("USERS")
+        .select("user_id, hrms_id, full_name")
+        .or(`user_id.eq.${id},hrms_id.eq.${id}`)
+        .maybeSingle();
+      if (!dbErr && dbUser) {
+        targetUser = {
+          user_id: dbUser.user_id,
+          hrmsId: dbUser.hrms_id,
+          name: dbUser.full_name
+        };
+      }
+    }
+    const resolvedEmployeeId = targetUser?.user_id || id;
 
     try {
-      const { data: newAssess, error: assessError } = await supabase
-        .from("ASSESSMENT")
-        .insert([{
-          employee_id: targetUser.user_id,
-          conducted_by: user.userId,
-          assessment_type: "Train Manager Assessment",
-          status: "Submitted",
-          assessment_date: new Date().toISOString()
-        }])
-        .select()
-        .single();
-
-      if (assessError) throw assessError;
-
-      await assessmentService.submitTestAttempt({
-        assessment_id: newAssess.assessment_id,
-        employee_id: targetUser.user_id,
-        conducted_by: user.userId,
-        obtained_marks: total,
-        total_marks: 100,
-        percentage: total,
-        category: cat,
-        answers: {
-          alcoholicStatus: f.alcoholicStatus,
-          pmeStatus: f.pmeStatus,
-          refStatus: f.refStatus,
-          trainSafety: f.trainSafety,
-          signaling: f.signaling,
-          shunting: f.shunting,
-          documentation: f.documentation,
-          emergency: f.emergency,
-          knowledgeMarks: f.knowledgeMarks
+      // Identity Resolution & Defensive Validation
+      let resolvedEmployeeId = targetUser?.user_id || id;
+      if (resolvedEmployeeId && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(resolvedEmployeeId)) {
+        const { data: uData } = await supabase
+          .from("USERS")
+          .select("user_id")
+          .eq("hrms_id", resolvedEmployeeId)
+          .single();
+        if (uData?.user_id) {
+          resolvedEmployeeId = uData.user_id;
+        } else {
+          throw new Error(`Could not resolve UUID for Train Manager HRMS ID: ${resolvedEmployeeId}`);
         }
-      });
+      }
+
+      let conductedByUuid = user.userId;
+      if (!conductedByUuid || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(conductedByUuid)) {
+        const tiHrms = user.hrmsId || user.hrms_id;
+        if (tiHrms) {
+          const { data: tiData } = await supabase
+            .from("USERS")
+            .select("user_id")
+            .eq("hrms_id", tiHrms)
+            .single();
+          if (tiData?.user_id) {
+            conductedByUuid = tiData.user_id;
+          }
+        }
+        if (!conductedByUuid || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(conductedByUuid)) {
+          conductedByUuid = resolvedEmployeeId;
+        }
+      }
+
+      const { data: existingAssess, error: findError } = await supabase
+        .from("ASSESSMENT")
+        .select("assessment_id")
+        .eq("employee_id", resolvedEmployeeId)
+        .eq("assessment_type", "Train Manager Assessment")
+        .neq("status", "Approved")
+        .order("created_at", { ascending: false })
+        .limit(1);
+
+      let assessmentId;
+      if (!findError && existingAssess && existingAssess.length > 0) {
+        assessmentId = existingAssess[0].assessment_id;
+      } else {
+        const { data: newAssess, error: assessError } = await supabase
+          .from("ASSESSMENT")
+          .insert([{
+            employee_id: resolvedEmployeeId,
+            conducted_by: conductedByUuid,
+            assessment_type: "Train Manager Assessment",
+            status: "IN_PROGRESS",
+            assessment_date: new Date().toISOString()
+          }])
+          .select()
+          .single();
+
+        if (assessError) throw assessError;
+        assessmentId = newAssess.assessment_id;
+      }
+
+      const countYes = arr => (arr || []).filter(v => v === "Yes").length;
+      const sectionBreakdown = [
+        { title: "Train Safety & Brake Inspection", score: countYes(f.trainSafety) * 3, max: 15, marks: countYes(f.trainSafety) * 3, outOf: 15 },
+        { title: "Signaling & Whistle Compliance", score: countYes(f.signaling) * 3, max: 15, marks: countYes(f.signaling) * 3, outOf: 15 },
+        { title: "Shunting & Coupling Ops", score: countYes(f.shunting) * 3, max: 15, marks: countYes(f.shunting) * 3, outOf: 15 },
+        { title: "Train Log & Guard Certificates", score: countYes(f.documentation) * 3, max: 15, marks: countYes(f.documentation) * 3, outOf: 15 },
+        { title: "Emergency Train Protection", score: countYes(f.emergency) * 3, max: 15, marks: countYes(f.emergency) * 3, outOf: 15 },
+        { title: "Written Exam (Knowledge)", score: Math.min(parseInt(f.knowledgeMarks) || 0, 25), max: 25, marks: Math.min(parseInt(f.knowledgeMarks) || 0, 25), outOf: 25 }
+      ];
+
+      const { data: existingAttempt } = await supabase
+        .from("TEST_ATTEMPT")
+        .select("*")
+        .eq("assessment_id", assessmentId)
+        .maybeSingle();
+
+      const newAnswers = {
+        alcoholicStatus: f.alcoholicStatus,
+        pmeStatus: f.pmeStatus,
+        refStatus: f.refStatus,
+        counselling: f.counselling,
+        automaticTraining: f.automaticTraining,
+        remarks: f.remarks,
+        trainSafety: f.trainSafety,
+        signaling: f.signaling,
+        shunting: f.shunting,
+        documentation: f.documentation,
+        emergency: f.emergency,
+        knowledgeMarks: f.knowledgeMarks,
+        sections: sectionBreakdown
+      };
+
+      let res;
+      if (existingAttempt) {
+        let prevAnswers = existingAttempt.answers || {};
+        if (typeof prevAnswers === "string") {
+          try { prevAnswers = JSON.parse(prevAnswers); } catch (e) {}
+        }
+        let mergedAnswers = Array.isArray(prevAnswers)
+          ? { questions: prevAnswers, ...newAnswers }
+          : { ...prevAnswers, ...newAnswers };
+
+        const { error: updateErr } = await supabase
+          .from("TEST_ATTEMPT")
+          .update({
+            obtained_marks: total,
+            total_marks: 100,
+            percentage: total,
+            category: cat,
+            answers: mergedAnswers,
+            submitted_at: new Date().toISOString()
+          })
+          .eq("attempt_id", existingAttempt.attempt_id);
+
+        if (updateErr) throw updateErr;
+
+        const { error: updateAssessErr } = await supabase
+          .from("ASSESSMENT")
+          .update({
+            status: "Submitted",
+            conducted_by: conductedByUuid,
+            assessment_date: new Date().toISOString().slice(0, 10)
+          })
+          .eq("assessment_id", assessmentId);
+
+        if (updateAssessErr) throw updateAssessErr;
+
+        if (cat === "D" || total < 50) {
+          try {
+            await assessmentService.triggerCategoryDProtocol(resolvedEmployeeId, assessmentId, total, cat, conductedByUuid);
+          } catch (dErr) {
+            console.error("Failed manual trigger of Category D protocol:", dErr);
+          }
+        }
+
+        res = { success: true };
+      } else {
+        res = await assessmentService.submitTestAttempt({
+          assessment_id: assessmentId,
+          employee_id: resolvedEmployeeId,
+          conducted_by: conductedByUuid,
+          obtained_marks: total,
+          total_marks: 100,
+          percentage: total,
+          category: cat,
+          answers: newAnswers
+        });
+      }
+
+      if (!res.success) {
+        throw new Error(res.error);
+      }
 
       setStatusMsg("TM assessment submitted successfully. Pending AOM approval.");
       addAuditLog("Submitted TM Assessment", `TM: ${targetUser?.name || ""}, Grand Score: ${total}`);
@@ -1324,19 +1758,92 @@ export function useTrafficInspectorState(user, onLogout) {
     setActiveSsId(id);
     setAssessRole("SS");
     setActivePage("assessments");
+
+    const ssAssess = ssList.find(s => s.id === id);
+    setSsLocked(prev => ({
+      ...prev,
+      [id]: forceUnlock ? false : (ssAssess ? ssAssess.status === "Submitted" : false)
+    }));
+    setSsForms(prev => {
+      const existing = prev[id] || defaultSSForm();
+      if (ssAssess && ssAssess.examScore !== undefined && ssAssess.examScore !== null) {
+        const finalExamScore = ssAssess.examScore > 25 ? Math.round(ssAssess.examScore / 4) : ssAssess.examScore;
+        return {
+          ...prev,
+          [id]: {
+            ...existing,
+            knowledgeMarks: finalExamScore.toString()
+          }
+        };
+      }
+      return {
+        ...prev,
+        [id]: existing
+      };
+    });
   };
 
-  const handleSendSSExamAccess = (id) => {
+  const handleSendSSExamAccess = async (id) => {
     const ss = ssList.find(s => s.id === id);
     if (ss?.hrmsId) {
       localStorage.setItem(`ss_test_activated_${ss.hrmsId}`, "true");
-      const existing = localStorage.getItem(`ss_test_assigned_${ss.hrmsId}`);
-      if (!existing || existing === "Not Assigned") {
-        localStorage.setItem(`ss_test_assigned_${ss.hrmsId}`, "Assigned");
-      }
+      localStorage.setItem(`ss_test_activated_time_${ss.hrmsId}`, Date.now().toString());
+      localStorage.setItem(`ss_test_assigned_${ss.hrmsId}`, "Assigned");
+      localStorage.removeItem(`ss_mcq_test_${ss.hrmsId}`);
       window.dispatchEvent(new Event("storage"));
+
+      // Also update or insert in Supabase
+      if (isSupabaseConfigured) {
+        try {
+          let conductedByUuid = resolvedUserId;
+          if (!conductedByUuid || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(conductedByUuid)) {
+            const tiHrms = user.hrmsId || user.hrms_id;
+            if (tiHrms) {
+              const { data: tiData } = await supabase
+                .from("USERS")
+                .select("user_id")
+                .eq("hrms_id", tiHrms)
+                .single();
+              if (tiData?.user_id) {
+                conductedByUuid = tiData.user_id;
+                setResolvedUserId(conductedByUuid);
+              }
+            }
+          }
+          if (!conductedByUuid) conductedByUuid = id;
+
+          const { data: existingAssess } = await supabase
+            .from("ASSESSMENT")
+            .select("*")
+            .eq("employee_id", id)
+            .in("status", ["LOCKED", "Draft", "Scheduled", "AVAILABLE", "IN_PROGRESS"])
+            .order("created_at", { ascending: false })
+            .limit(1);
+
+          if (existingAssess && existingAssess.length > 0) {
+            await supabase
+              .from("ASSESSMENT")
+              .update({ status: "AVAILABLE", conducted_by: conductedByUuid })
+              .eq("assessment_id", existingAssess[0].assessment_id);
+          } else {
+            await supabase
+              .from("ASSESSMENT")
+              .insert([{
+                employee_id: id,
+                conducted_by: conductedByUuid,
+                assessment_type: "Station Superintendent Assessment",
+                status: "AVAILABLE",
+                assessment_date: new Date().toISOString().slice(0, 10)
+              }]);
+          }
+        } catch (dbErr) {
+          console.error("Failed to update database assessment status to AVAILABLE:", dbErr);
+        }
+      }
     }
     setSsList(prev => prev.map(s => s.id === id ? { ...s, status: "Exam Sent" } : s));
+    window.alert("test is been send");
+    setStatusMsg("test is been send");
     triggerNotification("info", "Exam access link sent to Station Superintendent.");
   };
 
@@ -1372,43 +1879,178 @@ export function useTrafficInspectorState(user, onLogout) {
     const { total } = computeSSScore(f, TI_SS_CRITERIA);
     const isAlcoholic = f.alcoholicStatus === "Alcoholic";
     const cat = isAlcoholic ? "D" : getCat(total);
-    const targetUser = users.find(u => u.id === id);
+    let targetUser = users.find(u => u.id === id || u.user_id === id);
+    if (!targetUser) {
+      const { data: dbUser, error: dbErr } = await supabase
+        .from("USERS")
+        .select("user_id, hrms_id, full_name")
+        .or(`user_id.eq.${id},hrms_id.eq.${id}`)
+        .maybeSingle();
+      if (!dbErr && dbUser) {
+        targetUser = {
+          user_id: dbUser.user_id,
+          hrmsId: dbUser.hrms_id,
+          name: dbUser.full_name
+        };
+      }
+    }
+    const resolvedEmployeeId = targetUser?.user_id || id;
 
     try {
-      const { data: newAssess, error: assessError } = await supabase
-        .from("ASSESSMENT")
-        .insert([{
-          employee_id: targetUser.user_id,
-          conducted_by: user.userId,
-          assessment_type: "Station Superintendent Assessment",
-          status: "Submitted",
-          assessment_date: new Date().toISOString()
-        }])
-        .select()
-        .single();
-
-      if (assessError) throw assessError;
-
-      await assessmentService.submitTestAttempt({
-        assessment_id: newAssess.assessment_id,
-        employee_id: targetUser.user_id,
-        conducted_by: user.userId,
-        obtained_marks: total,
-        total_marks: 100,
-        percentage: total,
-        category: cat,
-        answers: {
-          alcoholicStatus: f.alcoholicStatus,
-          pmeStatus: f.pmeStatus,
-          refStatus: f.refStatus,
-          stationSafety: f.stationSafety,
-          ruleCompliance: f.ruleCompliance,
-          incidentMgmt: f.incidentMgmt,
-          communication: f.communication,
-          documentation: f.documentation,
-          knowledgeMarks: f.knowledgeMarks
+      // Identity Resolution & Defensive Validation
+      let resolvedEmployeeId = targetUser?.user_id || id;
+      if (resolvedEmployeeId && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(resolvedEmployeeId)) {
+        const { data: uData } = await supabase
+          .from("USERS")
+          .select("user_id")
+          .eq("hrms_id", resolvedEmployeeId)
+          .single();
+        if (uData?.user_id) {
+          resolvedEmployeeId = uData.user_id;
+        } else {
+          throw new Error(`Could not resolve UUID for Station Superintendent HRMS ID: ${resolvedEmployeeId}`);
         }
-      });
+      }
+
+      let conductedByUuid = user.userId;
+      if (!conductedByUuid || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(conductedByUuid)) {
+        const tiHrms = user.hrmsId || user.hrms_id;
+        if (tiHrms) {
+          const { data: tiData } = await supabase
+            .from("USERS")
+            .select("user_id")
+            .eq("hrms_id", tiHrms)
+            .single();
+          if (tiData?.user_id) {
+            conductedByUuid = tiData.user_id;
+          }
+        }
+        if (!conductedByUuid || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(conductedByUuid)) {
+          conductedByUuid = resolvedEmployeeId;
+        }
+      }
+
+      const { data: existingAssess, error: findError } = await supabase
+        .from("ASSESSMENT")
+        .select("assessment_id")
+        .eq("employee_id", resolvedEmployeeId)
+        .eq("assessment_type", "Station Superintendent Assessment")
+        .neq("status", "Approved")
+        .order("created_at", { ascending: false })
+        .limit(1);
+
+      let assessmentId;
+      if (!findError && existingAssess && existingAssess.length > 0) {
+        assessmentId = existingAssess[0].assessment_id;
+      } else {
+        const { data: newAssess, error: assessError } = await supabase
+          .from("ASSESSMENT")
+          .insert([{
+            employee_id: resolvedEmployeeId,
+            conducted_by: conductedByUuid,
+            assessment_type: "Station Superintendent Assessment",
+            status: "IN_PROGRESS",
+            assessment_date: new Date().toISOString()
+          }])
+          .select()
+          .single();
+
+        if (assessError) throw assessError;
+        assessmentId = newAssess.assessment_id;
+      }
+
+      const countYes = arr => (arr || []).filter(v => v === "Yes").length;
+      const sectionBreakdown = [
+        { title: "Station Operations & Supervision", score: countYes(f.stationOps) * 5, max: 25, marks: countYes(f.stationOps) * 5, outOf: 25 },
+        { title: "Staff Management & Discipline", score: countYes(f.staffMgmt) * 4, max: 20, marks: countYes(f.staffMgmt) * 4, outOf: 20 },
+        { title: "Records & Documentation", score: countYes(f.records) * 3, max: 15, marks: countYes(f.records) * 3, outOf: 15 },
+        { title: "Safety Compliance & Emergency", score: countYes(f.safety) * 5, max: 25, marks: countYes(f.safety) * 5, outOf: 25 },
+        { title: "Infrastructure & Asset Maintenance", score: countYes(f.infra) * 3, max: 15, marks: countYes(f.infra) * 3, outOf: 15 },
+        { title: "Written Exam (Knowledge)", score: Math.min(parseInt(f.knowledgeMarks) || 0, 25), max: 25, marks: Math.min(parseInt(f.knowledgeMarks) || 0, 25), outOf: 25 }
+      ];
+
+      const { data: existingAttempt } = await supabase
+        .from("TEST_ATTEMPT")
+        .select("*")
+        .eq("assessment_id", assessmentId)
+        .maybeSingle();
+
+      const newAnswers = {
+        alcoholicStatus: f.alcoholicStatus,
+        pmeStatus: f.pmeStatus,
+        refStatus: f.refStatus,
+        counselling: f.counselling,
+        automaticTraining: f.automaticTraining,
+        remarks: f.remarks,
+        stationOps: f.stationOps,
+        staffMgmt: f.staffMgmt,
+        records: f.records,
+        safety: f.safety,
+        infra: f.infra,
+        knowledgeMarks: f.knowledgeMarks,
+        sections: sectionBreakdown
+      };
+
+      let res;
+      if (existingAttempt) {
+        let prevAnswers = existingAttempt.answers || {};
+        if (typeof prevAnswers === "string") {
+          try { prevAnswers = JSON.parse(prevAnswers); } catch (e) {}
+        }
+        let mergedAnswers = Array.isArray(prevAnswers)
+          ? { questions: prevAnswers, ...newAnswers }
+          : { ...prevAnswers, ...newAnswers };
+
+        const { error: updateErr } = await supabase
+          .from("TEST_ATTEMPT")
+          .update({
+            obtained_marks: total,
+            total_marks: 100,
+            percentage: total,
+            category: cat,
+            answers: mergedAnswers,
+            submitted_at: new Date().toISOString()
+          })
+          .eq("attempt_id", existingAttempt.attempt_id);
+
+        if (updateErr) throw updateErr;
+
+        const { error: updateAssessErr } = await supabase
+          .from("ASSESSMENT")
+          .update({
+            status: "Submitted",
+            conducted_by: conductedByUuid,
+            assessment_date: new Date().toISOString().slice(0, 10)
+          })
+          .eq("assessment_id", assessmentId);
+
+        if (updateAssessErr) throw updateAssessErr;
+
+        if (cat === "D" || total < 50) {
+          try {
+            await assessmentService.triggerCategoryDProtocol(resolvedEmployeeId, assessmentId, total, cat, conductedByUuid);
+          } catch (dErr) {
+            console.error("Failed manual trigger of Category D protocol:", dErr);
+          }
+        }
+
+        res = { success: true };
+      } else {
+        res = await assessmentService.submitTestAttempt({
+          assessment_id: assessmentId,
+          employee_id: resolvedEmployeeId,
+          conducted_by: conductedByUuid,
+          obtained_marks: total,
+          total_marks: 100,
+          percentage: total,
+          category: cat,
+          answers: newAnswers
+        });
+      }
+
+      if (!res.success) {
+        throw new Error(res.error);
+      }
 
       setStatusMsg("SS assessment submitted successfully. Pending AOM approval.");
       addAuditLog("Submitted SS Assessment", `SS: ${targetUser?.name || ""}, Grand Score: ${total}`);
@@ -1425,10 +2067,26 @@ export function useTrafficInspectorState(user, onLogout) {
   const submitInspection = async (e) => {
     e.preventDefault();
     try {
+      let tiUuid = user.userId;
+      if (!tiUuid || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(tiUuid)) {
+        const tiHrms = user.hrmsId || user.hrms_id;
+        if (tiHrms) {
+          const { data: tiData } = await supabase
+            .from("USERS")
+            .select("user_id")
+            .eq("hrms_id", tiHrms)
+            .single();
+          if (tiData?.user_id) tiUuid = tiData.user_id;
+        }
+      }
+      if (!tiUuid || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(tiUuid)) {
+        throw new Error("Could not resolve Traffic Inspector UUID.");
+      }
+
       const { error } = await supabase
         .from("SAFETY_RECORD")
         .insert([{
-          user_id: user.userId,
+          user_id: tiUuid,
           incident_type: "Inspection",
           incident_date: new Date().toISOString().slice(0, 10),
           description: newInsp.observations,
@@ -1453,7 +2111,33 @@ export function useTrafficInspectorState(user, onLogout) {
     e.preventDefault();
     try {
       const targetUser = users.find(u => u.name === newCoun.staffName);
-      const targetUserId = targetUser?.user_id || user.userId;
+      let targetUserId = targetUser?.user_id;
+      if (!targetUserId || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(targetUserId)) {
+        // Find by name in database USERS
+        const { data: dbUser } = await supabase
+          .from("USERS")
+          .select("user_id")
+          .eq("full_name", newCoun.staffName)
+          .maybeSingle();
+        if (dbUser?.user_id) {
+          targetUserId = dbUser.user_id;
+        } else {
+          // Final fallback to user.userId
+          targetUserId = user.userId;
+        }
+      }
+      
+      if (targetUserId && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(targetUserId)) {
+        const tiHrms = user.hrmsId || user.hrms_id;
+        if (tiHrms) {
+          const { data: tiData } = await supabase
+            .from("USERS")
+            .select("user_id")
+            .eq("hrms_id", tiHrms)
+            .single();
+          if (tiData?.user_id) targetUserId = tiData.user_id;
+        }
+      }
 
       const { error } = await supabase
         .from("SAFETY_RECORD")

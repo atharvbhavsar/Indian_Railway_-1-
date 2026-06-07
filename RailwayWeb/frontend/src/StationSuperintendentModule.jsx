@@ -427,33 +427,41 @@ function StationSuperintendentModule({ user, onLogout }) {
           .from('ASSESSMENT')
           .select('assessment_id, status, assessment_type, conducted_by')
           .eq('employee_id', resolvedEmployeeId)
-          .in('status', ['Pending', 'AVAILABLE', 'LOCKED'])
-          .order('assessment_date', { ascending: false })
+          .in('assessment_type', ['Station Superintendent Assessment', 'SS Assessment'])
+          .in('status', ['Pending', 'AVAILABLE', 'LOCKED', 'IN_PROGRESS'])
+          .order('created_at', { ascending: false })
           .limit(1);
+
+        const activatedTime = Number(localStorage.getItem(`ss_test_activated_time_${employeeId}`)) || 0;
+        const isRecent = Date.now() - activatedTime < 15000; // 15 seconds guard
 
         if (!error && assessments && assessments.length > 0) {
           const activeAssess = assessments[0];
           setDbAssessment(activeAssess);
-          if (activeAssess.status === 'Pending' || activeAssess.status === 'AVAILABLE') {
+          if (activeAssess.status === 'Pending' || activeAssess.status === 'AVAILABLE' || activeAssess.status === 'IN_PROGRESS') {
             const currentActivated = localStorage.getItem(`ss_test_activated_${employeeId}`);
             if (currentActivated !== "true") {
               localStorage.setItem(`ss_test_activated_${employeeId}`, "true");
               window.dispatchEvent(new Event("storage"));
             }
           } else {
-            const currentActivated = localStorage.getItem(`ss_test_activated_${employeeId}`);
-            if (currentActivated !== "false") {
-              localStorage.setItem(`ss_test_activated_${employeeId}`, "false");
-              window.dispatchEvent(new Event("storage"));
+            if (!isRecent) {
+              const currentActivated = localStorage.getItem(`ss_test_activated_${employeeId}`);
+              if (currentActivated !== "false") {
+                localStorage.setItem(`ss_test_activated_${employeeId}`, "false");
+                window.dispatchEvent(new Event("storage"));
+              }
             }
           }
         } else {
           setDbAssessment(null);
           if (!error && assessments && assessments.length === 0) {
-            const currentActivated = localStorage.getItem(`ss_test_activated_${employeeId}`);
-            if (currentActivated !== "false") {
-              localStorage.setItem(`ss_test_activated_${employeeId}`, "false");
-              window.dispatchEvent(new Event("storage"));
+            if (!isRecent) {
+              const currentActivated = localStorage.getItem(`ss_test_activated_${employeeId}`);
+              if (currentActivated !== "false") {
+                localStorage.setItem(`ss_test_activated_${employeeId}`, "false");
+                window.dispatchEvent(new Event("storage"));
+              }
             }
           }
         }

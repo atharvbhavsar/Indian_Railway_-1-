@@ -36,6 +36,20 @@ export function getPerformanceSummaryText(totalScore, sections) {
   if (!sections || !sections.length) return "Periodic evaluation completed successfully.";
   const lowestSec  = [...sections].sort((a, b) => a.marks - b.marks)[0];
   const highestSec = [...sections].sort((a, b) => b.marks - a.marks)[0];
+  
+  const isCBT = sections.some(s => s.outOf === 25 || s.outOf === 5);
+  if (isCBT) {
+    const percentage = Math.round((totalScore / 25) * 100);
+    let summary = `MCQ Assessment score achieved: ${totalScore}/25 (${percentage}%). `;
+    summary += `Demonstrated excellent competency in "${highestSec.title}" scoring ${highestSec.marks}/${highestSec.outOf} marks. `;
+    if (lowestSec.marks < lowestSec.outOf) {
+      summary += `However, minor gaps are observed in "${lowestSec.title}" (${lowestSec.marks}/${lowestSec.outOf}). Reviewing these areas will help prepare for official Traffic Inspector/Station Supervisor field evaluation.`;
+    } else {
+      summary += `Achieved flawless accuracy in all MCQ sections. Recommended to maintain this standard.`;
+    }
+    return summary;
+  }
+
   let summary = `Assessment score achieved: ${totalScore}/100 (${totalScore >= 80 ? 'Outstanding Competency' : totalScore >= 50 ? 'Satisfactory Operations' : 'Requires Training'}). `;
   summary += `Demonstrated excellent competency in "${highestSec.title}" scoring ${highestSec.marks}/${highestSec.outOf} marks. `;
   if (lowestSec.marks < lowestSec.outOf) {
