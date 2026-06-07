@@ -4,6 +4,7 @@ import {
   AlertTriangle,
   Award,
   BarChart3,
+  BookOpen,
   CalendarCheck2,
   CheckCircle2,
   ClipboardCheck,
@@ -30,8 +31,8 @@ import {
   Edit,
   Trash2,
   UserPlus,
-  ArrowRightLeft,
-  Clock
+  Clock,
+  ShieldAlert
 } from "lucide-react";
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -47,6 +48,9 @@ const navItems = [
   { key: "pointsmen",     label: "Pointsmen",            icon: Users },
   { key: "assess",        label: "Assess Pointsman",     icon: ClipboardCheck },
   { key: "myAssessment",  label: "My Assessment (by TI)",icon: ClipboardCheck },
+  { key: "pmePosition",   label: "PME Position",         icon: Activity },
+  { key: "refCourse",     label: "REF Course",           icon: BookOpen },
+  { key: "counselling",   label: "Counselling Queue",    icon: ShieldAlert },
   { key: "reports",       label: "Reports & Analytics",  icon: FileBarChart2 }
 ];
 
@@ -67,6 +71,56 @@ import { smProfile, initialPointsmen, pmAssessmentHistory, initialDrafts, YN_SEC
 
 function StationMasterModule({ user, onLogout }) {
   const state = useStationMasterState(user, onLogout);
+
+  /* ── PME local state ── */
+  const [showPmeModal, setShowPmeModal] = useState(false);
+  const [pmeFormHrmsId, setPmeFormHrmsId] = useState("");
+  const [pmeFormStatus, setPmeFormStatus] = useState("Fit");
+  const [pmeFormDoneDate, setPmeFormDoneDate] = useState("");
+  const [pmeFormDueDate, setPmeFormDueDate] = useState("");
+  const [pmeSearch, setPmeSearch] = useState("");
+  const [pmeStatusFilter, setPmeStatusFilter] = useState("All");
+
+  /* ── REF local state ── */
+  const [showRefModal, setShowRefModal] = useState(false);
+  const [refFormHrmsId, setRefFormHrmsId] = useState("");
+  const [refFormStatus, setRefFormStatus] = useState("Completed");
+  const [refFormDate, setRefFormDate] = useState("");
+  const [refFormNextDue, setRefFormNextDue] = useState("");
+  const [refFormRemarks, setRefFormRemarks] = useState("");
+  const [refFormConductedBy, setRefFormConductedBy] = useState("");
+  const [refSearch, setRefSearch] = useState("");
+  const [refStatusFilter, setRefStatusFilter] = useState("All");
+
+  /* ── COUNSELLING local state ── */
+  const [showCounselScheduleModal, setShowCounselScheduleModal] = useState(false);
+  const [counselScheduleId, setCounselScheduleId] = useState("");
+  const [counselScheduleDate, setCounselScheduleDate] = useState("");
+  const [counselScheduleTime, setCounselScheduleTime] = useState("");
+  const [counselScheduleRemarks, setCounselScheduleRemarks] = useState("");
+
+  const [showCounselResultModal, setShowCounselResultModal] = useState(false);
+  const [counselResultId, setCounselResultId] = useState("");
+  const [counselAttendance, setCounselAttendance] = useState("Present"); // "Present" | "Absent"
+  const [counselObs, setCounselObs] = useState("");
+  const [counselSafety, setCounselSafety] = useState("");
+  const [counselBehavior, setCounselBehavior] = useState("");
+  const [counselRecs, setCounselRecs] = useState("");
+  const [counselFollowUp, setCounselFollowUp] = useState("");
+  const [counselAbsenceRemarks, setCounselAbsenceRemarks] = useState("");
+
+  const [showMonitoringModal, setShowMonitoringModal] = useState(false);
+  const [monitoringHrmsId, setMonitoringHrmsId] = useState("");
+  const [monitoringStatusVal, setMonitoringStatusVal] = useState("Under Observation");
+  const [monitoringRiskVal, setMonitoringRiskVal] = useState("High");
+  const [monitoringReviewText, setMonitoringReviewText] = useState("");
+  const [monitoringFollowUpDate, setMonitoringFollowUpDate] = useState("");
+
+  const [counselSearch, setCounselSearch] = useState("");
+  const [counselStatusFilter, setCounselStatusFilter] = useState("All");
+  const [selectedCounselRecord, setSelectedCounselRecord] = useState(null);
+  const [showCounsellingStats, setShowCounsellingStats] = useState(false);
+
   const {
     activatedTests,
     activeQIdx,
@@ -155,7 +209,13 @@ function StationMasterModule({ user, onLogout }) {
     viewingPm,
     viewingStaff,
     stationSms,
-    assignedTi
+    assignedTi,
+    logSmPmeRecord,
+    logSmRefRecord,
+    counsellingQueue,
+    scheduleCounselling,
+    submitCounsellingResult,
+    submitMonitoringReview
   } = state;
 
   /* ════ RENDERERS ════ */
@@ -191,6 +251,7 @@ function StationMasterModule({ user, onLogout }) {
       user={user}
       stationSms={stationSms}
       assignedTi={assignedTi}
+      counsellingQueue={counsellingQueue}
     />
   );
 
@@ -331,6 +392,1033 @@ function StationMasterModule({ user, onLogout }) {
     />
   );
 
+  const renderPmePosition = () => {
+    // Filtered pointsmen list based on search and status filters
+    const filtered = pointsmen.filter(emp => {
+      const matchSearch = !pmeSearch || 
+        emp.name.toLowerCase().includes(pmeSearch.toLowerCase()) || 
+        emp.hrmsId.toLowerCase().includes(pmeSearch.toLowerCase());
+      
+      const matchStatus = pmeStatusFilter === "All" || 
+        emp.pmeStatus?.toLowerCase() === pmeStatusFilter.toLowerCase();
+      
+      return matchSearch && matchStatus;
+    });
+
+    const fitCount = pointsmen.filter(e => e.pmeStatus === "Fit").length;
+    const dueCount = pointsmen.filter(e => e.pmeStatus === "Due" || e.pmeStatus === "Pending").length;
+    const overdueCount = pointsmen.filter(e => e.pmeStatus === "Overdue" || e.pmeStatus === "Unfit").length;
+
+    const handleOpenLogModal = (hrmsId = "") => {
+      setPmeFormHrmsId(hrmsId);
+      const matched = pointsmen.find(e => e.hrmsId === hrmsId);
+      setPmeFormStatus(matched?.pmeStatus || "Fit");
+      setPmeFormDoneDate(matched?.pmeDoneDate || "");
+      setPmeFormDueDate(matched?.pmeDueDate || "");
+      setShowPmeModal(true);
+    };
+
+    const handleFormSubmit = async (e) => {
+      e.preventDefault();
+      if (!pmeFormHrmsId) {
+        alert("Please select a pointsman.");
+        return;
+      }
+      if (!pmeFormDueDate) {
+        alert("Please specify the PME due date.");
+        return;
+      }
+      const pmeData = {
+        dueDate: pmeFormDueDate,
+        doneDate: pmeFormDoneDate || null,
+        status: pmeFormStatus
+      };
+      const resResult = await logSmPmeRecord(pmeFormHrmsId, pmeData);
+      if (resResult && resResult.success) {
+        setShowPmeModal(false);
+        setPmeFormHrmsId("");
+        setPmeFormDoneDate("");
+        setPmeFormDueDate("");
+        setPmeFormStatus("Fit");
+      }
+    };
+
+    const statusBadge = (s) => {
+      const map = { Fit: "sdom-badge-success", Pending: "sdom-badge-warning", Due: "sdom-badge-warning", Overdue: "sdom-badge-danger", Unfit: "sdom-badge-danger" };
+      return <span className={`sdom-badge ${map[s] || "sdom-badge-neutral"}`}>{s || "N/A"}</span>;
+    };
+
+    return (
+      <div className="sdom-fade" style={{ background: "#f8fafc", padding: "24px", borderRadius: "16px" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px" }}>
+          <div>
+            <h1 className="sdom-page-title" style={{ fontSize: "28px", fontWeight: "800", color: "#0f172a", margin: "0 0 4px" }}>PME Position & Compliance</h1>
+            <p className="sdom-page-subtitle" style={{ fontSize: "14px", color: "#64748b", margin: 0 }}>Monitor Periodical Medical Examination clearance, schedule exams, and record medical clearance logs for Pointsmen at your station.</p>
+          </div>
+          <button 
+            onClick={() => handleOpenLogModal("")} 
+            className="sdom-btn-primary" 
+            style={{ height: "42px", display: "flex", alignItems: "center", gap: "8px", background: "#2563eb", color: "white", padding: "0 20px", border: "none", borderRadius: "8px", fontWeight: "700", cursor: "pointer", fontSize: "13px" }}
+          >
+            <Plus size={16}/> Log PME Record
+          </button>
+        </div>
+
+        {/* Stats Row */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "16px", marginBottom: "24px" }}>
+          <div className="sdom-stat-card" style={{ background: "white", border: "1px solid #e2e8f0", padding: "20px", borderRadius: "12px", boxShadow: "0 1px 3px rgba(0,0,0,0.05)", borderLeft: "4px solid #16a34a" }}>
+            <div className="sdom-stat-value" style={{ fontSize: "24px", fontWeight: "800", color: "#16a34a" }}>{fitCount} staff</div>
+            <div className="sdom-stat-label" style={{ fontSize: "12px", color: "#64748b", marginTop: "4px", fontWeight: "600", textTransform: "uppercase" }}>PME FIT Clearance</div>
+          </div>
+          <div className="sdom-stat-card" style={{ background: "white", border: "1px solid #e2e8f0", padding: "20px", borderRadius: "12px", boxShadow: "0 1px 3px rgba(0,0,0,0.05)", borderLeft: "4px solid #d97706" }}>
+            <div className="sdom-stat-value" style={{ fontSize: "24px", fontWeight: "800", color: "#d97706" }}>{dueCount} staff</div>
+            <div className="sdom-stat-label" style={{ fontSize: "12px", color: "#64748b", marginTop: "4px", fontWeight: "600", textTransform: "uppercase" }}>PME Due / Pending</div>
+          </div>
+          <div className="sdom-stat-card" style={{ background: "white", border: "1px solid #e2e8f0", padding: "20px", borderRadius: "12px", boxShadow: "0 1px 3px rgba(0,0,0,0.05)", borderLeft: "4px solid #dc2626" }}>
+            <div className="sdom-stat-value" style={{ fontSize: "24px", fontWeight: "800", color: "#dc2626" }}>{overdueCount} staff</div>
+            <div className="sdom-stat-label" style={{ fontSize: "12px", color: "#64748b", marginTop: "4px", fontWeight: "600", textTransform: "uppercase" }}>PME Overdue (High Risk)</div>
+          </div>
+        </div>
+
+        {/* Filter Bar */}
+        <div className="sdom-filter-bar" style={{ display: "flex", gap: "16px", background: "white", padding: "16px", borderRadius: "12px", border: "1px solid #e2e8f0", marginBottom: "24px", alignItems: "flex-end" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: "6px", flex: 2 }}>
+            <label style={{ fontSize: "11px", fontWeight: "800", color: "#475569", textTransform: "uppercase" }}>Search Staff</label>
+            <div style={{ position: "relative" }}>
+              <Search size={15} style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", color: "#64748b" }} />
+              <input 
+                type="text" 
+                placeholder="Search by name or HRMS ID..." 
+                value={pmeSearch} 
+                onChange={e => setPmeSearch(e.target.value)} 
+                style={{ width: "100%", height: "42px", padding: "0 12px 0 36px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "13px", fontWeight: "600", outline: "none" }}
+              />
+            </div>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: "6px", flex: 1 }}>
+            <label style={{ fontSize: "11px", fontWeight: "800", color: "#475569", textTransform: "uppercase" }}>PME Status</label>
+            <select 
+              value={pmeStatusFilter} 
+              onChange={e => setPmeStatusFilter(e.target.value)} 
+              style={{ height: "42px", padding: "0 12px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "13px", fontWeight: "600" }}
+            >
+              <option value="All">All Statuses</option>
+              <option value="Fit">Fit</option>
+              <option value="Pending">Pending</option>
+              <option value="Due">Due</option>
+              <option value="Overdue">Overdue</option>
+              <option value="Unfit">Unfit</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Table */}
+        <div className="sdom-chart-card" style={{ background: "white", border: "1px solid #e2e8f0", padding: "20px", borderRadius: "12px", boxShadow: "0 1px 3px rgba(0,0,0,0.05)" }}>
+          <div className="sdom-table-wrap" style={{ overflowX: "auto" }}>
+            <table className="sdom-table" style={{ width: "100%", borderCollapse: "collapse" }}>
+              <thead>
+                <tr style={{ borderBottom: "1.5px solid #e2e8f0", background: "#f8fafc", textAlign: "left" }}>
+                  <th style={{ padding: "12px 16px", fontSize: "12px", color: "#475569", fontWeight: "700" }}>Name</th>
+                  <th style={{ padding: "12px 16px", fontSize: "12px", color: "#475569", fontWeight: "700" }}>HRMS ID</th>
+                  <th style={{ padding: "12px 16px", fontSize: "12px", color: "#475569", fontWeight: "700" }}>Designation</th>
+                  <th style={{ padding: "12px 16px", fontSize: "12px", color: "#475569", fontWeight: "700" }}>Station</th>
+                  <th style={{ padding: "12px 16px", fontSize: "12px", color: "#475569", fontWeight: "700" }}>PME Status</th>
+                  <th style={{ padding: "12px 16px", fontSize: "12px", color: "#475569", fontWeight: "700" }}>PME Done Date</th>
+                  <th style={{ padding: "12px 16px", fontSize: "12px", color: "#475569", fontWeight: "700" }}>PME Due Date</th>
+                  <th style={{ padding: "12px 16px", fontSize: "12px", color: "#475569", fontWeight: "700", textAlign: "right" }}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map(emp => (
+                  <tr key={emp.hrmsId} style={{ borderBottom: "1px solid #cbd5e1" }}>
+                    <td style={{ padding: "12px 16px", fontSize: "13px", fontWeight: "700", color: "#1e293b" }}>{emp.name}</td>
+                    <td style={{ padding: "12px 16px", fontSize: "13px", fontFamily: "monospace", color: "#475569" }}>{emp.hrmsId}</td>
+                    <td style={{ padding: "12px 16px", fontSize: "13px", color: "#475569" }}>{emp.designation}</td>
+                    <td style={{ padding: "12px 16px", fontSize: "13px", color: "#475569", fontWeight: "600" }}>{emp.stationName || emp.station}</td>
+                    <td style={{ padding: "12px 16px", fontSize: "13px" }}>{statusBadge(emp.pmeStatus)}</td>
+                    <td style={{ padding: "12px 16px", fontSize: "13px", color: "#475569" }}>{emp.pmeDoneDate || "—"}</td>
+                    <td style={{ padding: "12px 16px", fontSize: "13px", color: "#dc2626", fontWeight: "700" }}>{emp.pmeDueDate || "—"}</td>
+                    <td style={{ padding: "12px 16px", textAlign: "right" }}>
+                      <button 
+                        onClick={() => handleOpenLogModal(emp.hrmsId)} 
+                        className="sdom-btn-primary" 
+                        style={{ height: "30px", padding: "0 12px", borderRadius: "6px", background: "#f1f5f9", color: "#0f172a", border: "1px solid #cbd5e1", fontSize: "11px", fontWeight: "700", cursor: "pointer" }}
+                      >
+                        Update PME
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+                {filtered.length === 0 && (
+                  <tr>
+                    <td colSpan={8} style={{ padding: "30px", textAlign: "center", color: "#64748b", fontSize: "14px" }}>No employee matched your filters.</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Modal form */}
+        {showPmeModal && (
+          <div className="sdom-modal-overlay" style={{ zIndex: 99999 }} onClick={e => e.target === e.currentTarget && setShowPmeModal(false)}>
+            <div className="sdom-modal" style={{ width: "500px", maxWidth: "95vw", padding: "24px", background: "white", borderRadius: "12px", boxShadow: "0 10px 25px -5px rgba(0,0,0,0.1)", boxSizing: "border-box" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
+                <h3 style={{ margin: 0, fontSize: "18px", fontWeight: "800", color: "#0f172a" }}>LOG PME MEDICAL RECORD</h3>
+                <button type="button" onClick={() => setShowPmeModal(false)} style={{ background: "none", border: "none", fontSize: "18px", cursor: "pointer", color: "#64748b" }}>✕</button>
+              </div>
+
+              <form onSubmit={handleFormSubmit} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                  <label style={{ fontSize: "12px", fontWeight: "700", color: "#334155" }}>Select Staff *</label>
+                  <select 
+                    value={pmeFormHrmsId} 
+                    onChange={e => {
+                      setPmeFormHrmsId(e.target.value);
+                      const matched = pointsmen.find(x => x.hrmsId === e.target.value);
+                      setPmeFormStatus(matched?.pmeStatus || "Fit");
+                      setPmeFormDoneDate(matched?.pmeDoneDate || "");
+                      setPmeFormDueDate(matched?.pmeDueDate || "");
+                    }} 
+                    style={{ height: "42px", padding: "0 12px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "13px", fontWeight: "600", width: "100%" }}
+                    required
+                  >
+                    <option value="">-- Choose Employee --</option>
+                    {[...pointsmen].sort((a,b) => a.name.localeCompare(b.name)).map(emp => (
+                      <option key={emp.hrmsId} value={emp.hrmsId}>{emp.name} ({emp.hrmsId} - {emp.designation})</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                  <label style={{ fontSize: "12px", fontWeight: "700", color: "#334155" }}>PME Status *</label>
+                  <select 
+                    value={pmeFormStatus} 
+                    onChange={e => setPmeFormStatus(e.target.value)} 
+                    style={{ height: "42px", padding: "0 12px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "13px", fontWeight: "600", width: "100%" }}
+                    required
+                  >
+                    <option value="Fit">Fit</option>
+                    <option value="Unfit">Unfit</option>
+                    <option value="Pending">Pending</option>
+                    <option value="Overdue">Overdue</option>
+                  </select>
+                </div>
+
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                    <label style={{ fontSize: "12px", fontWeight: "700", color: "#334155" }}>Done Date</label>
+                    <input 
+                      type="date" 
+                      value={pmeFormDoneDate} 
+                      onChange={e => setPmeFormDoneDate(e.target.value)} 
+                      style={{ height: "42px", padding: "0 12px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "13px", fontWeight: "600" }}
+                    />
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                    <label style={{ fontSize: "12px", fontWeight: "700", color: "#334155" }}>Due Date *</label>
+                    <input 
+                      type="date" 
+                      value={pmeFormDueDate} 
+                      onChange={e => setPmeFormDueDate(e.target.value)} 
+                      style={{ height: "42px", padding: "0 12px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "13px", fontWeight: "600" }}
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div style={{ display: "flex", gap: "12px", justifyContent: "flex-end", marginTop: "10px" }}>
+                  <button type="button" onClick={() => setShowPmeModal(false)} className="sdom-btn-secondary" style={{ height: "42px", padding: "0 20px", border: "1px solid #cbd5e1", background: "#ffffff", color: "#334155", borderRadius: "8px", fontWeight: "700", cursor: "pointer" }}>Cancel</button>
+                  <button type="submit" className="sdom-btn-primary" style={{ height: "42px", padding: "0 20px", background: "#2563eb", color: "#ffffff", border: "none", borderRadius: "8px", fontWeight: "700", cursor: "pointer" }}>Save PME Log</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+
+  /* ── REF COURSE ── */
+  const renderRefCourse = () => {
+    const REF_STATUSES = ["Completed", "Scheduled", "In Progress", "Pending", "Expired", "Cancelled"];
+
+    const filtered = pointsmen.filter(emp => {
+      const matchSearch = !refSearch ||
+        emp.name.toLowerCase().includes(refSearch.toLowerCase()) ||
+        emp.hrmsId.toLowerCase().includes(refSearch.toLowerCase());
+      const matchStatus = refStatusFilter === "All" || emp.refStatus === refStatusFilter;
+      return matchSearch && matchStatus;
+    });
+
+    const clearedCount = pointsmen.filter(e => e.refStatus === "Cleared" || e.refStatus === "Completed").length;
+    const pendingCount = pointsmen.filter(e => e.refStatus === "Pending" || e.refStatus === "Scheduled" || e.refStatus === "In Progress").length;
+    const expiredCount = pointsmen.filter(e => e.refStatus === "Expired" || e.refStatus === "Cancelled").length;
+
+    const handleOpenRefModal = (hrmsId = "") => {
+      setRefFormHrmsId(hrmsId);
+      const matched = pointsmen.find(e => e.hrmsId === hrmsId);
+      setRefFormStatus(matched?.refStatus || "Completed");
+      setRefFormDate(matched?.refDoneDate || "");
+      setRefFormNextDue(matched?.refDueDate || "");
+      setRefFormRemarks("");
+      setRefFormConductedBy(smName || "");
+      setShowRefModal(true);
+    };
+
+    const handleRefSubmit = async (e) => {
+      e.preventDefault();
+      if (!refFormHrmsId) { alert("Please select a Pointsman."); return; }
+      if (!refFormDate)    { alert("Please enter the REF training date."); return; }
+      const refData = {
+        courseName:  "Refresher Course (REF)",
+        refStatus:   refFormStatus,
+        trainingDate: refFormDate,
+        nextDueDate:  refFormNextDue || null,
+        remarks:     refFormRemarks,
+        conductedBy: refFormConductedBy || smName,
+      };
+      const result = await logSmRefRecord(refFormHrmsId, refData);
+      if (result?.success) {
+        setShowRefModal(false);
+        setRefFormHrmsId(""); setRefFormStatus("Completed");
+        setRefFormDate("");   setRefFormNextDue("");
+        setRefFormRemarks(""); setRefFormConductedBy("");
+      }
+    };
+
+    const refBadge = (s) => {
+      const map = {
+        Completed: "sdom-badge-success", Cleared: "sdom-badge-success",
+        Scheduled: "sdom-badge-warning", "In Progress": "sdom-badge-warning", Pending: "sdom-badge-warning",
+        Expired: "sdom-badge-danger", Cancelled: "sdom-badge-danger"
+      };
+      return <span className={`sdom-badge ${map[s] || "sdom-badge-neutral"}`}>{s || "N/A"}</span>;
+    };
+
+    return (
+      <div className="sdom-fade" style={{ background: "#f8fafc", padding: "24px", borderRadius: "16px" }}>
+        {/* Header */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px" }}>
+          <div>
+            <h1 className="sdom-page-title" style={{ fontSize: "28px", fontWeight: "800", color: "#0f172a", margin: "0 0 4px" }}>REF Course Management</h1>
+            <p className="sdom-page-subtitle" style={{ fontSize: "14px", color: "#64748b", margin: 0 }}>Schedule, conduct, and record Refresher Course (REF) training for Pointsmen at your station.</p>
+          </div>
+          <button
+            onClick={() => handleOpenRefModal("")}
+            style={{ height: "42px", display: "flex", alignItems: "center", gap: "8px", background: "#7c3aed", color: "white", padding: "0 20px", border: "none", borderRadius: "8px", fontWeight: "700", cursor: "pointer", fontSize: "13px" }}
+          >
+            <Plus size={16}/> Log REF Record
+          </button>
+        </div>
+
+        {/* Stats */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "16px", marginBottom: "24px" }}>
+          <div style={{ background: "white", border: "1px solid #e2e8f0", padding: "20px", borderRadius: "12px", boxShadow: "0 1px 3px rgba(0,0,0,0.05)", borderLeft: "4px solid #16a34a" }}>
+            <div style={{ fontSize: "24px", fontWeight: "800", color: "#16a34a" }}>{clearedCount} staff</div>
+            <div style={{ fontSize: "12px", color: "#64748b", marginTop: "4px", fontWeight: "600", textTransform: "uppercase" }}>REF Completed / Cleared</div>
+          </div>
+          <div style={{ background: "white", border: "1px solid #e2e8f0", padding: "20px", borderRadius: "12px", boxShadow: "0 1px 3px rgba(0,0,0,0.05)", borderLeft: "4px solid #7c3aed" }}>
+            <div style={{ fontSize: "24px", fontWeight: "800", color: "#7c3aed" }}>{pendingCount} staff</div>
+            <div style={{ fontSize: "12px", color: "#64748b", marginTop: "4px", fontWeight: "600", textTransform: "uppercase" }}>Scheduled / In Progress</div>
+          </div>
+          <div style={{ background: "white", border: "1px solid #e2e8f0", padding: "20px", borderRadius: "12px", boxShadow: "0 1px 3px rgba(0,0,0,0.05)", borderLeft: "4px solid #dc2626" }}>
+            <div style={{ fontSize: "24px", fontWeight: "800", color: "#dc2626" }}>{expiredCount} staff</div>
+            <div style={{ fontSize: "12px", color: "#64748b", marginTop: "4px", fontWeight: "600", textTransform: "uppercase" }}>Expired / Cancelled</div>
+          </div>
+        </div>
+
+        {/* Filter Bar */}
+        <div style={{ display: "flex", gap: "16px", background: "white", padding: "16px", borderRadius: "12px", border: "1px solid #e2e8f0", marginBottom: "24px", alignItems: "flex-end" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: "6px", flex: 2 }}>
+            <label style={{ fontSize: "11px", fontWeight: "800", color: "#475569", textTransform: "uppercase" }}>Search Staff</label>
+            <div style={{ position: "relative" }}>
+              <Search size={15} style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", color: "#64748b" }} />
+              <input
+                type="text" placeholder="Search by name or HRMS ID..."
+                value={refSearch} onChange={e => setRefSearch(e.target.value)}
+                style={{ width: "100%", height: "42px", padding: "0 12px 0 36px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "13px", fontWeight: "600", outline: "none" }}
+              />
+            </div>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: "6px", flex: 1 }}>
+            <label style={{ fontSize: "11px", fontWeight: "800", color: "#475569", textTransform: "uppercase" }}>REF Status</label>
+            <select value={refStatusFilter} onChange={e => setRefStatusFilter(e.target.value)}
+              style={{ height: "42px", padding: "0 12px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "13px", fontWeight: "600" }}
+            >
+              <option value="All">All Statuses</option>
+              {REF_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
+            </select>
+          </div>
+        </div>
+
+        {/* Table */}
+        <div style={{ background: "white", border: "1px solid #e2e8f0", padding: "20px", borderRadius: "12px", boxShadow: "0 1px 3px rgba(0,0,0,0.05)", overflowX: "auto" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <thead>
+              <tr style={{ borderBottom: "1.5px solid #e2e8f0", background: "#f8fafc", textAlign: "left" }}>
+                {["Name", "HRMS ID", "Station", "REF Status", "Last REF Date", "Next Due Date", "Actions"].map(h => (
+                  <th key={h} style={{ padding: "12px 16px", fontSize: "12px", color: "#475569", fontWeight: "700" }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map(emp => (
+                <tr key={emp.hrmsId} style={{ borderBottom: "1px solid #e8edf2" }}>
+                  <td style={{ padding: "12px 16px", fontSize: "13px", fontWeight: "700", color: "#1e293b" }}>{emp.name}</td>
+                  <td style={{ padding: "12px 16px", fontSize: "13px", fontFamily: "monospace", color: "#475569" }}>{emp.hrmsId}</td>
+                  <td style={{ padding: "12px 16px", fontSize: "13px", color: "#475569", fontWeight: "600" }}>{emp.stationName || emp.station || "—"}</td>
+                  <td style={{ padding: "12px 16px", fontSize: "13px" }}>{refBadge(emp.refStatus)}</td>
+                  <td style={{ padding: "12px 16px", fontSize: "13px", color: "#475569" }}>{emp.refDoneDate || "—"}</td>
+                  <td style={{ padding: "12px 16px", fontSize: "13px", color: "#dc2626", fontWeight: "700" }}>{emp.refDueDate || "—"}</td>
+                  <td style={{ padding: "12px 16px" }}>
+                    <button onClick={() => handleOpenRefModal(emp.hrmsId)}
+                      style={{ height: "30px", padding: "0 12px", borderRadius: "6px", background: "#f1f5f9", color: "#0f172a", border: "1px solid #cbd5e1", fontSize: "11px", fontWeight: "700", cursor: "pointer" }}
+                    >Log REF</button>
+                  </td>
+                </tr>
+              ))}
+              {filtered.length === 0 && (
+                <tr><td colSpan={7} style={{ padding: "30px", textAlign: "center", color: "#64748b", fontSize: "14px" }}>No pointsmen matched your filters.</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Log REF Modal */}
+        {showRefModal && (
+          <div className="sdom-modal-overlay" style={{ zIndex: 99999 }} onClick={e => e.target === e.currentTarget && setShowRefModal(false)}>
+            <div className="sdom-modal" style={{ width: "520px", maxWidth: "95vw", padding: "28px", background: "white", borderRadius: "14px", boxShadow: "0 20px 40px rgba(0,0,0,0.15)", boxSizing: "border-box" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: "18px", fontWeight: "800", color: "#0f172a" }}>LOG REF COURSE RECORD</h3>
+                  <p style={{ margin: "4px 0 0", fontSize: "12px", color: "#64748b" }}>Refresher Course Training Record</p>
+                </div>
+                <button type="button" onClick={() => setShowRefModal(false)} style={{ background: "none", border: "none", fontSize: "20px", cursor: "pointer", color: "#64748b" }}>✕</button>
+              </div>
+
+              <form onSubmit={handleRefSubmit} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+                {/* Staff Select */}
+                <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                  <label style={{ fontSize: "12px", fontWeight: "700", color: "#334155" }}>Select Pointsman *</label>
+                  <select value={refFormHrmsId}
+                    onChange={e => {
+                      setRefFormHrmsId(e.target.value);
+                      const m = pointsmen.find(x => x.hrmsId === e.target.value);
+                      setRefFormStatus(m?.refStatus || "Completed");
+                    }}
+                    style={{ height: "42px", padding: "0 12px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "13px", fontWeight: "600", width: "100%" }}
+                    required
+                  >
+                    <option value="">-- Choose Pointsman --</option>
+                    {[...pointsmen].sort((a,b) => a.name.localeCompare(b.name)).map(emp => (
+                      <option key={emp.hrmsId} value={emp.hrmsId}>{emp.name} ({emp.hrmsId})</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* REF Status */}
+                <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                  <label style={{ fontSize: "12px", fontWeight: "700", color: "#334155" }}>REF Status *</label>
+                  <select value={refFormStatus} onChange={e => setRefFormStatus(e.target.value)}
+                    style={{ height: "42px", padding: "0 12px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "13px", fontWeight: "600", width: "100%" }}
+                    required
+                  >
+                    {REF_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
+                  </select>
+                </div>
+
+                {/* Dates */}
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                    <label style={{ fontSize: "12px", fontWeight: "700", color: "#334155" }}>REF Training Date *</label>
+                    <input type="date" value={refFormDate} onChange={e => setRefFormDate(e.target.value)}
+                      style={{ height: "42px", padding: "0 12px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "13px" }}
+                      required
+                    />
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                    <label style={{ fontSize: "12px", fontWeight: "700", color: "#334155" }}>Next REF Due Date</label>
+                    <input type="date" value={refFormNextDue} onChange={e => setRefFormNextDue(e.target.value)}
+                      style={{ height: "42px", padding: "0 12px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "13px" }}
+                    />
+                  </div>
+                </div>
+
+                {/* Conducted By */}
+                <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                  <label style={{ fontSize: "12px", fontWeight: "700", color: "#334155" }}>Conducted By</label>
+                  <input type="text" value={refFormConductedBy} onChange={e => setRefFormConductedBy(e.target.value)}
+                    placeholder={`SM: ${smName}`}
+                    style={{ height: "42px", padding: "0 12px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "13px", fontWeight: "600" }}
+                  />
+                </div>
+
+                {/* Remarks */}
+                <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                  <label style={{ fontSize: "12px", fontWeight: "700", color: "#334155" }}>Remarks / Observations</label>
+                  <textarea value={refFormRemarks} onChange={e => setRefFormRemarks(e.target.value)}
+                    placeholder="Enter remarks about the REF training session..."
+                    style={{ minHeight: "80px", padding: "10px 12px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "13px", fontFamily: "inherit", resize: "vertical" }}
+                  />
+                </div>
+
+                {/* Actions */}
+                <div style={{ display: "flex", gap: "12px", justifyContent: "flex-end", marginTop: "8px" }}>
+                  <button type="button" onClick={() => setShowRefModal(false)}
+                    style={{ height: "42px", padding: "0 20px", border: "1px solid #cbd5e1", background: "#ffffff", color: "#334155", borderRadius: "8px", fontWeight: "700", cursor: "pointer" }}
+                  >Cancel</button>
+                  <button type="submit"
+                    style={{ height: "42px", padding: "0 20px", background: "#7c3aed", color: "#ffffff", border: "none", borderRadius: "8px", fontWeight: "700", cursor: "pointer" }}
+                  >Save REF Record</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  /* ── COUNSELLING & MONITORING MODULE ── */
+  const renderCounselling = () => {
+    const statuses = ["All", "Pending", "Scheduled", "Completed", "Absent"];
+
+    // Filter queue
+    const filteredQueue = counsellingQueue.filter(r => {
+      const matchSearch = !counselSearch || 
+        r.employeeName.toLowerCase().includes(counselSearch.toLowerCase()) ||
+        r.employeeHrmsId.toLowerCase().includes(counselSearch.toLowerCase());
+      
+      const matchStatus = counselStatusFilter === "All" || r.status === counselStatusFilter;
+      return matchSearch && matchStatus;
+    });
+
+    const handleOpenScheduleModal = (r) => {
+      setCounselScheduleId(r.counselling_id);
+      let parsed = {};
+      try { if (r.remarks && r.remarks.trim().startsWith("{")) parsed = JSON.parse(r.remarks); } catch(_) {}
+      setCounselScheduleDate(parsed.scheduledDate || "");
+      setCounselScheduleTime(parsed.scheduledTime || "");
+      setCounselScheduleRemarks(parsed.schedulingRemarks || "");
+      setShowCounselScheduleModal(true);
+    };
+
+    const handleScheduleSubmit = async (e) => {
+      e.preventDefault();
+      if (!counselScheduleId) return;
+      const res = await scheduleCounselling(counselScheduleId, counselScheduleDate, counselScheduleTime, counselScheduleRemarks);
+      if (res?.success) {
+        setShowCounselScheduleModal(false);
+        setCounselScheduleId("");
+        setCounselScheduleDate("");
+        setCounselScheduleTime("");
+        setCounselScheduleRemarks("");
+      }
+    };
+
+    const handleOpenResultModal = (r) => {
+      setCounselResultId(r.counselling_id);
+      let parsed = {};
+      try { if (r.remarks && r.remarks.trim().startsWith("{")) parsed = JSON.parse(r.remarks); } catch(_) {}
+      setCounselAttendance("Present");
+      setCounselObs(parsed.observations || "");
+      setCounselSafety(parsed.safetyConcerns || "");
+      setCounselBehavior(parsed.behaviouralConcerns || "");
+      setCounselRecs(parsed.recommendations || "");
+      setCounselFollowUp(parsed.followUpActions || "");
+      setCounselAbsenceRemarks(parsed.absenceRemarks || "");
+      setShowCounselResultModal(true);
+    };
+
+    const handleResultSubmit = async (e) => {
+      e.preventDefault();
+      if (!counselResultId) return;
+      const remarksData = counselAttendance === "Present" ? {
+        observations: counselObs,
+        safetyConcerns: counselSafety,
+        behaviouralConcerns: counselBehavior,
+        recommendations: counselRecs,
+        followUpActions: counselFollowUp
+      } : {
+        absenceRemarks: counselAbsenceRemarks
+      };
+
+      const res = await submitCounsellingResult(counselResultId, counselAttendance, remarksData);
+      if (res?.success) {
+        setShowCounselResultModal(false);
+        setCounselResultId("");
+        setCounselObs("");
+        setCounselSafety("");
+        setCounselBehavior("");
+        setCounselRecs("");
+        setCounselFollowUp("");
+        setCounselAbsenceRemarks("");
+      }
+    };
+
+    const handleOpenMonitoringModal = (r) => {
+      setMonitoringHrmsId(r.employeeHrmsId);
+      // Look up pointsman profile for current values
+      const pm = pointsmen.find(x => x.hrmsId === r.employeeHrmsId) || {};
+      setMonitoringStatusVal(pm.monitoringStatus || "Under Observation");
+      setMonitoringRiskVal(pm.risk || "High");
+      setMonitoringReviewText("");
+      setMonitoringFollowUpDate("");
+      setShowMonitoringModal(true);
+    };
+
+    const handleMonitoringSubmit = async (e) => {
+      e.preventDefault();
+      if (!monitoringHrmsId) return;
+      const res = await submitMonitoringReview(monitoringHrmsId, {
+        monitoringStatus: monitoringStatusVal,
+        riskLevel: monitoringRiskVal,
+        newReview: monitoringReviewText,
+        followUpDate: monitoringFollowUpDate
+      });
+      if (res?.success) {
+        setShowMonitoringModal(false);
+        setMonitoringHrmsId("");
+        setMonitoringReviewText("");
+        setMonitoringFollowUpDate("");
+      }
+    };
+
+    const counselBadge = (s) => {
+      const map = {
+        Pending: "sdom-badge-warning",
+        Scheduled: "sdom-badge-info",
+        Completed: "sdom-badge-success",
+        Absent: "sdom-badge-danger"
+      };
+      return <span className={`sdom-badge ${map[s] || "sdom-badge-neutral"}`}>{s}</span>;
+    };
+
+    return (
+      <div className="sdom-fade" style={{ background: "#f8fafc", padding: "24px", borderRadius: "16px" }}>
+        {/* Header */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px" }}>
+          <div>
+            <h1 className="sdom-page-title" style={{ fontSize: "28px", fontWeight: "800", color: "#0f172a", margin: "0 0 4px" }}>Safety Counselling Queue</h1>
+            <p className="sdom-page-subtitle" style={{ fontSize: "14px", color: "#64748b", margin: 0 }}>Manage mandatory safety counselling and risk monitoring for Category D Pointsmen.</p>
+          </div>
+          <button
+            onClick={() => setShowCounsellingStats(!showCounsellingStats)}
+            style={{ height: "42px", display: "flex", alignItems: "center", gap: "8px", background: "#ffffff", border: "1px solid #cbd5e1", borderRadius: "8px", padding: "0 16px", fontWeight: "700", cursor: "pointer", fontSize: "13px", color: "#334155" }}
+          >
+            {showCounsellingStats ? "Hide Stats & Schedules" : "Show Stats & Schedules"}
+          </button>
+        </div>
+
+        {/* Counselling & Monitoring Stats Block */}
+        {showCounsellingStats && counsellingQueue && (
+          <div style={{ background: "#fef2f2", border: "1px solid #fee2e2", padding: "20px", borderRadius: "12px", marginBottom: "24px", boxShadow: "0 1px 3px rgba(0,0,0,0.05)" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "16px" }}>
+              <ShieldAlert size={20} color="#dc2626" />
+              <h3 style={{ margin: 0, fontSize: "16px", fontWeight: "800", color: "#991b1b" }}>Safety Counselling & Category D Monitoring Stats</h3>
+            </div>
+            
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: "12px" }}>
+              {[
+                { label: "Total Category D Staff", val: pointsmen.filter(p => getCat(p.lastScore) === 'D').length, bg: "#ffffff", border: "1px solid #fee2e2", color: "#dc2626" },
+                { label: "Pending Counselling", val: counsellingQueue.filter(c => c.status === 'Pending').length, bg: "#ffffff", border: "1px solid #fee2e2", color: "#d97706" },
+                { label: "Scheduled Counselling", val: counsellingQueue.filter(c => c.status === 'Scheduled').length, bg: "#ffffff", border: "1px solid #fee2e2", color: "#2563eb" },
+                { label: "Completed Counselling", val: counsellingQueue.filter(c => c.status === 'Completed').length, bg: "#ffffff", border: "1px solid #fee2e2", color: "#16a34a" },
+                { label: "Absent Staff Records", val: counsellingQueue.filter(c => c.status === 'Absent').length, bg: "#ffffff", border: "1px solid #fee2e2", color: "#9333ea" },
+                { label: "Active Monitoring Cases", val: pointsmen.filter(p => p.monitoringStatus === "High Risk" || p.risk === "High" || getCat(p.lastScore) === 'D').length, bg: "#ffffff", border: "1px solid #fee2e2", color: "#7f1d1d" }
+              ].map((card, i) => (
+                <div key={i} style={{ background: card.bg, border: card.border, padding: "14px", borderRadius: "10px", textAlign: "center" }}>
+                  <div style={{ fontSize: "20px", fontWeight: "800", color: card.color }}>{card.val}</div>
+                  <div style={{ fontSize: "10px", color: "#7f1d1d", fontWeight: "700", textTransform: "uppercase", marginTop: "4px", lineHeight: "1.2" }}>{card.label}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* Upcoming Review/Retest Dates */}
+            {counsellingQueue.some(c => c.status === 'Scheduled') && (
+              <div style={{ marginTop: "16px", background: "#ffffff", borderRadius: "8px", padding: "12px 16px", border: "1px solid #fee2e2" }}>
+                <div style={{ fontSize: "11px", fontWeight: "800", color: "#991b1b", textTransform: "uppercase", marginBottom: "8px" }}>Upcoming Session Schedule</div>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: "12px" }}>
+                  {counsellingQueue.filter(c => c.status === 'Scheduled').map(c => {
+                    let parsed = {};
+                    try { if (c.remarks && c.remarks.trim().startsWith("{")) parsed = JSON.parse(c.remarks); } catch(_) {}
+                    return (
+                      <div key={c.counselling_id} style={{ fontSize: "12px", background: "#fef2f2", color: "#991b1b", padding: "6px 10px", borderRadius: "6px", border: "1px solid #fee2e2" }}>
+                        <strong>{c.employeeName}</strong>: {parsed.scheduledDate} @ {parsed.scheduledTime}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Filter Bar */}
+        <div style={{ display: "flex", gap: "16px", background: "white", padding: "16px", borderRadius: "12px", border: "1px solid #e2e8f0", marginBottom: "24px", alignItems: "flex-end" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: "6px", flex: 2 }}>
+            <label style={{ fontSize: "11px", fontWeight: "800", color: "#475569", textTransform: "uppercase" }}>Search Pointsman</label>
+            <div style={{ position: "relative" }}>
+              <Search size={15} style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", color: "#64748b" }} />
+              <input
+                type="text" placeholder="Search by name or HRMS ID..."
+                value={counselSearch} onChange={e => setCounselSearch(e.target.value)}
+                style={{ width: "100%", height: "42px", padding: "0 12px 0 36px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "13px", fontWeight: "600", outline: "none" }}
+              />
+            </div>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: "6px", flex: 1 }}>
+            <label style={{ fontSize: "11px", fontWeight: "800", color: "#475569", textTransform: "uppercase" }}>Counselling Status</label>
+            <select value={counselStatusFilter} onChange={e => setCounselStatusFilter(e.target.value)}
+              style={{ height: "42px", padding: "0 12px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "13px", fontWeight: "600" }}
+            >
+              {statuses.map(s => <option key={s} value={s}>{s === "All" ? "All Records" : s}</option>)}
+            </select>
+          </div>
+        </div>
+
+        {/* Table Queue */}
+        <div style={{ background: "white", border: "1px solid #e2e8f0", padding: "20px", borderRadius: "12px", boxShadow: "0 1px 3px rgba(0,0,0,0.05)", overflowX: "auto" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <thead>
+              <tr style={{ borderBottom: "1.5px solid #e2e8f0", background: "#f8fafc", textAlign: "left" }}>
+                {["Employee", "HRMS ID", "Trigger Assessment", "Latest Score", "Counselling Status", "Scheduled Date/Time", "Actions"].map(h => (
+                  <th key={h} style={{ padding: "12px 16px", fontSize: "12px", color: "#475569", fontWeight: "700" }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {filteredQueue.map(row => {
+                let parsedRemarks = {};
+                try { if (row.remarks && row.remarks.trim().startsWith("{")) parsedRemarks = JSON.parse(row.remarks); } catch(_) {}
+                
+                const score = row.assessment?.TEST_ATTEMPT?.[0]?.obtained_marks ?? "—";
+                const type = row.assessment?.assessment_type ?? "Checklist Evaluation";
+                
+                return (
+                  <tr key={row.counselling_id} style={{ borderBottom: "1px solid #e8edf2" }}>
+                    <td style={{ padding: "12px 16px", fontSize: "13px", fontWeight: "700", color: "#1e293b" }}>{row.employeeName}</td>
+                    <td style={{ padding: "12px 16px", fontSize: "13px", fontFamily: "monospace", color: "#475569" }}>{row.employeeHrmsId}</td>
+                    <td style={{ padding: "12px 16px", fontSize: "13px", color: "#475569" }}>{type}</td>
+                    <td style={{ padding: "12px 16px", fontSize: "13px", fontWeight: "700", color: "#dc2626" }}>{score}%</td>
+                    <td style={{ padding: "12px 16px", fontSize: "13px" }}>{counselBadge(row.status)}</td>
+                    <td style={{ padding: "12px 16px", fontSize: "13px", color: "#475569" }}>
+                      {parsedRemarks.scheduledDate ? `${parsedRemarks.scheduledDate} ${parsedRemarks.scheduledTime || ""}` : "Not Scheduled"}
+                    </td>
+                    <td style={{ padding: "12px 16px" }}>
+                      <div style={{ display: "flex", gap: "8px" }}>
+                        {(row.status === "Pending" || row.status === "Absent") && (
+                          <button onClick={() => handleOpenScheduleModal(row)}
+                            style={{ height: "30px", padding: "0 12px", borderRadius: "6px", background: "#f1f5f9", color: "#0f172a", border: "1px solid #cbd5e1", fontSize: "11px", fontWeight: "700", cursor: "pointer" }}
+                          >Schedule</button>
+                        )}
+                        {row.status === "Scheduled" && (
+                          <button onClick={() => handleOpenResultModal(row)}
+                            style={{ height: "30px", padding: "0 12px", borderRadius: "6px", background: "#7c3aed", color: "white", border: "none", fontSize: "11px", fontWeight: "700", cursor: "pointer" }}
+                          >Conduct Session</button>
+                        )}
+                        <button onClick={() => setSelectedCounselRecord(row)}
+                          style={{ height: "30px", padding: "0 12px", borderRadius: "6px", background: "#ffffff", color: "#475569", border: "1px solid #cbd5e1", fontSize: "11px", fontWeight: "700", cursor: "pointer" }}
+                        >Details</button>
+                        {row.status === "Completed" && (
+                          <button onClick={() => handleOpenMonitoringModal(row)}
+                            style={{ height: "30px", padding: "0 12px", borderRadius: "6px", background: "#059669", color: "white", border: "none", fontSize: "11px", fontWeight: "700", cursor: "pointer" }}
+                          >Monitor</button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+              {filteredQueue.length === 0 && (
+                <tr><td colSpan={7} style={{ padding: "30px", textAlign: "center", color: "#64748b", fontSize: "14px" }}>No pointsmen in counselling queue.</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Schedule Session Modal */}
+        {showCounselScheduleModal && (
+          <div className="sdom-modal-overlay" style={{ zIndex: 99999 }} onClick={() => setShowCounselScheduleModal(false)}>
+            <div className="sdom-modal" style={{ width: "450px", padding: "24px" }} onClick={e => e.stopPropagation()}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
+                <h3 style={{ margin: 0, fontSize: "18px", fontWeight: "800" }}>Schedule Counselling Session</h3>
+                <button type="button" onClick={() => setShowCounselScheduleModal(false)} style={{ background: "none", border: "none", fontSize: "20px", cursor: "pointer" }}>✕</button>
+              </div>
+              <form onSubmit={handleScheduleSubmit} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                  <label style={{ fontSize: "12px", fontWeight: "700" }}>Date *</label>
+                  <input type="date" value={counselScheduleDate} onChange={e => setCounselScheduleDate(e.target.value)}
+                    style={{ height: "40px", padding: "0 12px", borderRadius: "6px", border: "1px solid #cbd5e1" }} required />
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                  <label style={{ fontSize: "12px", fontWeight: "700" }}>Time *</label>
+                  <input type="time" value={counselScheduleTime} onChange={e => setCounselScheduleTime(e.target.value)}
+                    style={{ height: "40px", padding: "0 12px", borderRadius: "6px", border: "1px solid #cbd5e1" }} required />
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                  <label style={{ fontSize: "12px", fontWeight: "700" }}>Remarks / Preparation Instructions</label>
+                  <textarea value={counselScheduleRemarks} onChange={e => setCounselScheduleRemarks(e.target.value)}
+                    placeholder="Enter initial details for the pointsman..."
+                    style={{ minHeight: "80px", padding: "10px 12px", borderRadius: "6px", border: "1px solid #cbd5e1", fontFamily: "inherit" }} />
+                </div>
+                <div style={{ display: "flex", gap: "12px", justifyContent: "flex-end", marginTop: "12px" }}>
+                  <button type="button" onClick={() => setShowCounselScheduleModal(false)} className="sdom-btn-outline" style={{ height: "40px" }}>Cancel</button>
+                  <button type="submit" className="sdom-btn-primary" style={{ height: "40px", background: "#7c3aed" }}>Save Schedule</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* Conduct/Result Modal */}
+        {showCounselResultModal && (
+          <div className="sdom-modal-overlay" style={{ zIndex: 99999 }} onClick={() => setShowCounselResultModal(false)}>
+            <div className="sdom-modal" style={{ width: "550px", padding: "24px", maxHeight: "90vh", overflowY: "auto" }} onClick={e => e.stopPropagation()}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
+                <h3 style={{ margin: 0, fontSize: "18px", fontWeight: "800" }}>Counselling Session Attendance & Observations</h3>
+                <button type="button" onClick={() => setShowCounselResultModal(false)} style={{ background: "none", border: "none", fontSize: "20px", cursor: "pointer" }}>✕</button>
+              </div>
+              <form onSubmit={handleResultSubmit} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                  <label style={{ fontSize: "12px", fontWeight: "700" }}>Mark Attendance *</label>
+                  <div style={{ display: "flex", gap: "16px", marginTop: "4px" }}>
+                    <label style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "13px", fontWeight: "600", cursor: "pointer" }}>
+                      <input type="radio" name="attendance" value="Present" checked={counselAttendance === "Present"} onChange={() => setCounselAttendance("Present")} />
+                      Present
+                    </label>
+                    <label style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "13px", fontWeight: "600", cursor: "pointer" }}>
+                      <input type="radio" name="attendance" value="Absent" checked={counselAttendance === "Absent"} onChange={() => setCounselAttendance("Absent")} />
+                      Absent
+                    </label>
+                  </div>
+                </div>
+
+                {counselAttendance === "Present" ? (
+                  <>
+                    <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                      <label style={{ fontSize: "12px", fontWeight: "700" }}>General Observations *</label>
+                      <textarea value={counselObs} onChange={e => setCounselObs(e.target.value)} required
+                        placeholder="Detailed observations during session..."
+                        style={{ minHeight: "60px", padding: "10px 12px", borderRadius: "6px", border: "1px solid #cbd5e1", fontFamily: "inherit" }} />
+                    </div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                      <label style={{ fontSize: "12px", fontWeight: "700" }}>Safety Concerns Identified *</label>
+                      <textarea value={counselSafety} onChange={e => setCounselSafety(e.target.value)} required
+                        placeholder="List of safety mistakes or logic slips..."
+                        style={{ minHeight: "60px", padding: "10px 12px", borderRadius: "6px", border: "1px solid #cbd5e1", fontFamily: "inherit" }} />
+                    </div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                      <label style={{ fontSize: "12px", fontWeight: "700" }}>Behavioural Concerns</label>
+                      <textarea value={counselBehavior} onChange={e => setCounselBehavior(e.target.value)}
+                        placeholder="Comportment, response to instruction..."
+                        style={{ minHeight: "60px", padding: "10px 12px", borderRadius: "6px", border: "1px solid #cbd5e1", fontFamily: "inherit" }} />
+                    </div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                      <label style={{ fontSize: "12px", fontWeight: "700" }}>Improvement Recommendations *</label>
+                      <textarea value={counselRecs} onChange={e => setCounselRecs(e.target.value)} required
+                        placeholder="Yard practice, mentoring steps..."
+                        style={{ minHeight: "60px", padding: "10px 12px", borderRadius: "6px", border: "1px solid #cbd5e1", fontFamily: "inherit" }} />
+                    </div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                      <label style={{ fontSize: "12px", fontWeight: "700" }}>Follow-up Actions</label>
+                      <textarea value={counselFollowUp} onChange={e => setCounselFollowUp(e.target.value)}
+                        placeholder="Scheduled assessments, review checks..."
+                        style={{ minHeight: "60px", padding: "10px 12px", borderRadius: "6px", border: "1px solid #cbd5e1", fontFamily: "inherit" }} />
+                    </div>
+                  </>
+                ) : (
+                  <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                    <label style={{ fontSize: "12px", fontWeight: "700" }}>Absence Details / Audit Reason *</label>
+                    <textarea value={counselAbsenceRemarks} onChange={e => setCounselAbsenceRemarks(e.target.value)} required
+                      placeholder="Why did the employee fail to attend the session?..."
+                      style={{ minHeight: "100px", padding: "10px 12px", borderRadius: "6px", border: "1px solid #cbd5e1", fontFamily: "inherit" }} />
+                  </div>
+                )}
+
+                <div style={{ display: "flex", gap: "12px", justifyContent: "flex-end", marginTop: "12px" }}>
+                  <button type="button" onClick={() => setShowCounselResultModal(false)} className="sdom-btn-outline" style={{ height: "40px" }}>Cancel</button>
+                  <button type="submit" className="sdom-btn-primary" style={{ height: "40px", background: "#7c3aed" }}>Save Details</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* Update Monitoring Modal */}
+        {showMonitoringModal && (
+          <div className="sdom-modal-overlay" style={{ zIndex: 99999 }} onClick={() => setShowMonitoringModal(false)}>
+            <div className="sdom-modal" style={{ width: "480px", padding: "24px" }} onClick={e => e.stopPropagation()}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
+                <h3 style={{ margin: 0, fontSize: "18px", fontWeight: "800" }}>Safety Monitoring Review</h3>
+                <button type="button" onClick={() => setShowMonitoringModal(false)} style={{ background: "none", border: "none", fontSize: "20px", cursor: "pointer" }}>✕</button>
+              </div>
+              <form onSubmit={handleMonitoringSubmit} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                  <label style={{ fontSize: "12px", fontWeight: "700" }}>Monitoring Status</label>
+                  <select value={monitoringStatusVal} onChange={e => setMonitoringStatusVal(e.target.value)}
+                    style={{ height: "40px", padding: "0 12px", borderRadius: "6px", border: "1px solid #cbd5e1", fontWeight: "600" }}
+                  >
+                    <option value="Under Observation">Under Observation</option>
+                    <option value="Suspended">Suspended</option>
+                    <option value="Completed">Completed / Fit for Duty</option>
+                  </select>
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                  <label style={{ fontSize: "12px", fontWeight: "700" }}>Risk Level</label>
+                  <select value={monitoringRiskVal} onChange={e => setMonitoringRiskVal(e.target.value)}
+                    style={{ height: "40px", padding: "0 12px", borderRadius: "6px", border: "1px solid #cbd5e1", fontWeight: "600" }}
+                  >
+                    <option value="High">High Risk</option>
+                    <option value="Medium">Medium Risk</option>
+                    <option value="Low">Low Risk</option>
+                  </select>
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                  <label style={{ fontSize: "12px", fontWeight: "700" }}>Next Review Follow-up Date</label>
+                  <input type="date" value={monitoringFollowUpDate} onChange={e => setMonitoringFollowUpDate(e.target.value)}
+                    style={{ height: "40px", padding: "0 12px", borderRadius: "6px", border: "1px solid #cbd5e1" }} />
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                  <label style={{ fontSize: "12px", fontWeight: "700" }}>Review History Remarks *</label>
+                  <textarea value={monitoringReviewText} onChange={e => setMonitoringReviewText(e.target.value)} required
+                    placeholder="Enter details of field safety check..."
+                    style={{ minHeight: "80px", padding: "10px 12px", borderRadius: "6px", border: "1px solid #cbd5e1", fontFamily: "inherit" }} />
+                </div>
+                <div style={{ display: "flex", gap: "12px", justifyContent: "flex-end", marginTop: "12px" }}>
+                  <button type="button" onClick={() => setShowMonitoringModal(false)} className="sdom-btn-outline" style={{ height: "40px" }}>Cancel</button>
+                  <button type="submit" className="sdom-btn-primary" style={{ height: "40px", background: "#059669" }}>Save Review</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* Detailed View Modal */}
+        {selectedCounselRecord && (
+          <div className="sdom-modal-overlay" style={{ zIndex: 99999 }} onClick={() => setSelectedCounselRecord(null)}>
+            <div className="sdom-modal" style={{ width: "620px", padding: "24px", maxHeight: "90vh", overflowY: "auto" }} onClick={e => e.stopPropagation()}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px", borderBottom: "1px solid #e2e8f0", paddingBottom: "12px" }}>
+                <h3 style={{ margin: 0, fontSize: "18px", fontWeight: "800" }}>Safety Counselling File</h3>
+                <button type="button" onClick={() => setSelectedCounselRecord(null)} style={{ background: "none", border: "none", fontSize: "20px", cursor: "pointer" }}>✕</button>
+              </div>
+
+              {/* Employee Bio */}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", marginBottom: "20px" }}>
+                <div style={{ background: "#f8fafc", padding: "12px", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
+                  <div style={{ fontSize: "10px", color: "#64748b", fontWeight: "700", textTransform: "uppercase" }}>Employee Name</div>
+                  <div style={{ fontSize: "14px", fontWeight: "800", color: "#0f172a" }}>{selectedCounselRecord.employeeName}</div>
+                </div>
+                <div style={{ background: "#f8fafc", padding: "12px", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
+                  <div style={{ fontSize: "10px", color: "#64748b", fontWeight: "700", textTransform: "uppercase" }}>HRMS ID</div>
+                  <div style={{ fontSize: "14px", fontWeight: "800", color: "#0f172a", fontFamily: "monospace" }}>{selectedCounselRecord.employeeHrmsId}</div>
+                </div>
+              </div>
+
+              {/* Session Details */}
+              <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                <h4 style={{ margin: 0, fontSize: "13px", fontWeight: "800", color: "#475569", textTransform: "uppercase" }}>Session State</h4>
+                <div style={{ border: "1px solid #e2e8f0", borderRadius: "8px", overflow: "hidden" }}>
+                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px" }}>
+                    <tbody>
+                      <tr style={{ borderBottom: "1px solid #e2e8f0" }}>
+                        <td style={{ padding: "10px 14px", background: "#f8fafc", width: "40%", fontWeight: "700" }}>Current Status</td>
+                        <td style={{ padding: "10px 14px" }}>{counselBadge(selectedCounselRecord.status)}</td>
+                      </tr>
+                      {(() => {
+                        let parsed = {};
+                        try { if (selectedCounselRecord.remarks && selectedCounselRecord.remarks.trim().startsWith("{")) parsed = JSON.parse(selectedCounselRecord.remarks); } catch(_) {}
+                        return (
+                          <>
+                            <tr style={{ borderBottom: "1px solid #e2e8f0" }}>
+                              <td style={{ padding: "10px 14px", background: "#f8fafc", fontWeight: "700" }}>Scheduled Date & Time</td>
+                              <td style={{ padding: "10px 14px" }}>
+                                {parsed.scheduledDate ? `${parsed.scheduledDate} ${parsed.scheduledTime || ""}` : "Not Scheduled"}
+                              </td>
+                            </tr>
+                            <tr style={{ borderBottom: "1px solid #e2e8f0" }}>
+                              <td style={{ padding: "10px 14px", background: "#f8fafc", fontWeight: "700" }}>Counsellor (SM)</td>
+                              <td style={{ padding: "10px 14px" }}>
+                                {selectedCounselRecord.counsellorName} ({selectedCounselRecord.counsellorHrmsId})
+                              </td>
+                            </tr>
+                            {parsed.schedulingRemarks && (
+                              <tr style={{ borderBottom: "1px solid #e2e8f0" }}>
+                                <td style={{ padding: "10px 14px", background: "#f8fafc", fontWeight: "700" }}>Initial Instructions</td>
+                                <td style={{ padding: "10px 14px", color: "#475569" }}>{parsed.schedulingRemarks}</td>
+                              </tr>
+                            )}
+                            {parsed.observations && (
+                              <tr style={{ borderBottom: "1px solid #e2e8f0" }}>
+                                <td style={{ padding: "10px 14px", background: "#f8fafc", fontWeight: "700" }}>General Observations</td>
+                                <td style={{ padding: "10px 14px", color: "#0f172a" }}>{parsed.observations}</td>
+                              </tr>
+                            )}
+                            {parsed.safetyConcerns && (
+                              <tr style={{ borderBottom: "1px solid #e2e8f0" }}>
+                                <td style={{ padding: "10px 14px", background: "#f8fafc", fontWeight: "700" }}>Safety Concerns</td>
+                                <td style={{ padding: "10px 14px", color: "#dc2626", fontWeight: "600" }}>{parsed.safetyConcerns}</td>
+                              </tr>
+                            )}
+                            {parsed.behaviouralConcerns && (
+                              <tr style={{ borderBottom: "1px solid #e2e8f0" }}>
+                                <td style={{ padding: "10px 14px", background: "#f8fafc", fontWeight: "700" }}>Behavioural Remarks</td>
+                                <td style={{ padding: "10px 14px", color: "#475569" }}>{parsed.behaviouralConcerns}</td>
+                              </tr>
+                            )}
+                            {parsed.recommendations && (
+                              <tr style={{ borderBottom: "1px solid #e2e8f0" }}>
+                                <td style={{ padding: "10px 14px", background: "#f8fafc", fontWeight: "700" }}>Recommendations</td>
+                                <td style={{ padding: "10px 14px", color: "#2563eb", fontWeight: "600" }}>{parsed.recommendations}</td>
+                              </tr>
+                            )}
+                            {parsed.followUpActions && (
+                              <tr style={{ borderBottom: "1px solid #e2e8f0" }}>
+                                <td style={{ padding: "10px 14px", background: "#f8fafc", fontWeight: "700" }}>Follow-up Steps</td>
+                                <td style={{ padding: "10px 14px", color: "#16a34a", fontWeight: "600" }}>{parsed.followUpActions}</td>
+                              </tr>
+                            )}
+                            {parsed.absenceRemarks && (
+                              <tr style={{ borderBottom: "1px solid #e2e8f0" }}>
+                                <td style={{ padding: "10px 14px", background: "#f8fafc", fontWeight: "700" }}>Absence Remarks</td>
+                                <td style={{ padding: "10px 14px", color: "#dc2626" }}>{parsed.absenceRemarks}</td>
+                              </tr>
+                            )}
+                            {parsed.reschedules && parsed.reschedules.length > 0 && (
+                              <tr>
+                                <td style={{ padding: "10px 14px", background: "#f8fafc", fontWeight: "700" }}>Audit Reschedule History</td>
+                                <td style={{ padding: "10px 14px" }}>
+                                  <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                                    {parsed.reschedules.map((res, index) => (
+                                      <div key={index} style={{ fontSize: "11px", border: "1px solid #fee2e2", background: "#fff5f5", padding: "6px", borderRadius: "4px" }}>
+                                        <strong>Reschedule #{index + 1}</strong>: Missed Date: {res.date} @ {res.time}
+                                        <div style={{ color: "#7f1d1d", marginTop: "2px" }}>Reason: {res.absenceRemarks}</div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </td>
+                              </tr>
+                            )}
+                          </>
+                        );
+                      })()}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "20px" }}>
+                <button className="sdom-btn-primary" onClick={() => setSelectedCounselRecord(null)}>Close</button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   /* ─── Dispatcher ─── */
   const renderContent = () => {
     if (pageMode === "takeTest") return renderTakeTest();
@@ -342,6 +1430,9 @@ function StationMasterModule({ user, onLogout }) {
       case "assess":       return renderAssess();
       case "myAssessment": return renderMyAssessment();
       case "reports":      return renderReports();
+      case "pmePosition":  return renderPmePosition();
+      case "refCourse":    return renderRefCourse();
+      case "counselling":  return renderCounselling();
       default: return renderDashboard();
     }
   };

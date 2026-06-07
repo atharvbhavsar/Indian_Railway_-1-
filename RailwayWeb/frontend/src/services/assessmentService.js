@@ -276,6 +276,18 @@ export const assessmentService = {
         if (uData) resolvedEmployeeId = uData.user_id;
       }
 
+      // Make sure the employee is a Pointsman
+      const { data: userRole } = await supabase
+        .from("USERS")
+        .select("ROLE (role_name)")
+        .eq("user_id", resolvedEmployeeId)
+        .single();
+      
+      if (userRole?.ROLE?.role_name !== "Pointsman") {
+        logger.info("Category D triggered for non-Pointsman. Skipping counselling protocol.");
+        return;
+      }
+
       // Resolve counsellorId HRMS ID to USERS UUID if needed
       let resolvedCounsellorId = counsellorId;
       if (resolvedCounsellorId && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(resolvedCounsellorId)) {
@@ -441,6 +453,368 @@ export const assessmentService = {
     } catch (err) {
       logger.error("Error fetching assessment analytics:", err);
       return null;
+    }
+  },
+
+  /**
+   * Fetches counselling records for employees at a given station.
+   */
+  async getCounsellingRecordsByStation(stationName) {
+    if (!isSupabaseConfigured) return [];
+    try {
+      // 1. Fetch users under the station (since COUNSELLING_RECORD doesn't have station_id directly)
+      const { data: users, error: userErr } = await supabase
+        .from("USERS")
+        .select(`
+          user_id,
+          hrms_id,
+          full_name,
+          ROLE (role_name),
+          EMPLOYEE_PROFILE!inner (
+            station_id,
+            category,
+            STATION!inner (station_name)
+          )
+        `)
+        .eq("EMPLOYEE_PROFILE.STATION.station_name", stationName);
+
+      if (userErr) throw userErr;
+      if (!users || users.length === 0) return [];
+
+      // Only include Pointsmen who are currently in Category D
+      const pointsmenUsers = users.filter(u => {
+        const ep = Array.isArray(u.EMPLOYEE_PROFILE) ? u.EMPLOYEE_PROFILE[0] : u.EMPLOYEE_PROFILE;
+        const currentCategory = ep?.category || "A";
+        return u.ROLE?.role_name === "Pointsman" && currentCategory === "D";
+      });
+      if (pointsmenUsers.length === 0) return [];
+
+      const userIds = pointsmenUsers.map(u => u.user_id);
+
+      // 2. Fetch counselling records for these user IDs
+      const { data: records, error: recErr } = await supabase
+        .from("COUNSELLING_RECORD")
+        .select(`
+          *,
+          counsellor:USERS!counsellor_id (full_name, hrms_id),
+          assessment:ASSESSMENT (
+            assessment_type,
+            assessment_date,
+            TEST_ATTEMPT (obtained_marks, total_marks, percentage, category)
+          )
+        `)
+        .in("user_id", userIds)
+        .order("created_at", { ascending: false });
+
+      if (recErr) throw recErr;
+
+      // Map joined records back to UI friendly format
+      return (records || []).map(r => {
+        const matchingUser = users.find(u => u.user_id === r.user_id);
+        return {
+          ...r,
+          employeeName: matchingUser ? matchingUser.full_name : "Unknown",
+          employeeHrmsId: matchingUser ? matchingUser.hrms_id : "—",
+          counsellorName: r.counsellor ? r.counsellor.full_name : "—",
+          counsellorHrmsId: r.counsellor ? r.counsellor.hrms_id : "—",
+        };
+      });
+    } catch (err) {
+      logger.error("Error fetching counselling records by station:", err);
+      return [];
+    }
+  },
+
+  /**
+   * Schedules a counselling session.
+   */
+  async updateCounsellingSchedule(counsellingId, date, time, remarks, counsellorId) {
+    if (!isSupabaseConfigured) return { success: false, error: "Supabase not configured" };
+    try {
+      // Resolve counsellorId HRMS to UUID if needed
+      let resolvedCounsellorId = counsellorId;
+      if (resolvedCounsellorId && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(resolvedCounsellorId)) {
+        const { data: cData } = await supabase
+          .from("USERS")
+          .select("user_id")
+          .eq("hrms_id", resolvedCounsellorId)
+          .single();
+        if (cData) resolvedCounsellorId = cData.user_id;
+      }
+
+      // Fetch the existing record to get current remarks or history
+      const { data: record, error: getErr } = await supabase
+        .from("COUNSELLING_RECORD")
+        .select("*")
+        .eq("counselling_id", counsellingId)
+        .single();
+      
+      if (getErr || !record) throw new Error("Counselling record not found.");
+
+      let parsedRemarks = {};
+      try {
+        if (record.remarks && record.remarks.trim().startsWith("{")) {
+          parsedRemarks = JSON.parse(record.remarks);
+        } else {
+          parsedRemarks = { remarks: record.remarks || "" };
+        }
+      } catch (_) {
+        parsedRemarks = { remarks: record.remarks || "" };
+      }
+
+      parsedRemarks.scheduledDate = date;
+      parsedRemarks.scheduledTime = time;
+      parsedRemarks.schedulingRemarks = remarks;
+
+      const updatedRemarks = JSON.stringify(parsedRemarks);
+
+      // Create timestamp from date + time
+      const dateObj = new Date(`${date}T${time || "00:00"}:00`);
+      const isDateValid = !isNaN(dateObj.getTime());
+
+      const { data, error } = await supabase
+        .from("COUNSELLING_RECORD")
+        .update({
+          status: "Scheduled",
+          remarks: updatedRemarks,
+          counselling_date: isDateValid ? dateObj.toISOString() : new Date().toISOString(),
+          counsellor_id: resolvedCounsellorId || record.counsellor_id
+        })
+        .eq("counselling_id", counsellingId)
+        .select();
+
+      if (error) throw error;
+
+      // Add a notification for Pointsman
+      try {
+        await supabase.from("NOTIFICATION").insert([{
+          user_id: record.user_id,
+          title: "Counselling Session Scheduled",
+          message: `Your safety counselling session has been scheduled on ${date} at ${time}.`,
+          is_read: false
+        }]);
+      } catch (notifErr) {
+        logger.warn("Failed to create scheduling notification:", notifErr);
+      }
+
+      return { success: true, record: data[0] };
+    } catch (err) {
+      logger.error("Error scheduling counselling:", err);
+      return { success: false, error: err.message };
+    }
+  },
+
+  /**
+   * Records attendance and final observations for a session.
+   */
+  async recordCounsellingAttendance(counsellingId, attendance, remarksData) {
+    if (!isSupabaseConfigured) return { success: false, error: "Supabase not configured" };
+    try {
+      const { data: record, error: getErr } = await supabase
+        .from("COUNSELLING_RECORD")
+        .select("*")
+        .eq("counselling_id", counsellingId)
+        .single();
+      
+      if (getErr || !record) throw new Error("Counselling record not found.");
+
+      let parsedRemarks = {};
+      try {
+        if (record.remarks && record.remarks.trim().startsWith("{")) {
+          parsedRemarks = JSON.parse(record.remarks);
+        } else {
+          parsedRemarks = { remarks: record.remarks || "" };
+        }
+      } catch (_) {
+        parsedRemarks = { remarks: record.remarks || "" };
+      }
+
+      parsedRemarks.attendance = attendance;
+      parsedRemarks.attendanceStatus = attendance;
+
+      if (attendance === "Present") {
+        parsedRemarks.observations = remarksData.observations || "";
+        parsedRemarks.safetyConcerns = remarksData.safetyConcerns || "";
+        parsedRemarks.behaviouralConcerns = remarksData.behaviouralConcerns || "";
+        parsedRemarks.recommendations = remarksData.recommendations || "";
+        parsedRemarks.followUpActions = remarksData.followUpActions || "";
+      } else {
+        parsedRemarks.absenceRemarks = remarksData.absenceRemarks || "";
+        
+        // Save to reschedule audit history
+        if (!parsedRemarks.reschedules) parsedRemarks.reschedules = [];
+        parsedRemarks.reschedules.push({
+          date: parsedRemarks.scheduledDate || "",
+          time: parsedRemarks.scheduledTime || "",
+          status: "Absent",
+          absenceRemarks: remarksData.absenceRemarks || "",
+          recordedAt: new Date().toISOString()
+        });
+      }
+
+      const updatedRemarks = JSON.stringify(parsedRemarks);
+      const newStatus = attendance === "Present" ? "Completed" : "Absent";
+
+      const { data, error } = await supabase
+        .from("COUNSELLING_RECORD")
+        .update({
+          status: newStatus,
+          remarks: updatedRemarks
+        })
+        .eq("counselling_id", counsellingId)
+        .select();
+
+      if (error) throw error;
+
+      // Add a notification for Pointsman
+      try {
+        await supabase.from("NOTIFICATION").insert([{
+          user_id: record.user_id,
+          title: attendance === "Present" ? "Counselling Completed" : "Counselling Session Missed",
+          message: attendance === "Present" 
+            ? "Your safety counselling session was completed. Please check safety instructions." 
+            : "You were marked ABSENT for your scheduled counselling. Please contact your Station Master.",
+          is_read: false
+        }]);
+      } catch (notifErr) {
+        logger.warn("Failed to create attendance notification:", notifErr);
+      }
+
+      return { success: true, record: data[0] };
+    } catch (err) {
+      logger.error("Error recording counselling attendance:", err);
+      return { success: false, error: err.message };
+    }
+  },
+
+  /**
+   * Fetches counselling and monitoring data for the current pointsman.
+   */
+  async getUserCounsellingAndMonitoring(userId) {
+    if (!isSupabaseConfigured) return { counsellingHistory: [], monitoring: null };
+    try {
+      let resolvedUserId = userId;
+      if (resolvedUserId && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(resolvedUserId)) {
+        const { data: uData } = await supabase
+          .from("USERS")
+          .select("user_id")
+          .eq("hrms_id", resolvedUserId)
+          .single();
+        if (uData) resolvedUserId = uData.user_id;
+      }
+
+      // Fetch history
+      const { data: records, error: recErr } = await supabase
+        .from("COUNSELLING_RECORD")
+        .select(`
+          *,
+          counsellor:USERS!counsellor_id (full_name, hrms_id)
+        `)
+        .eq("user_id", resolvedUserId)
+        .order("created_at", { ascending: false });
+
+      if (recErr) throw recErr;
+
+      const history = (records || []).map(r => ({
+        ...r,
+        counsellorName: r.counsellor ? r.counsellor.full_name : "—",
+        counsellorHrmsId: r.counsellor ? r.counsellor.hrms_id : "—",
+      }));
+
+      // Fetch monitoring
+      const { data: monitoring, error: monErr } = await supabase
+        .from("MONITORING")
+        .select("*")
+        .eq("user_id", resolvedUserId)
+        .maybeSingle();
+
+      return {
+        counsellingHistory: history,
+        monitoring: monitoring || null
+      };
+    } catch (err) {
+      logger.error("Error fetching user counselling and monitoring:", err);
+      return { counsellingHistory: [], monitoring: null };
+    }
+  },
+
+  /**
+   * Updates a monitoring record with review history and follow-up dates.
+   */
+  async updateMonitoringRecord(userId, monitoringData) {
+    if (!isSupabaseConfigured) return { success: false, error: "Supabase not configured" };
+    try {
+      let resolvedUserId = userId;
+      if (resolvedUserId && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(resolvedUserId)) {
+        const { data: uData } = await supabase
+          .from("USERS")
+          .select("user_id")
+          .eq("hrms_id", resolvedUserId)
+          .single();
+        if (uData) resolvedUserId = uData.user_id;
+      }
+
+      // Fetch existing monitoring record to parse history
+      const { data: existing, error: getErr } = await supabase
+        .from("MONITORING")
+        .select("*")
+        .eq("user_id", resolvedUserId)
+        .maybeSingle();
+
+      let parsedRemarks = {};
+      try {
+        if (existing?.remarks && existing.remarks.trim().startsWith("{")) {
+          parsedRemarks = JSON.parse(existing.remarks);
+        } else {
+          parsedRemarks = { remarks: existing?.remarks || "" };
+        }
+      } catch (_) {
+        parsedRemarks = { remarks: existing?.remarks || "" };
+      }
+
+      parsedRemarks.followUpDate = monitoringData.followUpDate || parsedRemarks.followUpDate || null;
+      if (!parsedRemarks.reviews) parsedRemarks.reviews = [];
+      
+      if (monitoringData.newReview) {
+        parsedRemarks.reviews.push({
+          reviewDate: new Date().toISOString().split('T')[0],
+          reviewer: monitoringData.reviewer || "System",
+          remarks: monitoringData.newReview,
+          riskLevel: monitoringData.riskLevel || existing?.risk_level || "High"
+        });
+      }
+
+      const updatedRemarks = JSON.stringify(parsedRemarks);
+
+      const payload = {
+        user_id: resolvedUserId,
+        monitoring_status: monitoringData.monitoringStatus || existing?.monitoring_status || "Under Observation",
+        risk_level: monitoringData.riskLevel || existing?.risk_level || "High",
+        remarks: updatedRemarks,
+        updated_at: new Date().toISOString()
+      };
+
+      const { data, error } = await supabase
+        .from("MONITORING")
+        .upsert([payload], { onConflict: 'user_id' })
+        .select();
+
+      if (error) throw error;
+      
+      // Update EMPLOYEE_PROFILE monitoring_status if provided
+      if (monitoringData.monitoringStatus || monitoringData.riskLevel) {
+        const profileStatus = monitoringData.monitoringStatus === "Completed" ? "Active" : 
+                             (monitoringData.riskLevel === "Low" ? "Active" : "High Risk");
+        await supabase
+          .from("EMPLOYEE_PROFILE")
+          .update({ monitoring_status: profileStatus })
+          .eq("user_id", resolvedUserId);
+      }
+
+      return { success: true, record: data[0] };
+    } catch (err) {
+      logger.error("Error updating monitoring record:", err);
+      return { success: false, error: err.message };
     }
   }
 };

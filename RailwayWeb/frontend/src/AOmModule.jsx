@@ -14,6 +14,13 @@ import './sdom.css';
 
 function AOmModule({ user, onLogout }) {
   const state = useAomState(user, onLogout);
+  const [showPmeModal, setShowPmeModal] = useState(false);
+  const [pmeFormHrmsId, setPmeFormHrmsId] = useState("");
+  const [pmeFormStatus, setPmeFormStatus] = useState("Fit");
+  const [pmeFormDoneDate, setPmeFormDoneDate] = useState("");
+  const [pmeFormDueDate, setPmeFormDueDate] = useState("");
+  const [pmeSearch, setPmeSearch] = useState("");
+  const [pmeStatusFilter, setPmeStatusFilter] = useState("All");
   const {
     activePage,
     setActivePage,
@@ -365,6 +372,7 @@ function AOmModule({ user, onLogout }) {
     handleSaveSettings,
     filteredReportRows,
     handleSidebarClick,
+    logAomPmeRecord,
     handleStationSubPage,
     handleUserFormChange,
     handleFilterChange,
@@ -437,6 +445,253 @@ function AOmModule({ user, onLogout }) {
     renderTiModal,
     renderAddStationModal
   } = state;
+
+  const renderPmePosition = () => {
+    // Filtered employees list based on search and status filters
+    const filtered = allEmployees.filter(emp => {
+      const matchSearch = !pmeSearch || 
+        emp.name.toLowerCase().includes(pmeSearch.toLowerCase()) || 
+        emp.hrmsId.toLowerCase().includes(pmeSearch.toLowerCase());
+      
+      const matchStatus = pmeStatusFilter === "All" || 
+        emp.pmeStatus?.toLowerCase() === pmeStatusFilter.toLowerCase();
+      
+      return matchSearch && matchStatus;
+    });
+
+    const fitCount = allEmployees.filter(e => e.pmeStatus === "Fit").length;
+    const dueCount = allEmployees.filter(e => e.pmeStatus === "Due" || e.pmeStatus === "Pending").length;
+    const overdueCount = allEmployees.filter(e => e.pmeStatus === "Overdue" || e.pmeStatus === "Unfit").length;
+
+    const handleOpenLogModal = (hrmsId = "") => {
+      setPmeFormHrmsId(hrmsId);
+      const matched = allEmployees.find(e => e.hrmsId === hrmsId);
+      setPmeFormStatus(matched?.pmeStatus || "Fit");
+      setPmeFormDoneDate(matched?.pmeDoneDate || "");
+      setPmeFormDueDate(matched?.pmeDueDate || "");
+      setShowPmeModal(true);
+    };
+
+    const handleFormSubmit = async (e) => {
+      e.preventDefault();
+      if (!pmeFormHrmsId) {
+        alert("Please select an employee.");
+        return;
+      }
+      if (!pmeFormDueDate) {
+        alert("Please specify the PME due date.");
+        return;
+      }
+      const pmeData = {
+        dueDate: pmeFormDueDate,
+        doneDate: pmeFormDoneDate || null,
+        status: pmeFormStatus
+      };
+      const resResult = await logAomPmeRecord(pmeFormHrmsId, pmeData);
+      if (resResult && resResult.success) {
+        setShowPmeModal(false);
+        setPmeFormHrmsId("");
+        setPmeFormDoneDate("");
+        setPmeFormDueDate("");
+        setPmeFormStatus("Fit");
+      }
+    };
+
+    const statusBadge = (s) => {
+      const map = { Fit: "sdom-badge-success", Pending: "sdom-badge-warning", Due: "sdom-badge-warning", Overdue: "sdom-badge-danger", Unfit: "sdom-badge-danger" };
+      return <span className={`sdom-badge ${map[s] || "sdom-badge-neutral"}`}>{s || "N/A"}</span>;
+    };
+
+    return (
+      <div className="sdom-fade" style={{ background: "#f8fafc", padding: "24px", borderRadius: "16px" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px" }}>
+          <div>
+            <h1 className="sdom-page-title" style={{ fontSize: "28px", fontWeight: "800", color: "#0f172a", margin: "0 0 4px" }}>PME Position & Compliance</h1>
+            <p className="sdom-page-subtitle" style={{ fontSize: "14px", color: "#64748b", margin: 0 }}>Monitor Periodical Medical Examination clearance, schedule exams, and record medical clearance logs.</p>
+          </div>
+          <button 
+            onClick={() => handleOpenLogModal("")} 
+            className="sdom-btn-primary" 
+            style={{ height: "42px", display: "flex", alignItems: "center", gap: "8px", background: "#2563eb", color: "white", padding: "0 20px", border: "none", borderRadius: "8px", fontWeight: "700", cursor: "pointer", fontSize: "13px" }}
+          >
+            <Plus size={16}/> Log PME Record
+          </button>
+        </div>
+
+        {/* Stats Row */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "16px", marginBottom: "24px" }}>
+          <div className="sdom-stat-card" style={{ background: "white", border: "1px solid #e2e8f0", padding: "20px", borderRadius: "12px", boxShadow: "0 1px 3px rgba(0,0,0,0.05)", borderLeft: "4px solid #16a34a" }}>
+            <div className="sdom-stat-value" style={{ fontSize: "24px", fontWeight: "800", color: "#16a34a" }}>{fitCount} staff</div>
+            <div className="sdom-stat-label" style={{ fontSize: "12px", color: "#64748b", marginTop: "4px", fontWeight: "600", textTransform: "uppercase" }}>PME FIT Clearance</div>
+          </div>
+          <div className="sdom-stat-card" style={{ background: "white", border: "1px solid #e2e8f0", padding: "20px", borderRadius: "12px", boxShadow: "0 1px 3px rgba(0,0,0,0.05)", borderLeft: "4px solid #d97706" }}>
+            <div className="sdom-stat-value" style={{ fontSize: "24px", fontWeight: "800", color: "#d97706" }}>{dueCount} staff</div>
+            <div className="sdom-stat-label" style={{ fontSize: "12px", color: "#64748b", marginTop: "4px", fontWeight: "600", textTransform: "uppercase" }}>PME Due / Pending</div>
+          </div>
+          <div className="sdom-stat-card" style={{ background: "white", border: "1px solid #e2e8f0", padding: "20px", borderRadius: "12px", boxShadow: "0 1px 3px rgba(0,0,0,0.05)", borderLeft: "4px solid #dc2626" }}>
+            <div className="sdom-stat-value" style={{ fontSize: "24px", fontWeight: "800", color: "#dc2626" }}>{overdueCount} staff</div>
+            <div className="sdom-stat-label" style={{ fontSize: "12px", color: "#64748b", marginTop: "4px", fontWeight: "600", textTransform: "uppercase" }}>PME Overdue (High Risk)</div>
+          </div>
+        </div>
+
+        {/* Filter Bar */}
+        <div className="sdom-filter-bar" style={{ display: "flex", gap: "16px", background: "white", padding: "16px", borderRadius: "12px", border: "1px solid #e2e8f0", marginBottom: "24px", alignItems: "flex-end" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: "6px", flex: 2 }}>
+            <label style={{ fontSize: "11px", fontWeight: "800", color: "#475569", textTransform: "uppercase" }}>Search Staff</label>
+            <div style={{ position: "relative" }}>
+              <Search size={15} style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", color: "#64748b" }} />
+              <input 
+                type="text" 
+                placeholder="Search by name or HRMS ID..." 
+                value={pmeSearch} 
+                onChange={e => setPmeSearch(e.target.value)} 
+                style={{ width: "100%", height: "42px", padding: "0 12px 0 36px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "13px", fontWeight: "600", outline: "none" }}
+              />
+            </div>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: "6px", flex: 1 }}>
+            <label style={{ fontSize: "11px", fontWeight: "800", color: "#475569", textTransform: "uppercase" }}>PME Status</label>
+            <select 
+              value={pmeStatusFilter} 
+              onChange={e => setPmeStatusFilter(e.target.value)} 
+              style={{ height: "42px", padding: "0 12px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "13px", fontWeight: "600" }}
+            >
+              <option value="All">All Statuses</option>
+              <option value="Fit">Fit</option>
+              <option value="Pending">Pending</option>
+              <option value="Due">Due</option>
+              <option value="Overdue">Overdue</option>
+              <option value="Unfit">Unfit</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Table */}
+        <div className="sdom-chart-card" style={{ background: "white", border: "1px solid #e2e8f0", padding: "20px", borderRadius: "12px", boxShadow: "0 1px 3px rgba(0,0,0,0.05)" }}>
+          <div className="sdom-table-wrap" style={{ overflowX: "auto" }}>
+            <table className="sdom-table" style={{ width: "100%", borderCollapse: "collapse" }}>
+              <thead>
+                <tr style={{ borderBottom: "1.5px solid #e2e8f0", background: "#f8fafc", textAlign: "left" }}>
+                  <th style={{ padding: "12px 16px", fontSize: "12px", color: "#475569", fontWeight: "700" }}>Name</th>
+                  <th style={{ padding: "12px 16px", fontSize: "12px", color: "#475569", fontWeight: "700" }}>HRMS ID</th>
+                  <th style={{ padding: "12px 16px", fontSize: "12px", color: "#475569", fontWeight: "700" }}>Designation</th>
+                  <th style={{ padding: "12px 16px", fontSize: "12px", color: "#475569", fontWeight: "700" }}>Station</th>
+                  <th style={{ padding: "12px 16px", fontSize: "12px", color: "#475569", fontWeight: "700" }}>PME Status</th>
+                  <th style={{ padding: "12px 16px", fontSize: "12px", color: "#475569", fontWeight: "700" }}>PME Done Date</th>
+                  <th style={{ padding: "12px 16px", fontSize: "12px", color: "#475569", fontWeight: "700" }}>PME Due Date</th>
+                  <th style={{ padding: "12px 16px", fontSize: "12px", color: "#475569", fontWeight: "700", textAlign: "right" }}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map(emp => (
+                  <tr key={emp.hrmsId} style={{ borderBottom: "1px solid #cbd5e1" }}>
+                    <td style={{ padding: "12px 16px", fontSize: "13px", fontWeight: "700", color: "#1e293b" }}>{emp.name}</td>
+                    <td style={{ padding: "12px 16px", fontSize: "13px", fontFamily: "monospace", color: "#475569" }}>{emp.hrmsId}</td>
+                    <td style={{ padding: "12px 16px", fontSize: "13px", color: "#475569" }}>{emp.designation}</td>
+                    <td style={{ padding: "12px 16px", fontSize: "13px", color: "#475569", fontWeight: "600" }}>{emp.stationName}</td>
+                    <td style={{ padding: "12px 16px", fontSize: "13px" }}>{statusBadge(emp.pmeStatus)}</td>
+                    <td style={{ padding: "12px 16px", fontSize: "13px", color: "#475569" }}>{emp.pmeDoneDate || "—"}</td>
+                    <td style={{ padding: "12px 16px", fontSize: "13px", color: "#dc2626", fontWeight: "700" }}>{emp.pmeDueDate || "—"}</td>
+                    <td style={{ padding: "12px 16px", textAlign: "right" }}>
+                      <button 
+                        onClick={() => handleOpenLogModal(emp.hrmsId)} 
+                        className="sdom-btn-primary" 
+                        style={{ height: "30px", padding: "0 12px", borderRadius: "6px", background: "#f1f5f9", color: "#0f172a", border: "1px solid #cbd5e1", fontSize: "11px", fontWeight: "700", cursor: "pointer" }}
+                      >
+                        Update PME
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+                {filtered.length === 0 && (
+                  <tr>
+                    <td colSpan={8} style={{ padding: "30px", textAlign: "center", color: "#64748b", fontSize: "14px" }}>No employee matched your filters.</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Modal form */}
+        {showPmeModal && (
+          <div className="sdom-modal-overlay" style={{ zIndex: 99999 }} onClick={e => e.target === e.currentTarget && setShowPmeModal(false)}>
+            <div className="sdom-modal" style={{ width: "500px", maxWidth: "95vw", padding: "24px", background: "white", borderRadius: "12px", boxShadow: "0 10px 25px -5px rgba(0,0,0,0.1)", boxSizing: "border-box" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
+                <h3 style={{ margin: 0, fontSize: "18px", fontWeight: "800", color: "#0f172a" }}>LOG PME MEDICAL RECORD</h3>
+                <button type="button" onClick={() => setShowPmeModal(false)} style={{ background: "none", border: "none", fontSize: "18px", cursor: "pointer", color: "#64748b" }}>✕</button>
+              </div>
+
+              <form onSubmit={handleFormSubmit} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                  <label style={{ fontSize: "12px", fontWeight: "700", color: "#334155" }}>Select Staff *</label>
+                  <select 
+                    value={pmeFormHrmsId} 
+                    onChange={e => {
+                      setPmeFormHrmsId(e.target.value);
+                      const matched = allEmployees.find(x => x.hrmsId === e.target.value);
+                      setPmeFormStatus(matched?.pmeStatus || "Fit");
+                      setPmeFormDoneDate(matched?.pmeDoneDate || "");
+                      setPmeFormDueDate(matched?.pmeDueDate || "");
+                    }} 
+                    style={{ height: "42px", padding: "0 12px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "13px", fontWeight: "600", width: "100%" }}
+                    required
+                  >
+                    <option value="">-- Choose Employee --</option>
+                    {[...allEmployees].sort((a,b) => a.name.localeCompare(b.name)).map(emp => (
+                      <option key={emp.hrmsId} value={emp.hrmsId}>{emp.name} ({emp.hrmsId} - {emp.designation})</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                  <label style={{ fontSize: "12px", fontWeight: "700", color: "#334155" }}>PME Status *</label>
+                  <select 
+                    value={pmeFormStatus} 
+                    onChange={e => setPmeFormStatus(e.target.value)} 
+                    style={{ height: "42px", padding: "0 12px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "13px", fontWeight: "600", width: "100%" }}
+                    required
+                  >
+                    <option value="Fit">Fit</option>
+                    <option value="Unfit">Unfit</option>
+                    <option value="Pending">Pending</option>
+                    <option value="Overdue">Overdue</option>
+                  </select>
+                </div>
+
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                    <label style={{ fontSize: "12px", fontWeight: "700", color: "#334155" }}>Done Date</label>
+                    <input 
+                      type="date" 
+                      value={pmeFormDoneDate} 
+                      onChange={e => setPmeFormDoneDate(e.target.value)} 
+                      style={{ height: "42px", padding: "0 12px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "13px", fontWeight: "600" }}
+                    />
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                    <label style={{ fontSize: "12px", fontWeight: "700", color: "#334155" }}>Due Date *</label>
+                    <input 
+                      type="date" 
+                      value={pmeFormDueDate} 
+                      onChange={e => setPmeFormDueDate(e.target.value)} 
+                      style={{ height: "42px", padding: "0 12px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "13px", fontWeight: "600" }}
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div style={{ display: "flex", gap: "12px", justifyContent: "flex-end", marginTop: "10px" }}>
+                  <button type="button" onClick={() => setShowPmeModal(false)} className="sdom-btn-secondary" style={{ height: "42px", padding: "0 20px", border: "1px solid #cbd5e1", background: "#ffffff", color: "#334155", borderRadius: "8px", fontWeight: "700", cursor: "pointer" }}>Cancel</button>
+                  <button type="submit" className="sdom-btn-primary" style={{ height: "42px", padding: "0 20px", background: "#2563eb", color: "#ffffff", border: "none", borderRadius: "8px", fontWeight: "700", cursor: "pointer" }}>Save PME Log</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
 
   const renderPageContent = () => {
     switch (activePage) {
@@ -3846,6 +4101,9 @@ function AOmModule({ user, onLogout }) {
           </div>
         );
       }
+
+      case "PME Position":
+        return renderPmePosition();
 
       case "Reports and Analytics": {
         const ROLE_MAP = { pointsmen: "Pointsman", sm: "Station Master", ss: "Station Superintendent", tm: "Train Manager", ti: "Traffic Inspector" };

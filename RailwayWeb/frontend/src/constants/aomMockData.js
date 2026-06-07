@@ -139,6 +139,7 @@ const sidebarItems = [
   { icon: Building2, label: "Stations" },
   { icon: CheckCircle, label: "Approvals" },
   { icon: FileCheck, label: "Assessments" },
+  { icon: Activity, label: "PME Position" },
   { icon: BarChart3, label: "Reports and Analytics" },
   { icon: UserCircle2, label: "My Profile" }
 ];

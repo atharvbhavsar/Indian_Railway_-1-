@@ -11,6 +11,7 @@ import { Bar, BarChart, Cell, Legend, Pie, PieChart, ResponsiveContainer, Toolti
 import { saDataService } from '../services/saDataService';
 import { supabase, isSupabaseConfigured } from '../supabaseClient';
 import { TI_TM_CRITERIA } from '../constants/trafficInspectorConstants';
+import { monitoringService } from '../services/monitoringService';
 
 export function useAomState(user, onLogout) {
   const [activePage, setActivePage] = useState("Dashboard");
@@ -931,6 +932,31 @@ export function useAomState(user, onLogout) {
     }));
   };
 
+  const logAomPmeRecord = async (employeeHrmsId, pmeData) => {
+    try {
+      const { data: uData, error: uErr } = await supabase
+        .from('USERS')
+        .select('user_id')
+        .eq('hrms_id', employeeHrmsId)
+        .single();
+      
+      if (uErr || !uData?.user_id) throw new Error("Employee not found in database.");
+      
+      const userId = uData.user_id;
+      const res = await monitoringService.logPmeRecord(userId, pmeData);
+      if (res && res.success) {
+        await fetchLiveDatabaseData();
+        return { success: true };
+      } else {
+        throw new Error(res?.error || "Failed to log PME record.");
+      }
+    } catch (err) {
+      console.error("Error logging PME record:", err);
+      alert("Error logging PME record: " + err.message);
+      return { success: false, error: err.message };
+    }
+  };
+
   const [stationDetailId, setStationDetailId] = useState(null);
   const [isStationEditMode, setIsStationEditMode] = useState(false);
   const [tiSearch, setTiSearch] = useState("");
@@ -1049,7 +1075,11 @@ export function useAomState(user, onLogout) {
         lastAssessedDate: p.lastAssessDate || "2026-03-28",
         monitoringStatus: deactivatedUserIds.has(p.hrmsId) ? "Deactivated" : (p.monitoringStatus || "Active"),
         contactNumber: p.contact || "—",
-        emailId: p.email || `${p.hrmsId.toLowerCase()}@rail.in`
+        emailId: p.email || `${p.hrmsId.toLowerCase()}@rail.in`,
+        pmeStatus: p.pmeStatus || "Fit",
+        pmeDueDate: p.pmeDueDate || null,
+        pmeDoneDate: p.pmeDoneDate || null,
+        refStatus: p.refStatus || "Cleared"
       })),
       ...aomStationMasters.map((sm, idx) => {
         const smHrmsId = sm.hrmsId || sm.id || `SM_${1001 + idx}`;
@@ -1075,7 +1105,11 @@ export function useAomState(user, onLogout) {
           lastAssessedDate: sm.lastAssessedDate || sm.lastAssessDate || "2026-04-12",
           monitoringStatus: deactivatedUserIds.has(smHrmsId) ? "Deactivated" : (sm.monitoringStatus || "Active"),
           contactNumber: sm.contactNumber || sm.contact || "—",
-          emailId: sm.emailId || sm.email || `${smHrmsId.toLowerCase()}@rail.in`
+          emailId: sm.emailId || sm.email || `${smHrmsId.toLowerCase()}@rail.in`,
+          pmeStatus: sm.pmeStatus || "Fit",
+          pmeDueDate: sm.pmeDueDate || null,
+          pmeDoneDate: sm.pmeDoneDate || null,
+          refStatus: sm.refStatus || "Cleared"
         };
       }),
       ...aomSuperintendents.map((ss) => ({
@@ -1100,7 +1134,11 @@ export function useAomState(user, onLogout) {
         lastAssessedDate: ss.lastDate || "2026-04-18",
         monitoringStatus: deactivatedUserIds.has(ss.employeeId) ? "Deactivated" : "Active",
         contactNumber: ss.contact || "—",
-        emailId: ss.email || `${ss.employeeId.toLowerCase()}@rail.in`
+        emailId: ss.email || `${ss.employeeId.toLowerCase()}@rail.in`,
+        pmeStatus: ss.pmeStatus || "Fit",
+        pmeDueDate: ss.pmeDueDate || null,
+        pmeDoneDate: ss.pmeDoneDate || null,
+        refStatus: ss.refStatus || "Cleared"
       })),
       ...aomTrainManagers.map((tm) => ({
         hrmsId: tm.employeeId,
@@ -1127,7 +1165,11 @@ export function useAomState(user, onLogout) {
         emailId: tm.email || `${tm.employeeId.toLowerCase()}@rail.in`,
         workLocation: tm.workLocation || "Nagpur Depot",
         reportingSm: tm.reportingSm || "NGP-BSL Section",
-        shift: tm.shift || "Goods Train Beat"
+        shift: tm.shift || "Goods Train Beat",
+        pmeStatus: tm.pmeStatus || "Fit",
+        pmeDueDate: tm.pmeDueDate || null,
+        pmeDoneDate: tm.pmeDoneDate || null,
+        refStatus: tm.refStatus || "Cleared"
       })),
       ...trafficInspectors.map((ti, idx) => ({
         hrmsId: ti.employeeId,
@@ -1151,7 +1193,11 @@ export function useAomState(user, onLogout) {
         lastAssessedDate: "2026-03-15",
         monitoringStatus: deactivatedUserIds.has(ti.employeeId) ? "Deactivated" : "Active",
         contactNumber: ti.phone || "—",
-        emailId: ti.email || `${ti.employeeId.toLowerCase()}@rail.in`
+        emailId: ti.email || `${ti.employeeId.toLowerCase()}@rail.in`,
+        pmeStatus: ti.pmeStatus || "Fit",
+        pmeDueDate: ti.pmeDueDate || null,
+        pmeDoneDate: ti.pmeDoneDate || null,
+        refStatus: ti.refStatus || "Cleared"
       }))
     ];
   }, [aomPointsmen, aomStationMasters, stations, aomSuperintendents, aomTrainManagers, trafficInspectors, deactivatedUserIds]);
@@ -7569,6 +7615,7 @@ export function useAomState(user, onLogout) {
     aomSMList,
     aomSSList,
     aomTMList,
-    aomGetCat
+    aomGetCat,
+    logAomPmeRecord
   };
 }

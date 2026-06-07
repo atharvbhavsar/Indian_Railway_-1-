@@ -25,7 +25,20 @@ export const userService = {
             shift,
             jurisdiction,
             category,
+            pme_status,
+            refresher_status,
             STATION (station_name, location)
+          ),
+          PME_RECORD (
+            pme_due_date,
+            pme_done_date,
+            pme_status
+          ),
+          TRAINING_RECORD (
+            training_date,
+            expiry_date,
+            course_name,
+            status
           )
         `);
       if (error) throw error;

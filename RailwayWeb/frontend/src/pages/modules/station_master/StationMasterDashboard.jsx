@@ -1,7 +1,8 @@
 import React from 'react';
 import { 
   Users, AlertTriangle, CheckCircle, Clock, Search, Filter, Calendar, X, Download, ArrowLeft, ArrowRight,
-  TrendingUp, Activity, FileText, Lock, Plus, RefreshCw, Paperclip, Trash2, ShieldCheck, Gauge, Award, Target
+  TrendingUp, Activity, FileText, Lock, Plus, RefreshCw, Paperclip, Trash2, ShieldCheck, Gauge, Award, Target,
+  ShieldAlert
 } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend, BarChart, Bar, LabelList } from 'recharts';
 import { getCat, getCatColor, getCatBg, riskLevel, riskColor } from '../../../utils/scoreCalculator';
@@ -19,7 +20,7 @@ export function StationMasterDashboard(props) {
     filteredFsPointsmen, dynamicMonthlyTrend,
     pmAssessmentHistory, pointsmen,
     smId, drafts, viewingStaff, setViewingStaff, setActiveTab, openPmDetail,
-    user, stationSms = [], assignedTi = null
+    user, stationSms = [], assignedTi = null, counsellingQueue = []
   } = props;
 
   // palettes
@@ -114,6 +115,8 @@ export function StationMasterDashboard(props) {
           </div>
         ))}
       </div>
+
+
 
       {/* Charts */}
       <div className="sdom-row-2" style={{ marginBottom: "24px" }}>

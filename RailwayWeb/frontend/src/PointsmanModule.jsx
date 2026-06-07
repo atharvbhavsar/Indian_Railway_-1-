@@ -29,7 +29,8 @@ import {
   Trash2,
   Volume2,
   VolumeX,
-  Plus
+  Plus,
+  BookOpen
 } from "lucide-react";
 import {
   LineChart,
@@ -46,6 +47,8 @@ import {
 } from "recharts";
 import "./sdom.css";
 import { dbService, isSupabaseConfigured } from "./supabaseClient";
+import { monitoringService } from "./services/monitoringService";
+import { assessmentService } from "./services/assessmentService";
 import { getCategory, getCategoryColor, getCategoryBg } from "./constants";
 
 
@@ -53,6 +56,8 @@ import { getCategory, getCategoryColor, getCategoryBg } from "./constants";
 const navItems = [
   { key: "dashboard",    label: "Dashboard",     icon: Gauge },
   { key: "myAssessment", label: "My Assessment",  icon: FileBarChart2 },
+  { key: "refCourse",    label: "REF Course",     icon: BookOpen },
+  { key: "counselling",  label: "Counselling",    icon: ShieldAlert },
   { key: "profile",      label: "Profile",        icon: UserCircle2 }
 ];
 
@@ -181,6 +186,10 @@ function PointsmanModule({ user, onLogout }) {
     }
     return initialHistory;
   });
+  
+  const [refHistory, setRefHistory] = useState([]);
+  const [counsellingHistory, setCounsellingHistory] = useState([]);
+  const [activeMonitoring, setActiveMonitoring] = useState(null);
   
   const [historyDateSearch, setHistoryDateSearch] = useState("");
   const [historySortOrder, setHistorySortOrder] = useState("date-desc");
@@ -371,6 +380,19 @@ function PointsmanModule({ user, onLogout }) {
               setSafetyReports(mappedIncidents);
             } else {
               setSafetyReports([]);
+            }
+
+            // 4. Fetch REF training history
+            const refRecs = await monitoringService.getRefresherHistory(dbUser.user_id);
+            setRefHistory(refRecs || []);
+
+            // 5. Fetch Counselling & Monitoring records
+            try {
+              const cAndM = await assessmentService.getUserCounsellingAndMonitoring(dbUser.user_id);
+              setCounsellingHistory(cAndM.counsellingHistory || []);
+              setActiveMonitoring(cAndM.monitoring || null);
+            } catch (cErr) {
+              console.error("Error loading user counselling/monitoring data:", cErr);
             }
           }
         } catch (e) {
@@ -987,6 +1009,311 @@ function PointsmanModule({ user, onLogout }) {
     />
   );
 
+  /* ─── REF COURSE (Read-Only) ─── */
+  const renderRefCourse = () => {
+    const latestRef = refHistory[0] || {};
+    const refStatus = profile.refStatus?.replace("COMPLETED (Refresher Course) - Status: ", "")?.replace("Status: ", "") || latestRef.refStatus || "Cleared";
+    
+    // Stats
+    const totalCompleted = refHistory.filter(h => h.refStatus === "Completed" || h.refStatus === "Cleared").length;
+    const totalPending = refHistory.filter(h => h.refStatus === "Pending" || h.refStatus === "Scheduled" || h.refStatus === "In Progress").length;
+    const totalExpired = refHistory.filter(h => h.refStatus === "Expired" || h.refStatus === "Cancelled").length;
+
+    const refBadge = (s) => {
+      const map = {
+        Completed: "sdom-badge-success", Cleared: "sdom-badge-success",
+        Scheduled: "sdom-badge-warning", "In Progress": "sdom-badge-warning", Pending: "sdom-badge-warning",
+        Expired: "sdom-badge-danger", Cancelled: "sdom-badge-danger"
+      };
+      return <span className={`sdom-badge ${map[s] || "sdom-badge-neutral"}`}>{s || "N/A"}</span>;
+    };
+
+    return (
+      <div className="sdom-fade" style={{ background: "#f8fafc", padding: "24px", borderRadius: "16px" }}>
+        {/* Header */}
+        <div style={{ marginBottom: "24px" }}>
+          <h1 className="sdom-page-title" style={{ fontSize: "28px", fontWeight: "800", color: "#0f172a", margin: "0 0 4px" }}>My REF Course Details</h1>
+          <p className="sdom-page-subtitle" style={{ fontSize: "14px", color: "#64748b", margin: 0 }}>View your Refresher Course (REF) training history and scheduling details.</p>
+        </div>
+
+        {/* Dashboard stats strip */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "16px", marginBottom: "24px" }}>
+          <div style={{ background: "white", border: "1px solid #e2e8f0", padding: "20px", borderRadius: "12px", boxShadow: "0 1px 3px rgba(0,0,0,0.05)", borderLeft: "4px solid #16a34a" }}>
+            <div style={{ fontSize: "24px", fontWeight: "800", color: "#16a34a" }}>{latestRef.trainingDate || "—"}</div>
+            <div style={{ fontSize: "12px", color: "#64748b", marginTop: "4px", fontWeight: "600", textTransform: "uppercase" }}>Last REF Date</div>
+          </div>
+          <div style={{ background: "white", border: "1px solid #e2e8f0", padding: "20px", borderRadius: "12px", boxShadow: "0 1px 3px rgba(0,0,0,0.05)", borderLeft: "4px solid #dc2626" }}>
+            <div style={{ fontSize: "24px", fontWeight: "800", color: "#dc2626" }}>{latestRef.nextDueDate || "—"}</div>
+            <div style={{ fontSize: "12px", color: "#64748b", marginTop: "4px", fontWeight: "600", textTransform: "uppercase" }}>Next REF Due Date</div>
+          </div>
+          <div style={{ background: "white", border: "1px solid #e2e8f0", padding: "20px", borderRadius: "12px", boxShadow: "0 1px 3px rgba(0,0,0,0.05)", borderLeft: "4px solid #7c3aed" }}>
+            <div style={{ fontSize: "24px", fontWeight: "800", color: "#7c3aed" }}>{refStatus}</div>
+            <div style={{ fontSize: "12px", color: "#64748b", marginTop: "4px", fontWeight: "600", textTransform: "uppercase" }}>Current REF Status</div>
+          </div>
+        </div>
+
+        {/* Counters */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "16px", marginBottom: "24px" }}>
+          <div style={{ background: "white", border: "1px solid #e2e8f0", padding: "16px", borderRadius: "12px", textAlign: "center" }}>
+            <div style={{ fontSize: "20px", fontWeight: "800", color: "#334155" }}>{totalCompleted}</div>
+            <div style={{ fontSize: "11px", color: "#64748b", fontWeight: "600", textTransform: "uppercase" }}>Total Completed</div>
+          </div>
+          <div style={{ background: "white", border: "1px solid #e2e8f0", padding: "16px", borderRadius: "12px", textAlign: "center" }}>
+            <div style={{ fontSize: "20px", fontWeight: "800", color: "#334155" }}>{totalPending}</div>
+            <div style={{ fontSize: "11px", color: "#64748b", fontWeight: "600", textTransform: "uppercase" }}>Pending / Scheduled</div>
+          </div>
+          <div style={{ background: "white", border: "1px solid #e2e8f0", padding: "16px", borderRadius: "12px", textAlign: "center" }}>
+            <div style={{ fontSize: "20px", fontWeight: "800", color: "#334155" }}>{totalExpired}</div>
+            <div style={{ fontSize: "11px", color: "#64748b", fontWeight: "600", textTransform: "uppercase" }}>Expired / Cancelled</div>
+          </div>
+        </div>
+
+        {/* Table */}
+        <div style={{ background: "white", border: "1px solid #e2e8f0", padding: "20px", borderRadius: "12px", boxShadow: "0 1px 3px rgba(0,0,0,0.05)", overflowX: "auto" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <thead>
+              <tr style={{ borderBottom: "1.5px solid #e2e8f0", background: "#f8fafc", textAlign: "left" }}>
+                {["Training Date", "REF Status", "Conducted By", "Next Due Date", "Remarks"].map(h => (
+                  <th key={h} style={{ padding: "12px 16px", fontSize: "12px", color: "#475569", fontWeight: "700" }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {refHistory.map(row => (
+                <tr key={row.training_id} style={{ borderBottom: "1px solid #e8edf2" }}>
+                  <td style={{ padding: "12px 16px", fontSize: "13px", fontWeight: "700", color: "#1e293b" }}>{row.trainingDate || "—"}</td>
+                  <td style={{ padding: "12px 16px", fontSize: "13px" }}>{refBadge(row.refStatus)}</td>
+                  <td style={{ padding: "12px 16px", fontSize: "13px", color: "#475569", fontWeight: "600" }}>{row.conductedBy || "—"}</td>
+                  <td style={{ padding: "12px 16px", fontSize: "13px", color: "#dc2626", fontWeight: "700" }}>{row.nextDueDate || "—"}</td>
+                  <td style={{ padding: "12px 16px", fontSize: "13px", color: "#475569" }}>{row.remarks || "—"}</td>
+                </tr>
+              ))}
+              {refHistory.length === 0 && (
+                <tr><td colSpan={5} style={{ padding: "30px", textAlign: "center", color: "#64748b", fontSize: "14px" }}>No refresher training history available.</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
+  };
+
+  /* ─── Counselling & Monitoring (Read-Only) ─── */
+  const renderCounselling = () => {
+    // Helper to parse JSON remarks safely
+    const parseRemarks = (remarksStr) => {
+      if (!remarksStr) return {};
+      try {
+        if (remarksStr.trim().startsWith("{")) {
+          return JSON.parse(remarksStr);
+        }
+      } catch (e) {
+        // Not a JSON string
+      }
+      return { remarks: remarksStr };
+    };
+
+    // Find the current active/scheduled/pending session
+    const activeSession = counsellingHistory.find(
+      s => s.status === "Pending" || s.status === "Scheduled"
+    );
+
+    // Monitoring details
+    const monitoringStatus = activeMonitoring?.monitoring_status || "No Active Observation";
+    const riskLevel = activeMonitoring?.risk_level || "Low";
+    
+    // Parse monitoring remarks to extract follow-up review date and review history
+    const monitoringRemarks = parseRemarks(activeMonitoring?.remarks);
+    const nextReviewDate = monitoringRemarks.followUpDate || "—";
+    const monitoringReviews = monitoringRemarks.reviews || [];
+
+    // Helper to get status badges
+    const statusBadge = (s) => {
+      const map = {
+        Pending: "sdom-badge-warning",
+        Scheduled: "sdom-badge-warning",
+        Completed: "sdom-badge-success",
+        Absent: "sdom-badge-danger"
+      };
+      return <span className={`sdom-badge ${map[s] || "sdom-badge-neutral"}`}>{s}</span>;
+    };
+
+    // Helper for Risk Level badge
+    const riskBadge = (r) => {
+      const map = {
+        High: "sdom-badge-danger",
+        Medium: "sdom-badge-warning",
+        Low: "sdom-badge-success"
+      };
+      return <span className={`sdom-badge ${map[r] || "sdom-badge-neutral"}`}>{r} Risk</span>;
+    };
+
+    return (
+      <div className="sdom-fade" style={{ background: "#f8fafc", padding: "24px", borderRadius: "16px" }}>
+        {/* Header */}
+        <div style={{ marginBottom: "24px" }}>
+          <h1 className="sdom-page-title" style={{ fontSize: "28px", fontWeight: "800", color: "#0f172a", margin: "0 0 4px" }}>Counselling & Monitoring Workspace</h1>
+          <p className="sdom-page-subtitle" style={{ fontSize: "14px", color: "#64748b", margin: 0 }}>View scheduled sessions, assessment feedback, and active monitoring status.</p>
+        </div>
+
+        {/* Top Cards Grid */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "16px", marginBottom: "24px" }}>
+          {/* Active Monitoring Status */}
+          <div style={{ background: "white", border: "1px solid #e2e8f0", padding: "20px", borderRadius: "12px", boxShadow: "0 1px 3px rgba(0,0,0,0.05)", borderLeft: "4px solid #3b82f6" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div style={{ fontSize: "12px", color: "#64748b", fontWeight: "600", textTransform: "uppercase" }}>Monitoring Status</div>
+              {riskBadge(riskLevel)}
+            </div>
+            <div style={{ fontSize: "20px", fontWeight: "800", color: "#0f172a", marginTop: "12px" }}>{monitoringStatus}</div>
+            <div style={{ fontSize: "12px", color: "#64748b", marginTop: "6px" }}>Next Safety Review Due: <span style={{ fontWeight: "700", color: "#dc2626" }}>{nextReviewDate}</span></div>
+          </div>
+
+          {/* Active Session Card */}
+          <div style={{ background: "white", border: "1px solid #e2e8f0", padding: "20px", borderRadius: "12px", boxShadow: "0 1px 3px rgba(0,0,0,0.05)", borderLeft: `4px solid ${activeSession ? "#eab308" : "#10b981"}` }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div style={{ fontSize: "12px", color: "#64748b", fontWeight: "600", textTransform: "uppercase" }}>Active Counselling Session</div>
+              {activeSession ? statusBadge(activeSession.status) : <span className="sdom-badge sdom-badge-success">Clear</span>}
+            </div>
+            {activeSession ? (
+              <>
+                <div style={{ fontSize: "16px", fontWeight: "700", color: "#1e293b", marginTop: "12px" }}>
+                  Scheduled: {parseRemarks(activeSession.remarks).scheduledDate || "—"} at {parseRemarks(activeSession.remarks).scheduledTime || "—"}
+                </div>
+                <div style={{ fontSize: "12px", color: "#64748b", marginTop: "6px" }}>
+                  Counsellor: <span style={{ fontWeight: "600" }}>{activeSession.counsellorName} ({activeSession.counsellorHrmsId})</span>
+                </div>
+              </>
+            ) : (
+              <div style={{ fontSize: "14px", color: "#64748b", marginTop: "16px" }}>No counselling sessions currently pending or scheduled.</div>
+            )}
+          </div>
+        </div>
+
+        {/* Current Active Session Details (if any) */}
+        {activeSession && (
+          <div style={{ background: "white", border: "1px solid #e2e8f0", padding: "24px", borderRadius: "12px", boxShadow: "0 1px 3px rgba(0,0,0,0.05)", marginBottom: "24px" }}>
+            <div style={{ borderBottom: "1.5px solid #f1f5f9", paddingBottom: "12px", marginBottom: "16px", display: "flex", alignItems: "center", gap: "8px" }}>
+              <ShieldAlert style={{ color: "#eab308" }} size={20} />
+              <h3 style={{ margin: 0, fontSize: "18px", fontWeight: "700", color: "#0f172a" }}>Upcoming Session details</h3>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+              <div>
+                <div style={{ fontSize: "12px", color: "#64748b", fontWeight: "600" }}>DATE & TIME</div>
+                <div style={{ fontSize: "14px", color: "#1e293b", fontWeight: "700", marginTop: "4px" }}>
+                  {parseRemarks(activeSession.remarks).scheduledDate} @ {parseRemarks(activeSession.remarks).scheduledTime}
+                </div>
+              </div>
+              <div>
+                <div style={{ fontSize: "12px", color: "#64748b", fontWeight: "600" }}>ASSIGNED COUNSELLOR</div>
+                <div style={{ fontSize: "14px", color: "#1e293b", fontWeight: "700", marginTop: "4px" }}>
+                  {activeSession.counsellorName} (HRMS: {activeSession.counsellorHrmsId})
+                </div>
+              </div>
+            </div>
+            <div style={{ marginTop: "16px" }}>
+              <div style={{ fontSize: "12px", color: "#64748b", fontWeight: "600" }}>INSTRUCTIONS / SCHEDULING REMARKS</div>
+              <div style={{ fontSize: "14px", color: "#334155", background: "#f8fafc", padding: "12px", borderRadius: "8px", border: "1px solid #e2e8f0", marginTop: "6px" }}>
+                {parseRemarks(activeSession.remarks).schedulingRemarks || "No instructions provided."}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Monitoring Reviews Timeline */}
+        {monitoringReviews.length > 0 && (
+          <div style={{ background: "white", border: "1px solid #e2e8f0", padding: "24px", borderRadius: "12px", boxShadow: "0 1px 3px rgba(0,0,0,0.05)", marginBottom: "24px" }}>
+            <div style={{ borderBottom: "1.5px solid #f1f5f9", paddingBottom: "12px", marginBottom: "16px" }}>
+              <h3 style={{ margin: 0, fontSize: "18px", fontWeight: "700", color: "#0f172a" }}>Safety Monitoring Review Logs</h3>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+              {monitoringReviews.map((rev, idx) => (
+                <div key={idx} style={{ padding: "16px", borderRadius: "8px", background: "#f8fafc", border: "1px solid #e2e8f0" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+                    <span style={{ fontSize: "13px", fontWeight: "700", color: "#0f172a" }}>Review by: {rev.reviewer}</span>
+                    <span style={{ fontSize: "12px", color: "#64748b", fontWeight: "600" }}>{rev.reviewDate}</span>
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
+                    <span style={{ fontSize: "12px", color: "#64748b" }}>Risk Level Assigned:</span>
+                    {riskBadge(rev.riskLevel)}
+                  </div>
+                  <p style={{ margin: 0, fontSize: "13px", color: "#334155", lineHeight: "1.5" }}>{rev.remarks}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Counselling History Table */}
+        <div style={{ background: "white", border: "1px solid #e2e8f0", padding: "24px", borderRadius: "12px", boxShadow: "0 1px 3px rgba(0,0,0,0.05)" }}>
+          <div style={{ borderBottom: "1.5px solid #f1f5f9", paddingBottom: "12px", marginBottom: "16px" }}>
+            <h3 style={{ margin: 0, fontSize: "18px", fontWeight: "700", color: "#0f172a" }}>Counselling History Logs</h3>
+          </div>
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <thead>
+                <tr style={{ borderBottom: "1.5px solid #e2e8f0", background: "#f8fafc", textAlign: "left" }}>
+                  {["Date", "Counsellor", "Status", "Remarks & Observations"].map(h => (
+                    <th key={h} style={{ padding: "12px 16px", fontSize: "12px", color: "#475569", fontWeight: "700" }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {counsellingHistory.map(row => {
+                  const rem = parseRemarks(row.remarks);
+                  return (
+                    <tr key={row.counselling_id} style={{ borderBottom: "1px solid #e8edf2" }}>
+                      <td style={{ padding: "12px 16px", fontSize: "13px", fontWeight: "700", color: "#1e293b" }}>
+                        {rem.scheduledDate || "—"}
+                      </td>
+                      <td style={{ padding: "12px 16px", fontSize: "13px", color: "#475569", fontWeight: "600" }}>
+                        {row.counsellorName} (HRMS: {row.counsellorHrmsId})
+                      </td>
+                      <td style={{ padding: "12px 16px", fontSize: "13px" }}>
+                        {statusBadge(row.status)}
+                      </td>
+                      <td style={{ padding: "12px 16px", fontSize: "13px", color: "#334155" }}>
+                        {row.status === "Completed" && (
+                          <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                            <div><strong>Safety Concerns:</strong> {rem.safetyConcerns || "None noted."}</div>
+                            <div><strong>Behavioral Observations:</strong> {rem.observations || rem.behaviouralConcerns || "—"}</div>
+                            <div><strong>Recommendations:</strong> {rem.recommendations || "—"}</div>
+                            <div><strong>Follow-up Actions:</strong> {rem.followUpActions || "—"}</div>
+                          </div>
+                        )}
+                        {row.status === "Absent" && (
+                          <div style={{ color: "#dc2626" }}>
+                            <strong>Absence Reason:</strong> {rem.absenceRemarks || "Unexcused absence."}
+                          </div>
+                        )}
+                        {row.status === "Scheduled" && (
+                          <div style={{ color: "#64748b", fontStyle: "italic" }}>
+                            Session is scheduled. Instructions: {rem.schedulingRemarks || "—"}
+                          </div>
+                        )}
+                        {row.status === "Pending" && (
+                          <div style={{ color: "#64748b" }}>
+                            Pending scheduling by Station Master.
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+                {counsellingHistory.length === 0 && (
+                  <tr>
+                    <td colSpan={4} style={{ padding: "30px", textAlign: "center", color: "#64748b", fontSize: "14px" }}>
+                      No counselling records available.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   /* ─── Content dispatcher ─── */
   const renderBodyContent = () => {
     if (screenMode === "takeTest") return renderTakeTest();
@@ -997,6 +1324,8 @@ function PointsmanModule({ user, onLogout }) {
     if (activeNav === "myAssessment") return renderMyAssessment();
     if (activeNav === "current") return renderCurrentTestsPage();
     if (activeNav === "safety") return renderSafetyPage();
+    if (activeNav === "refCourse") return renderRefCourse();
+    if (activeNav === "counselling") return renderCounselling();
     return renderDashboardPage();
   };
 

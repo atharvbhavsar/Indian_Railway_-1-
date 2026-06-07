@@ -5,7 +5,9 @@ import {
   smTestQuestions 
 } from '../../data/mockStationMasterData';
 import { saDataService } from '../../services/saDataService';
+import { monitoringService } from '../../services/monitoringService';
 import { supabase, isSupabaseConfigured, dbService } from "../../supabaseClient";
+import { assessmentService } from "../../services/assessmentService";
 
 export function useStationMasterState(user, onLogout) {
 
@@ -13,6 +15,7 @@ export function useStationMasterState(user, onLogout) {
   const [pageMode, setPageMode]           = useState("default");
   const [statusMsg, setStatusMsg]         = useState("");
   const [pointsmen, setPointsmen]         = useState([]);
+  const [counsellingQueue, setCounsellingQueue] = useState([]);
   const [drafts, setDrafts]               = useState([]);
   const [submittedAssessments, setSubmittedAssessments] = useState([]);
   const [selectedPm, setSelectedPm]       = useState(null);
@@ -171,10 +174,18 @@ export function useStationMasterState(user, onLogout) {
         }
       }
 
-      // We want the Station Master to see ALL pointsmen so they can activate/deactivate tests
-      // and check current statuses.
-      const initialDrafts = filtered;
+      // Only Pointsmen in Category D can be assessed by the Station Master
+      const initialDrafts = filtered.filter(x => x.cat === "D" || x.category === "D");
       setDrafts(initialDrafts);
+
+      if (isSupabaseConfigured && userStation) {
+        try {
+          const records = await assessmentService.getCounsellingRecordsByStation(userStation);
+          setCounsellingQueue(records || []);
+        } catch (counselErr) {
+          console.error("Error fetching counselling records for SM:", counselErr);
+        }
+      }
 
     } catch (err) {
       console.error("Error fetching live db data:", err);
@@ -845,6 +856,14 @@ export function useStationMasterState(user, onLogout) {
           if (attemptErr) throw attemptErr;
         }
 
+        if (computedCat === "D" && !isDraft) {
+          try {
+            await assessmentService.triggerCategoryDProtocol(pmUser.user_id, assessmentId, scoreVal, "D", smUserUuid);
+          } catch (dErr) {
+            console.error("Failed to trigger Category D protocol:", dErr);
+          }
+        }
+
         console.log(`Successfully saved assessment and test attempt to Supabase with status ${assessmentStatus}`);
       } catch (err) {
         console.error("Failed to save assessment to database:", err);
@@ -860,6 +879,120 @@ export function useStationMasterState(user, onLogout) {
     }
 
     setPageMode("default");
+  };
+
+  const logSmPmeRecord = async (employeeHrmsId, pmeData) => {
+    try {
+      const { data: uData, error: uErr } = await supabase
+        .from('USERS')
+        .select('user_id')
+        .eq('hrms_id', employeeHrmsId)
+        .single();
+      
+      if (uErr || !uData?.user_id) throw new Error("Employee not found in database.");
+      
+      const userId = uData.user_id;
+      const res = await monitoringService.logPmeRecord(userId, pmeData);
+      if (res && res.success) {
+        setStatusMsg(`PME Record logged successfully for ${employeeHrmsId}.`);
+        await fetchLiveDatabaseData();
+        return { success: true };
+      } else {
+        throw new Error(res?.error || "Failed to log PME record.");
+      }
+    } catch (err) {
+      console.error("Error logging PME record:", err);
+      alert("Error logging PME record: " + err.message);
+      return { success: false, error: err.message };
+    }
+  };
+
+  const logSmRefRecord = async (employeeHrmsId, refData) => {
+    try {
+      const { data: uData, error: uErr } = await supabase
+        .from('USERS')
+        .select('user_id')
+        .eq('hrms_id', employeeHrmsId)
+        .single();
+
+      if (uErr || !uData?.user_id) throw new Error("Employee not found in database.");
+
+      const userId = uData.user_id;
+      const res = await monitoringService.logRefresherCourse(userId, refData);
+      if (res && res.success) {
+        setStatusMsg(`REF Course record logged successfully for ${employeeHrmsId}.`);
+        await fetchLiveDatabaseData();
+        return { success: true };
+      } else {
+        throw new Error(res?.error || "Failed to log REF record.");
+      }
+    } catch (err) {
+      console.error("Error logging REF record:", err);
+      alert("Error logging REF record: " + err.message);
+      return { success: false, error: err.message };
+    }
+  };
+
+  const scheduleCounselling = async (counsellingId, date, time, remarks) => {
+    try {
+      const res = await assessmentService.updateCounsellingSchedule(counsellingId, date, time, remarks, smId);
+      if (res && res.success) {
+        setStatusMsg(`Counselling session scheduled successfully.`);
+        await fetchLiveDatabaseData();
+        return { success: true };
+      } else {
+        throw new Error(res?.error || "Failed to schedule counselling.");
+      }
+    } catch (err) {
+      console.error("Error scheduling counselling:", err);
+      alert("Error scheduling counselling: " + err.message);
+      return { success: false, error: err.message };
+    }
+  };
+
+  const submitCounsellingResult = async (counsellingId, attendance, remarksData) => {
+    try {
+      const res = await assessmentService.recordCounsellingAttendance(counsellingId, attendance, remarksData);
+      if (res && res.success) {
+        setStatusMsg(`Counselling session recorded as ${attendance}.`);
+        await fetchLiveDatabaseData();
+        return { success: true };
+      } else {
+        throw new Error(res?.error || "Failed to record counselling session.");
+      }
+    } catch (err) {
+      console.error("Error recording counselling session:", err);
+      alert("Error recording counselling session: " + err.message);
+      return { success: false, error: err.message };
+    }
+  };
+
+  const submitMonitoringReview = async (employeeHrmsId, reviewData) => {
+    try {
+      const { data: uData, error: uErr } = await supabase
+        .from('USERS')
+        .select('user_id')
+        .eq('hrms_id', employeeHrmsId)
+        .single();
+      
+      if (uErr || !uData?.user_id) throw new Error("Employee not found in database.");
+
+      const res = await assessmentService.updateMonitoringRecord(uData.user_id, {
+        ...reviewData,
+        reviewer: smName
+      });
+      if (res && res.success) {
+        setStatusMsg(`Monitoring review updated successfully.`);
+        await fetchLiveDatabaseData();
+        return { success: true };
+      } else {
+        throw new Error(res?.error || "Failed to update monitoring review.");
+      }
+    } catch (err) {
+      console.error("Error updating monitoring review:", err);
+      alert("Error updating monitoring review: " + err.message);
+      return { success: false, error: err.message };
+    }
   };
 
   return {
@@ -919,6 +1052,13 @@ export function useStationMasterState(user, onLogout) {
     smName,
     smId,
     stationSms,
-    assignedTi
+    assignedTi,
+    logSmPmeRecord,
+    logSmRefRecord,
+    counsellingQueue,
+    scheduleCounselling,
+    submitCounsellingResult,
+    submitMonitoringReview
   };
 }
+

@@ -65,6 +65,18 @@ export const saDataService = {
           const cat = ep.category || (lastScore === 0 ? "Untested" : (lastScore >= 80 ? "A" : lastScore >= 50 ? "B" : lastScore >= 26 ? "C" : "D"));
           const risk = lastScore === 0 ? "Untested" : ((safetyScore < 60 || lastScore < 50) ? "High" : (safetyScore < 75 || lastScore < 65) ? "Medium" : "Low");
 
+          const pmeRecs = u.PME_RECORD || [];
+          const sortedPme = [...pmeRecs].sort((a, b) => new Date(b.pme_due_date || 0) - new Date(a.pme_due_date || 0));
+          const latestPme = sortedPme[0] || {};
+
+          const refRecs = u.TRAINING_RECORD || [];
+          const sortedRef = [...refRecs].sort((a, b) => new Date(b.training_date || 0) - new Date(a.training_date || 0));
+          const latestRef = sortedRef[0] || {};
+          let parsedMeta = {};
+          if (latestRef.course_name) {
+            try { parsedMeta = JSON.parse(latestRef.course_name); } catch (_) {}
+          }
+
           return {
             id: u.hrms_id,
             user_id: u.user_id,
@@ -86,7 +98,13 @@ export const saDataService = {
             shift: ep.shift || "—",
             jurisdiction: ep.jurisdiction || "—",
             linkedStations: superAdminRole === "ti" ? (ep.jurisdiction || "") : "",
-            reportingAom: "—"
+            reportingAom: "—",
+            pmeStatus: ep.pme_status || latestPme.pme_status || "Fit",
+            pmeDueDate: latestPme.pme_due_date || null,
+            pmeDoneDate: latestPme.pme_done_date || null,
+            refStatus: ep.refresher_status || parsedMeta.refStatus || "Cleared",
+            refDueDate: parsedMeta.nextDueDate || latestRef.expiry_date || null,
+            refDoneDate: latestRef.training_date || null
           };
         });
       }
