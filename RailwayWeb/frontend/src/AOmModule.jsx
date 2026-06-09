@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useAomState } from './hooks/useAomState.jsx';
 import { MONTHLY_TREND, ASSESSMENT_MONTHLY, COMPLIANCE, CAT_COLORS, RISK_COLORS, STATUS_COLORS, generate96Stations, DASHBOARD_96_STATIONS, stationProgressData, categoryData, sidebarItems, summaryCards, designationOptions, departmentOptions, userTypeOptions, reportingOfficerOptions, aomReadOnlyProfile, initialUserFormData, initialFilterData, stationZoneOptions, stationDivisionOptions, stationCategoryOptions, stationTypeOptions, initialStationFormData, initialStationFilterData, initialStations, tiCategoryOptions, tiAssessmentStatusOptions, initialTrafficInspectors, hrmsTiDirectory, initialTiFormData, stationAverageScoreData, initialPendingAssessments, initialApprovedAssessments, initialReportRows, assessmentCriteria } from './constants/aomMockData';
-import { TI_SM_CRITERIA } from './constants/trafficInspectorConstants';
+import { TI_SM_CRITERIA, TI_SS_CRITERIA, TI_TM_CRITERIA } from './constants/trafficInspectorConstants';
 import {
   Activity, AlertCircle, AlertTriangle, ArrowRightLeft, ArrowLeft, BarChart3, Building2, BusFront,
   ClipboardCheck, Eye, ExternalLink, Filter, Cog, FileCheck, FileDown, FileText, FileBarChart2,
@@ -11,8 +11,10 @@ import {
 } from 'lucide-react';
 import { Bar, BarChart, Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis, LineChart, Line, CartesianGrid, LabelList } from 'recharts';
 import './sdom.css';
+import { useLanguage } from './contexts/LanguageContext';
 
 function AOmModule({ user, onLogout }) {
+  const { language, changeLanguage, t } = useLanguage();
   const state = useAomState(user, onLogout);
   const [showPmeModal, setShowPmeModal] = useState(false);
   const [pmeFormHrmsId, setPmeFormHrmsId] = useState("");
@@ -21,6 +23,15 @@ function AOmModule({ user, onLogout }) {
   const [pmeFormDueDate, setPmeFormDueDate] = useState("");
   const [pmeSearch, setPmeSearch] = useState("");
   const [pmeStatusFilter, setPmeStatusFilter] = useState("All");
+
+  const [showCategoriesPanel, setShowCategoriesPanel] = useState(false);
+  const [editingEmployee, setEditingEmployee] = useState(null);
+  const [scheduleDate, setScheduleDate] = useState("");
+  const [scheduleTime, setScheduleTime] = useState("10:00");
+  const [scheduleReason, setScheduleReason] = useState("");
+  const [rosterSearch, setRosterSearch] = useState("");
+  const [rosterStation, setRosterStation] = useState("All");
+
   const {
     activePage,
     setActivePage,
@@ -287,6 +298,15 @@ function AOmModule({ user, onLogout }) {
     setAssessStatus,
     assessDate,
     setAssessDate,
+    allDbAssessments,
+    selectedCategory,
+    setSelectedCategory,
+    selectedHrmsIds,
+    setSelectedHrmsIds,
+    viewUpcomingOnly,
+    setViewUpcomingOnly,
+    sendBatchExamAccessAOM,
+    updateEmployeeScheduleAOM,
     aomSettings,
     setAomSettings,
     settingsNotice,
@@ -445,6 +465,120 @@ function AOmModule({ user, onLogout }) {
     renderTiModal,
     renderAddStationModal
   } = state;
+
+  const convertTo24Hour = (time12) => {
+    if (!time12) return "10:00";
+    const match = time12.match(/^(\d+):(\d+)\s*(AM|PM)$/i);
+    if (!match) return "10:00";
+    let hours = parseInt(match[1]);
+    const minutes = match[2];
+    const ampm = match[3].toUpperCase();
+    if (ampm === "PM" && hours < 12) hours += 12;
+    if (ampm === "AM" && hours === 12) hours = 0;
+    return `${String(hours).padStart(2, "0")}:${minutes}`;
+  };
+
+  const convertTo12Hour = (time24) => {
+    if (!time24) return "10:00 AM";
+    const [hoursStr, minutesStr] = time24.split(":");
+    let hours = parseInt(hoursStr);
+    const minutes = minutesStr;
+    const ampm = hours >= 12 ? "PM" : "AM";
+    hours = hours % 12;
+    if (hours === 0) hours = 12;
+    return `${hours}:${minutes} ${ampm}`;
+  };
+
+  const getEmployeeScheduleDetails = (p, roleKey) => {
+    const getEmpCategory = (emp) => emp.cat || aomGetCat(emp.score || 0);
+    const cat = getEmpCategory(p);
+    const frequency = cat === "A" || cat === "B" ? "6 Months" : (cat === "C" ? "3 Months" : "1 Month");
+    
+    // Find all assessments for this employee from allDbAssessments
+    const empAssessments = allDbAssessments 
+      ? allDbAssessments.filter(a => a.employee?.hrms_id === p.hrmsId || a.employee?.hrms_id === p.employeeId) 
+      : [];
+    
+    const baseAssessType = roleKey === "TI" ? "Safety Exam" : "Station Superintendent Assessment";
+
+    // 1. Last Assessment Date
+    const pastApproved = empAssessments.filter(a => ["Approved", "Completed", "EVALUATED"].includes(a.status));
+    pastApproved.sort((a, b) => new Date(b.assessment_date || b.created_at) - new Date(a.assessment_date || a.created_at));
+    const lastAssess = pastApproved[0];
+    const lastAssessDate = lastAssess ? (lastAssess.assessment_date || lastAssess.created_at?.slice(0, 10)) : (p.lastAssessed || "None");
+    
+    // 2. Next Due Date & Time
+    const upcomingAssess = empAssessments.find(a => 
+      ["LOCKED", "AVAILABLE", "IN_PROGRESS", "Pending", "Draft", "Scheduled"].includes(a.status) && 
+      a.due_date && 
+      (a.assessment_type?.startsWith(baseAssessType) || a.assessment_type === baseAssessType)
+    );
+    
+    let nextDueDate = null;
+    let nextDueTime = "10:00 AM";
+    let isCustomScheduled = false;
+    
+    if (upcomingAssess) {
+      nextDueDate = upcomingAssess.due_date;
+      isCustomScheduled = true;
+      if (upcomingAssess.assessment_type) {
+        const timeMatch = upcomingAssess.assessment_type.match(/Time:\s*(.+)$/i);
+        if (timeMatch) {
+          nextDueTime = timeMatch[1].trim();
+        }
+      }
+    } else if (lastAssessDate && lastAssessDate !== "None") {
+      const lastDateObj = new Date(lastAssessDate);
+      if (!isNaN(lastDateObj.getTime())) {
+        const monthsToAdd = cat === "A" || cat === "B" ? 6 : (cat === "C" ? 3 : 1);
+        lastDateObj.setMonth(lastDateObj.getMonth() + monthsToAdd);
+        nextDueDate = lastDateObj.toISOString().slice(0, 10);
+      }
+    }
+    
+    if (!nextDueDate) {
+      nextDueDate = "Not Scheduled";
+    }
+    
+    // 3. Days Remaining
+    let daysRemaining = null;
+    if (nextDueDate && nextDueDate !== "Not Scheduled") {
+      const diffTime = new Date(nextDueDate).getTime() - new Date().setHours(0,0,0,0);
+      daysRemaining = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    }
+    
+    // 4. Status Indicator
+    let statusText = "Not Scheduled";
+    let statusType = "neutral"; 
+    
+    if (nextDueDate !== "Not Scheduled" && daysRemaining !== null) {
+      if (daysRemaining < 0) {
+        statusText = "Overdue";
+        statusType = "danger";
+      } else if (daysRemaining === 0) {
+        statusText = "Due Today";
+        statusType = "danger";
+      } else if (daysRemaining <= 7) {
+        statusText = "Due Soon";
+        statusType = "warning";
+      } else {
+        statusText = "Upcoming";
+        statusType = "success";
+      }
+    }
+    
+    return {
+      frequency,
+      lastAssessDate,
+      nextDueDate,
+      nextDueTime,
+      daysRemaining,
+      statusText,
+      statusType,
+      isCustomScheduled,
+      upcomingAssessId: upcomingAssess?.assessment_id || null
+    };
+  };
 
   const renderPmePosition = () => {
     // Filtered employees list based on search and status filters
@@ -1240,170 +1374,7 @@ function AOmModule({ user, onLogout }) {
 
       case "Station Management":
       case "All Stations":
-        return (
-          <div className="user-management-page">
-            <div className="page-header">
-              <h2>STATION MANAGEMENT</h2>
-            </div>
-
-            <div className="chart-card station-list-intro">
-              <div>
-                <h3>All Stations Directory</h3>
-                <p>Manage station records, quickly search data, and keep operational information up to date.</p>
-              </div>
-              <div className="station-list-kpi">Total Stations: {stations.length}</div>
-            </div>
-
-            <div className="station-action-bar chart-card">
-              <button type="button" className="submit-btn" onClick={() => handleStationSubPage("Add Station")}>
-                Add New Station
-              </button>
-              <input
-                type="text"
-                className="users-table-search"
-                placeholder="Search by Station Name / Code"
-                value={stationSearch}
-                onChange={(e) => {
-                  setStationSearch(e.target.value);
-                  setStationCurrentPage(1);
-                }}
-              />
-            </div>
-
-            <div className="users-filter-section chart-card">
-              <form className="filter-grid station-filter-grid" onSubmit={handleApplyStationFilter}>
-                <div className="form-group">
-                  <label>Zone</label>
-                  <select name="zone" value={pendingStationFilters.zone} onChange={handleStationFilterChange}>
-                    <option value="">All Zones</option>
-                    {stationZoneOptions.map((option) => (
-                      <option key={option} value={option}>
-                        {option}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="form-group">
-                  <label>Division</label>
-                  <select name="division" value={pendingStationFilters.division} onChange={handleStationFilterChange}>
-                    <option value="">All Divisions</option>
-                    {stationDivisionOptions.map((option) => (
-                      <option key={option} value={option}>
-                        {option}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="form-group">
-                  <label>Station Category</label>
-                  <select name="category" value={pendingStationFilters.category} onChange={handleStationFilterChange}>
-                    <option value="">All Categories</option>
-                    {stationCategoryOptions.map((option) => (
-                      <option key={option} value={option}>
-                        {option}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="form-group">
-                  <label>Status</label>
-                  <select name="status" value={pendingStationFilters.status} onChange={handleStationFilterChange}>
-                    <option value="">All Status</option>
-                    <option value="Active">Active</option>
-                    <option value="Inactive">Inactive</option>
-                  </select>
-                </div>
-
-                <div className="filter-submit-wrap">
-                  <button type="submit" className="submit-btn">Apply Filter</button>
-                </div>
-              </form>
-            </div>
-
-            <div className="users-list-container">
-              <div className="users-table-wrapper">
-                <div className="users-table station-table-wide">
-                  <div className="table-header station-table-cols">
-                    <div>Sr No</div>
-                    <div>Station Name</div>
-                    <div>Station Code</div>
-                    <div>Zone</div>
-                    <div>Division</div>
-                    <div>Category</div>
-                    <div>Platforms</div>
-                    <div>Tracks</div>
-                    <div>Station Type</div>
-                    <div>Status</div>
-                    <div>Created By</div>
-                    <div>Actions</div>
-                  </div>
-
-                  {pagedStations.length === 0 ? (
-                    <div className="table-empty-state">No stations found.</div>
-                  ) : (
-                    pagedStations.map((station, index) => (
-                      <div key={station.id} className="table-row station-table-cols">
-                        <div>{(stationCurrentPage - 1) * stationPageSize + index + 1}</div>
-                        <div>{station.stationName}</div>
-                        <div>
-                          <span className="station-code-chip">{station.stationCode}</span>
-                        </div>
-                        <div>{station.zone}</div>
-                        <div>{station.division}</div>
-                        <div>{renderCategoryBadge(station.category)}</div>
-                        <div>{station.platforms}</div>
-                        <div>{station.tracks}</div>
-                        <div>{station.stationType}</div>
-                        <div>
-                          <span className={station.status === "Active" ? "status-active-pill" : "status-inactive-pill"}>
-                            {station.status}
-                          </span>
-                        </div>
-                        <div>{station.createdBy}</div>
-                        <div className="table-action-cell">
-                          <button type="button" className="action-btn" onClick={() => openStationView(station.id, false)}>
-                            View
-                          </button>
-                          <button type="button" className="action-btn action-edit" onClick={() => openStationView(station.id, true)}>
-                            Edit
-                          </button>
-                          <button type="button" className="action-btn action-delete" onClick={() => handleDeleteStation(station.id)}>
-                            Delete
-                          </button>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-
-              <div className="table-pagination-wrap">
-                <button
-                  type="button"
-                  className="pagination-btn"
-                  onClick={goToPrevStationPage}
-                  disabled={stationCurrentPage === 1}
-                >
-                  Prev
-                </button>
-                <span className="pagination-text">
-                  Page {stationCurrentPage} of {stationTotalPages}
-                </span>
-                <button
-                  type="button"
-                  className="pagination-btn"
-                  onClick={goToNextStationPage}
-                  disabled={stationCurrentPage === stationTotalPages}
-                >
-                  Next
-                </button>
-              </div>
-            </div>
-          </div>
-        );
+        return renderStations();
 
       case "Stations":
         return renderStations();
@@ -3050,9 +3021,7 @@ function AOmModule({ user, onLogout }) {
           const activeAnswers = answersByAssessment[activeAssessment.id] || buildPrefilledAnswers(activeAssessment.title);
           const liveScore = calculateAssessmentScore(activeAnswers, true, effectiveQuizMarks, assessmentRoleTab);
             
-          const roleCriteria = assessmentRoleTab === "TM" ? TI_TM_CRITERIA : 
-                              (assessmentRoleTab === "SS" ? TI_SS_CRITERIA : 
-                              (assessmentRoleTab === "SM" ? TI_SM_CRITERIA : assessmentCriteria));
+          const roleCriteria = assessmentCriteria;
 
           let ynScore = 0;
           roleCriteria.forEach(sec => { if (sec.key !== "knowledgeOfRules" && sec.key !== "knowledgeMarks") ynScore += getTiSectionScore(sec.key, activeAnswers); });
@@ -3070,39 +3039,39 @@ function AOmModule({ user, onLogout }) {
 
           const checklistDetails = {
             alertnessAndObservation: [
-              "Maintains high situational awareness during station safety audits",
-              "Monitors and corrects hand signaling compliance among pointsmen",
-              "Inspects station master cabins for correct block instrument procedures",
-              "Identifies visual and auditory track anomalies during foot-inspections",
-              "Verifies readiness and vigilance of gatekeepers at level crossings"
+              "Alert while on duty",
+              "Observe rules during normal/abnormal working",
+              "Do not use shortcuts during duty",
+              "Clear written/verbal instructions given during duty",
+              "Prompt action during abnormal situations"
             ],
             safetyRecord: [
-              "No active safety violation reports or warnings on personal record",
-              "Proactively reports and documents track and signaling safety defects",
-              "Successfully coordinates responses to line blockages or emergency setups",
-              "Ensures zero failure reports on assigned safety equipment operations",
-              "Maintains impeccable records of post-accident safety analysis compliance"
+              "Awards",
+              "No Chargesheet",
+              "PME Done on Time",
+              "REF Done on Time",
+              "Record incident immediately and inform supervisor without delay"
             ],
             leadershipAndManagement: [
-              "Conducts regular safety counseling sessions for supervised station staff",
-              "Resolves operational bottlenecks efficiently during duty shifts",
-              "Guides and evaluates assistant station masters on emergency protocols",
-              "Organizes efficient staff deployment and shift management systems",
-              "Provides constructive feedback and implements staff improvement plans"
+              "Take decisions on time",
+              "Give clear instructions",
+              "Coordinate with fellow staff",
+              "Coordinate with other departments",
+              "Create a safe working environment"
             ],
             discipline: [
-              "Adheres strictly to official inspection rosters and schedules",
-              "Maintains up-to-date and accurate inspection logbooks",
-              "Punctually reports daily logs and key safety parameters to AOM console",
-              "Ensures compliance with all standing orders and safety circulars",
-              "Responds immediately to urgent directives or emergency call-outs"
+              "Appears on duty on time",
+              "Regular attendance",
+              "Polite with staff and passengers",
+              "Strictly follows rules and procedures",
+              "Maintains discipline during high workload or pressure"
             ],
             appearanceAndNeatness: [
-              "Wears prescribed uniform, cap, and badges during active duty hours",
-              "Exhibits neat, professional, and highly disciplined personal conduct",
-              "Maintains cleanliness and organized filing systems in inspection offices",
-              "Presents inspections reports in a clean, legible, and formatted structure",
-              "Ensures correct display of status boards and identity cards"
+              "Wears uniform neatly and cleanly",
+              "Displays identity card properly during duty",
+              "Uses safety gear (helmet, shoes, reflective jacket, etc.)",
+              "Maintains records neatly",
+              "Maintains workplace/premises cleanliness"
             ]
           };
 
@@ -3262,7 +3231,9 @@ function AOmModule({ user, onLogout }) {
                 const checklist = sec.criteria || checklistDetails[sec.key] || [];
                 const count = checklist.length;
                 const sectionScore = getTiSectionScore(sec.key, activeAnswers);
-                const sectionMax = sec.marks || (sec.weight ? sec.weight * 3 : 15);
+                const sectionMax = assessmentRoleTab === "TM"
+                  ? count * 3
+                  : (sec.marks || (sec.weight ? sec.weight * count : 15));
                 const weight = count > 0 ? (sectionMax / count).toFixed(2) : 0;
 
                 return (
@@ -3274,6 +3245,61 @@ function AOmModule({ user, onLogout }) {
                         <span className="sm2-assess-sec-meta">{count} criteria · {weight} marks each · Total {sectionMax}</span>
                       </div>
                       <span className="sm2-assess-live-marks">{sectionScore} / {sectionMax}</span>
+                    </div>
+                    <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px", padding: "6px 16px", background: "#f8fafc", borderBottom: "1px solid #e2e8f0", borderTopLeftRadius: "8px", borderTopRightRadius: "8px", alignItems: "center" }}>
+                      <span style={{ fontSize: "11px", fontWeight: "700", color: "#64748b", marginRight: "auto" }}>Quick Fill:</span>
+                      <button
+                        type="button"
+                        disabled={locked}
+                        onClick={() => {
+                          setAnswersByAssessment(prev => {
+                            const current = prev[activeAssessment.id] || {};
+                            const updated = { ...current };
+                            checklist.forEach((itemText, idx) => {
+                              updated[`${sec.key}_${idx}`] = "yes";
+                            });
+                            return { ...prev, [activeAssessment.id]: updated };
+                          });
+                        }}
+                        style={{
+                          padding: "2px 8px",
+                          fontSize: "11px",
+                          fontWeight: "700",
+                          borderRadius: "4px",
+                          border: "1px solid #cbd5e1",
+                          background: "#f0fdf4",
+                          color: "#166534",
+                          cursor: locked ? "not-allowed" : "pointer"
+                        }}
+                      >
+                        ✓ All Yes
+                      </button>
+                      <button
+                        type="button"
+                        disabled={locked}
+                        onClick={() => {
+                          setAnswersByAssessment(prev => {
+                            const current = prev[activeAssessment.id] || {};
+                            const updated = { ...current };
+                            checklist.forEach((itemText, idx) => {
+                              updated[`${sec.key}_${idx}`] = "no";
+                            });
+                            return { ...prev, [activeAssessment.id]: updated };
+                          });
+                        }}
+                        style={{
+                          padding: "2px 8px",
+                          fontSize: "11px",
+                          fontWeight: "700",
+                          borderRadius: "4px",
+                          border: "1px solid #cbd5e1",
+                          background: "#fef2f2",
+                          color: "#991b1b",
+                          cursor: locked ? "not-allowed" : "pointer"
+                        }}
+                      >
+                        ✗ All No
+                      </button>
                     </div>
                     <div className="sm2-yn-grid">
                       {checklist.map((itemText, idx) => {
@@ -3408,6 +3434,114 @@ function AOmModule({ user, onLogout }) {
         }
 
         // --- LEVEL 2: Roster View ---
+        if (!assessmentRoleTab) {
+          return (
+            <div className="ti2-page-body animate-fade-in" style={{ padding: "24px", background: "#f8fafc", minHeight: "100%", width: "100%", boxSizing: "border-box" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
+                <div>
+                  <h1 style={{ fontSize: "28px", fontWeight: "800", color: "#0f172a", margin: "0 0 4px" }}>
+                    Assessments
+                  </h1>
+                  <p style={{ margin: 0, fontSize: "14px", color: "#64748b", fontWeight: "500" }}>
+                    Select a staff category to conduct structured safety competency assessments.
+                  </p>
+                </div>
+              </div>
+
+              {/* Unified Role Choice Selection Boxes */}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px", marginBottom: "24px" }}>
+                <div
+                  onClick={() => {
+                    setAssessmentRoleTab("TI");
+                    setAssessSearch("");
+                    setAssessStation("All");
+                    setAssessStatus("All");
+                    setAssessDate("");
+                  }}
+                  style={{
+                    background: "#ffffff",
+                    border: "1px solid #e2e8f0",
+                    borderRadius: "16px",
+                    padding: "20px 24px",
+                    cursor: "pointer",
+                    boxShadow: "0 1px 3px rgba(0,0,0,0.02)",
+                    transition: "all 0.2s ease",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "16px"
+                  }}
+                >
+                  <div style={{
+                    width: "48px",
+                    height: "48px",
+                    borderRadius: "10px",
+                    background: "#f8fafc",
+                    color: "#64748b",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    flexShrink: 0
+                  }}>
+                    <ShieldCheck size={24} />
+                  </div>
+                  <div>
+                    <h3 style={{ margin: "0 0 4px", fontSize: "16px", fontWeight: "800", color: "#0f172a" }}>
+                      Traffic Inspectors (TI)
+                    </h3>
+                    <p style={{ margin: 0, fontSize: "12.5px", color: "#64748b", fontWeight: "500", lineHeight: "1.4" }}>
+                      Conduct safety audits, check online exams, and manage inspector approvals.
+                    </p>
+                  </div>
+                </div>
+
+                <div
+                  onClick={() => {
+                    setAssessmentRoleTab("SS");
+                    setAssessSearch("");
+                    setAssessStation("All");
+                    setAssessStatus("All");
+                    setAssessDate("");
+                  }}
+                  style={{
+                    background: "#ffffff",
+                    border: "1px solid #e2e8f0",
+                    borderRadius: "16px",
+                    padding: "20px 24px",
+                    cursor: "pointer",
+                    boxShadow: "0 1px 3px rgba(0,0,0,0.02)",
+                    transition: "all 0.2s ease",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "16px"
+                  }}
+                >
+                  <div style={{
+                    width: "48px",
+                    height: "48px",
+                    borderRadius: "10px",
+                    background: "#f8fafc",
+                    color: "#64748b",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    flexShrink: 0
+                  }}>
+                    <UserCheck size={24} />
+                  </div>
+                  <div>
+                    <h3 style={{ margin: "0 0 4px", fontSize: "16px", fontWeight: "800", color: "#0f172a" }}>
+                      Station Superintendents (SS)
+                    </h3>
+                    <p style={{ margin: 0, fontSize: "12.5px", color: "#64748b", fontWeight: "500", lineHeight: "1.4" }}>
+                      Track safety performance, perform active shift audits, and view compliance lists.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        }
+
         const isTI = assessmentRoleTab === "TI";
         const rolePrefix = isTI ? "ti" : "ss";
         const roleTitle = isTI ? "Traffic Inspectors" : "Station Superintendents";
@@ -3464,7 +3598,7 @@ function AOmModule({ user, onLogout }) {
         const filteredList = rosterList.filter((emp) => {
           const matchesSearch = assessSearch === "" ||
             emp.name.toLowerCase().includes(assessSearch.toLowerCase()) ||
-            emp.employeeId.toLowerCase().includes(assessSearch.toLowerCase());
+            (emp.hrmsId || emp.employeeId).toLowerCase().includes(assessSearch.toLowerCase());
 
           const matchesStation = assessStation === "All" ||
             emp.stationName === assessStation ||
@@ -3516,17 +3650,898 @@ function AOmModule({ user, onLogout }) {
           "Delhi Junction": "DLI"
         };
 
+        const getEmpCategory = (p) => p.cat || aomGetCat(p.score || 0);
+
+        const renderScheduleModal = (roleKey) => {
+          if (!editingEmployee) return null;
+
+          const isBulk = editingEmployee === "bulk";
+          const title = isBulk
+            ? `Bulk Schedule Assessments (${selectedHrmsIds.length} employees)`
+            : `Schedule Assessment — ${editingEmployee.name} (${editingEmployee.hrmsId || editingEmployee.employeeId})`;
+
+          const handleSaveSchedule = async () => {
+            if (!scheduleDate) {
+              alert("Please select a date.");
+              return;
+            }
+            if (!scheduleReason.trim()) {
+              alert("Please enter a reason for scheduling.");
+              return;
+            }
+
+            try {
+              const formattedTime = convertTo12Hour(scheduleTime);
+              let successCount = 0;
+
+              if (isBulk) {
+                for (const hrmsId of selectedHrmsIds) {
+                  const res = await updateEmployeeScheduleAOM(roleKey, hrmsId, scheduleDate, formattedTime, scheduleReason);
+                  if (res && res.success) {
+                    successCount++;
+                  }
+                }
+                setSelectedHrmsIds([]);
+                alert(`Successfully scheduled assessment for ${successCount} employee(s).`);
+              } else {
+                const res = await updateEmployeeScheduleAOM(roleKey, editingEmployee.hrmsId || editingEmployee.employeeId, scheduleDate, formattedTime, scheduleReason);
+                if (res && res.success) {
+                  alert(`Successfully scheduled assessment for ${editingEmployee.name}.`);
+                }
+              }
+            } catch (err) {
+              console.error("Error scheduling:", err);
+              alert("An error occurred during scheduling: " + err.message);
+            } finally {
+              setEditingEmployee(null);
+              setScheduleDate("");
+              setScheduleTime("10:00");
+              setScheduleReason("");
+            }
+          };
+
+          return (
+            <div style={{
+              position: "fixed",
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: "rgba(15, 23, 42, 0.6)",
+              backdropFilter: "blur(4px)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              zIndex: 9999,
+            }}>
+              <div style={{
+                backgroundColor: "#ffffff",
+                borderRadius: "16px",
+                width: "100%",
+                maxWidth: "480px",
+                boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
+                padding: "24px",
+                border: "1px solid #e2e8f0"
+              }}>
+                {/* Modal Header */}
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
+                  <h3 style={{ margin: 0, fontSize: "18px", fontWeight: "800", color: "#0f172a" }}>{title}</h3>
+                  <button
+                    onClick={() => {
+                      setEditingEmployee(null);
+                      setScheduleDate("");
+                      setScheduleTime("10:00");
+                      setScheduleReason("");
+                    }}
+                    style={{
+                      background: "none",
+                      border: "none",
+                      fontSize: "20px",
+                      color: "#64748b",
+                      cursor: "pointer",
+                      padding: "4px"
+                    }}
+                  >
+                    ×
+                  </button>
+                </div>
+
+                {/* Modal Content */}
+                <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+                  <div style={{ display: "flex", gap: "12px" }}>
+                    <div style={{ flex: 1 }}>
+                      <label style={{ display: "block", fontSize: "12.5px", fontWeight: "700", color: "#475569", marginBottom: "6px" }}>
+                        Assessment Date *
+                      </label>
+                      <input
+                        type="date"
+                        min={new Date().toISOString().slice(0, 10)}
+                        value={scheduleDate}
+                        onChange={e => setScheduleDate(e.target.value)}
+                        style={{
+                          width: "100%",
+                          height: "40px",
+                          padding: "0 12px",
+                          borderRadius: "8px",
+                          border: "1px solid #cbd5e1",
+                          fontSize: "13.5px",
+                          fontWeight: "600",
+                          boxSizing: "border-box",
+                          outline: "none"
+                        }}
+                      />
+                    </div>
+
+                    <div style={{ width: "140px" }}>
+                      <label style={{ display: "block", fontSize: "12.5px", fontWeight: "700", color: "#475569", marginBottom: "6px" }}>
+                        Start Time
+                      </label>
+                      <input
+                        type="time"
+                        value={scheduleTime}
+                        onChange={e => setScheduleTime(e.target.value)}
+                        style={{
+                          width: "100%",
+                          height: "40px",
+                          padding: "0 12px",
+                          borderRadius: "8px",
+                          border: "1px solid #cbd5e1",
+                          fontSize: "13.5px",
+                          fontWeight: "600",
+                          boxSizing: "border-box",
+                          outline: "none"
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label style={{ display: "block", fontSize: "12.5px", fontWeight: "700", color: "#475569", marginBottom: "6px" }}>
+                      Reason for Schedule / Shift *
+                    </label>
+                    <textarea
+                      placeholder="e.g. Periodic safety competency assessment..."
+                      value={scheduleReason}
+                      onChange={e => setScheduleReason(e.target.value)}
+                      style={{
+                        width: "100%",
+                        height: "80px",
+                        padding: "8px 12px",
+                        borderRadius: "8px",
+                        border: "1px solid #cbd5e1",
+                        fontSize: "13.5px",
+                        fontWeight: "600",
+                        boxSizing: "border-box",
+                        outline: "none",
+                        resize: "none",
+                        fontFamily: "inherit"
+                      }}
+                    />
+                  </div>
+
+                  {/* Modal Footer */}
+                  <div style={{ display: "flex", justifyContent: "flex-end", gap: "12px", marginTop: "8px" }}>
+                    <button
+                      onClick={() => {
+                        setEditingEmployee(null);
+                        setScheduleDate("");
+                        setScheduleTime("10:00");
+                        setScheduleReason("");
+                      }}
+                      style={{
+                        background: "#ffffff",
+                        border: "1px solid #cbd5e1",
+                        padding: "10px 18px",
+                        borderRadius: "8px",
+                        fontSize: "13px",
+                        fontWeight: "750",
+                        color: "#475569",
+                        cursor: "pointer"
+                      }}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleSaveSchedule}
+                      style={{
+                        background: "#2563eb",
+                        border: "none",
+                        padding: "10px 20px",
+                        borderRadius: "8px",
+                        fontSize: "13px",
+                        fontWeight: "750",
+                        color: "#ffffff",
+                        cursor: "pointer"
+                      }}
+                    >
+                      Save Schedule
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        };
+
+        if (showCategoriesPanel) {
+          const countA = rosterList.filter(p => getEmpCategory(p) === "A").length;
+          const countB = rosterList.filter(p => getEmpCategory(p) === "B").length;
+          const countC = rosterList.filter(p => getEmpCategory(p) === "C").length;
+          const countD = rosterList.filter(p => getEmpCategory(p) === "D").length;
+
+          const categoriesList = [
+            { id: "A", name: "Category A", count: countA, color: "#16a34a", bg: "#f0fdf4" },
+            { id: "B", name: "Category B", count: countB, color: "#2563eb", bg: "#eff6ff" },
+            { id: "C", name: "Category C", count: countC, color: "#d97706", bg: "#fffbeb" },
+            { id: "D", name: "Category D", count: countD, color: "#dc2626", bg: "#fee2e2" }
+          ];
+
+          const statsSummary = {
+            overdue: 0,
+            dueToday: 0,
+            dueWeek: 0,
+            dueMonth: 0,
+            totalScheduled: 0
+          };
+
+          rosterList.forEach(p => {
+            const s = getEmployeeScheduleDetails(p, assessmentRoleTab);
+            if (s.nextDueDate !== "Not Scheduled" && s.daysRemaining !== null) {
+              statsSummary.totalScheduled++;
+              if (s.daysRemaining < 0) {
+                statsSummary.overdue++;
+              } else if (s.daysRemaining === 0) {
+                statsSummary.dueToday++;
+              } else if (s.daysRemaining > 0 && s.daysRemaining <= 7) {
+                statsSummary.dueWeek++;
+              } else if (s.daysRemaining > 0 && s.daysRemaining <= 30) {
+                statsSummary.dueMonth++;
+              }
+            }
+          });
+
+          const categoryPms = selectedCategory 
+            ? rosterList.filter(p => getEmpCategory(p) === selectedCategory)
+            : [];
+
+          const searchedCategoryPms = categoryPms.filter(p => {
+            const matchesSearch = !rosterSearch || 
+              p.name.toLowerCase().includes(rosterSearch.toLowerCase()) || 
+              (p.hrmsId || p.employeeId).toLowerCase().includes(rosterSearch.toLowerCase());
+            
+            const matchesStation = rosterStation === "All" ||
+              p.stationName === rosterStation ||
+              p.division === rosterStation;
+            
+            return matchesSearch && matchesStation;
+          });
+
+          const searchedCategoryPmsWithSched = searchedCategoryPms.map(p => ({
+            ...p,
+            sched: getEmployeeScheduleDetails(p, assessmentRoleTab)
+          }));
+
+          const filteredByUpcoming = viewUpcomingOnly
+            ? searchedCategoryPmsWithSched.filter(p => p.sched.nextDueDate !== "Not Scheduled")
+            : searchedCategoryPmsWithSched;
+
+          const getEmpStatusText = (p) => {
+            const keyPrefix = rolePrefix; // "ti" or "ss"
+            const mcqDataStr = localStorage.getItem(`${keyPrefix}_mcq_test_${p.hrmsId || p.employeeId}`);
+            const mcqData = mcqDataStr ? JSON.parse(mcqDataStr) : null;
+            
+            const isApproved = p.status === 'Approved';
+            const isPending = p.status === 'Submitted';
+            const isCompleted = (mcqData && mcqData.completed) || p.status === 'Exam Taken';
+            const isActivated = localStorage.getItem(`${keyPrefix}_test_activated_${p.hrmsId || p.employeeId}`) === "true" || p.status === 'Exam Sent';
+
+            if (isApproved) return { text: "Approved", type: "success" };
+            if (isPending) return { text: "Pending Approval", type: "info" };
+            if (isCompleted) return { text: "MCQ Completed", type: "success" };
+            if (isActivated) return { text: "Exam Active", type: "warning" };
+            return { text: "Exam Locked", type: "neutral" };
+          };
+
+          const isEligibleForActivation = (p) => {
+            const status = getEmpStatusText(p);
+            return status.text !== "Approved" && status.text !== "Pending Approval" && status.text !== "MCQ Completed";
+          };
+
+          const eligiblePms = searchedCategoryPms.filter(isEligibleForActivation);
+          const isAllSelected = eligiblePms.length > 0 && eligiblePms.every(p => selectedHrmsIds.includes(p.hrmsId || p.employeeId));
+
+          const handleSelectAll = (e) => {
+            if (e.target.checked) {
+              const ids = eligiblePms.map(p => p.hrmsId || p.employeeId);
+              setSelectedHrmsIds(ids);
+            } else {
+              setSelectedHrmsIds([]);
+            }
+          };
+
+          const handleSelectOne = (hrmsId, checked) => {
+            if (checked) {
+              setSelectedHrmsIds(prev => [...prev, hrmsId]);
+            } else {
+              setSelectedHrmsIds(prev => prev.filter(id => id !== hrmsId));
+            }
+          };
+
+          const stationOptions = ["All", ...new Set(rosterList.map(x => x.stationName).filter(Boolean))];
+
+          return (
+            <div className="ti2-page-body animate-fade-in" style={{ padding: "24px", background: "#f8fafc", minHeight: "100%", width: "100%", boxSizing: "border-box" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
+                <div>
+                  <h1 style={{ fontSize: "28px", fontWeight: "800", color: "#0f172a", margin: "0 0 4px" }}>
+                    Assessments — {roleTitle}
+                  </h1>
+                  <p style={{ margin: 0, fontSize: "14px", color: "#64748b", fontWeight: "500" }}>
+                    Select a category to view employees, search by HRMS ID, schedule tests, and activate assessment access in bulk.
+                  </p>
+                </div>
+                <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
+                  <button
+                    onClick={() => {
+                      setShowCategoriesPanel(false);
+                      setSelectedCategory(null);
+                      setSelectedHrmsIds([]);
+                      setRosterSearch("");
+                      setRosterStation("All");
+                      setViewUpcomingOnly(false);
+                    }}
+                    style={{
+                      background: "#ffffff",
+                      border: "1px solid #cbd5e1",
+                      padding: "8px 16px",
+                      borderRadius: "8px",
+                      fontSize: "13px",
+                      fontWeight: "700",
+                      color: "#334155",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: "6px",
+                      cursor: "pointer"
+                    }}
+                  >
+                    ← Back to List
+                  </button>
+                  <button
+                    onClick={() => { 
+                      setSelectedCategory(null);
+                      setSelectedHrmsIds([]);
+                      setRosterSearch(""); 
+                      setRosterStation("All"); 
+                      setViewUpcomingOnly(false);
+                      setShowCategoriesPanel(false);
+                      setAssessmentRoleTab(null);
+                    }}
+                    style={{
+                      background: "#ffffff",
+                      border: "1px solid #cbd5e1",
+                      padding: "8px 16px",
+                      borderRadius: "8px",
+                      fontSize: "13px",
+                      fontWeight: "700",
+                      color: "#334155",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: "6px",
+                      cursor: "pointer"
+                    }}
+                  >
+                    ← Back to Roles
+                  </button>
+                </div>
+              </div>
+
+              {/* Stats Dashboard */}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: "12px", marginBottom: "20px" }}>
+                <div style={{ background: "linear-gradient(135deg, #fee2e2 0%, #fef2f2 100%)", border: "1px solid #fca5a5", borderRadius: "12px", padding: "12px 16px", display: "flex", flexDirection: "column", gap: "4px" }}>
+                  <span style={{ fontSize: "11px", fontWeight: "700", color: "#991b1b", textTransform: "uppercase", letterSpacing: "0.5px" }}>Overdue</span>
+                  <span style={{ fontSize: "22px", fontWeight: "900", color: "#dc2626" }}>{statsSummary.overdue}</span>
+                </div>
+                <div style={{ background: "linear-gradient(135deg, #ffedd5 0%, #fff7ed 100%)", border: "1px solid #fdbb2d", borderRadius: "12px", padding: "12px 16px", display: "flex", flexDirection: "column", gap: "4px" }}>
+                  <span style={{ fontSize: "11px", fontWeight: "700", color: "#9a3412", textTransform: "uppercase", letterSpacing: "0.5px" }}>Due Today</span>
+                  <span style={{ fontSize: "22px", fontWeight: "900", color: "#ea580c" }}>{statsSummary.dueToday}</span>
+                </div>
+                <div style={{ background: "linear-gradient(135deg, #fffbeb 0%, #fffdf5 100%)", border: "1px solid #fde047", borderRadius: "12px", padding: "12px 16px", display: "flex", flexDirection: "column", gap: "4px" }}>
+                  <span style={{ fontSize: "11px", fontWeight: "700", color: "#854d0e", textTransform: "uppercase", letterSpacing: "0.5px" }}>Due in 7 Days</span>
+                  <span style={{ fontSize: "22px", fontWeight: "900", color: "#ca8a04" }}>{statsSummary.dueWeek}</span>
+                </div>
+                <div style={{ background: "linear-gradient(135deg, #eff6ff 0%, #f8fafc 100%)", border: "1px solid #93c5fd", borderRadius: "12px", padding: "12px 16px", display: "flex", flexDirection: "column", gap: "4px" }}>
+                  <span style={{ fontSize: "11px", fontWeight: "700", color: "#1e3a8a", textTransform: "uppercase", letterSpacing: "0.5px" }}>Due in 30 Days</span>
+                  <span style={{ fontSize: "22px", fontWeight: "900", color: "#2563eb" }}>{statsSummary.dueMonth}</span>
+                </div>
+                <div style={{ background: "linear-gradient(135deg, #f0fdf4 0%, #f8fafc 100%)", border: "1px solid #86efac", borderRadius: "12px", padding: "12px 16px", display: "flex", flexDirection: "column", gap: "4px" }}>
+                  <span style={{ fontSize: "11px", fontWeight: "700", color: "#166534", textTransform: "uppercase", letterSpacing: "0.5px" }}>Total Scheduled</span>
+                  <span style={{ fontSize: "22px", fontWeight: "900", color: "#16a34a" }}>{statsSummary.totalScheduled}</span>
+                </div>
+              </div>
+
+              {/* Categories Grid */}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "16px", marginBottom: "24px" }}>
+                {categoriesList.map(cat => {
+                  const isSelected = selectedCategory === cat.id;
+                  return (
+                    <button
+                      key={cat.id}
+                      onClick={() => {
+                        setSelectedCategory(cat.id);
+                        setSelectedHrmsIds([]);
+                        setRosterSearch("");
+                      }}
+                      style={{
+                        padding: "16px",
+                        borderRadius: "12px",
+                        border: isSelected ? `2.5px solid ${cat.color}` : "1.5px solid #e2e8f0",
+                        background: isSelected ? cat.bg : "#ffffff",
+                        color: "#0f172a",
+                        cursor: "pointer",
+                        textAlign: "center",
+                        boxShadow: isSelected ? `0 4px 12px ${cat.color}20` : "0 2px 4px rgba(0,0,0,0.02)",
+                        transition: "all 0.2s ease-in-out",
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: "6px"
+                      }}
+                    >
+                      <span style={{ fontSize: "14px", fontWeight: "800", color: isSelected ? cat.color : "#475569" }}>
+                        {cat.name}
+                      </span>
+                      <span style={{ fontSize: "20px", fontWeight: "900", color: cat.color }}>
+                        ({cat.count})
+                      </span>
+                      <span style={{ fontSize: "11px", fontWeight: "600", color: "#64748b" }}>
+                        {cat.id === "A" || cat.id === "B" ? "Retest: 6M" : cat.id === "C" ? "Retest: 3M" : "Retest: 1M"}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {selectedCategory && (
+                <div style={{ background: "#ffffff", border: "1px solid #e2e8f0", borderRadius: "16px", padding: "20px", boxShadow: "0 1px 3px rgba(0,0,0,0.02)" }}>
+                  {/* Filter Bar */}
+                  <div style={{ display: "flex", gap: "16px", marginBottom: "20px", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap" }}>
+                    <div style={{ display: "flex", gap: "12px", alignItems: "center", flex: 1, minWidth: "300px" }}>
+                      <div style={{ position: "relative", flex: 1, maxWidth: "260px" }}>
+                        <Search size={14} style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", color: "#64748b" }} />
+                        <input
+                          type="text"
+                          placeholder="Name or HRMS ID..."
+                          value={rosterSearch}
+                          onChange={e => setRosterSearch(e.target.value)}
+                          style={{
+                            width: "100%",
+                            height: "40px",
+                            padding: "0 12px 0 36px",
+                            borderRadius: "8px",
+                            border: "1px solid #cbd5e1",
+                            fontSize: "13px",
+                            fontWeight: "600",
+                            boxSizing: "border-box",
+                            outline: "none"
+                          }}
+                        />
+                      </div>
+
+                      <div>
+                        <select
+                          value={rosterStation}
+                          onChange={(e) => setRosterStation(e.target.value)}
+                          style={{
+                            height: "40px",
+                            padding: "0 12px",
+                            borderRadius: "8px",
+                            border: "1px solid #cbd5e1",
+                            fontSize: "13px",
+                            fontWeight: "650",
+                            color: "#334155",
+                            boxSizing: "border-box"
+                          }}
+                        >
+                          <option value="All">All Stations</option>
+                          {stationOptions.map(st => (
+                            <option key={st} value={st}>{st}</option>
+                          ))}
+                        </select>
+                      </div>
+                      
+                      {/* View Upcoming Tests Toggle */}
+                      <button
+                        type="button"
+                        onClick={() => setViewUpcomingOnly(!viewUpcomingOnly)}
+                        style={{
+                          height: "40px",
+                          padding: "0 14px",
+                          borderRadius: "8px",
+                          border: viewUpcomingOnly ? "1.5px solid #2563eb" : "1.5px solid #cbd5e1",
+                          background: viewUpcomingOnly ? "#eff6ff" : "#ffffff",
+                          color: viewUpcomingOnly ? "#2563eb" : "#475569",
+                          fontWeight: "700",
+                          fontSize: "13px",
+                          cursor: "pointer",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "6px",
+                          transition: "all 0.2s"
+                        }}
+                      >
+                        <Filter size={14} />
+                        {viewUpcomingOnly ? "Showing Scheduled Only" : "Show Scheduled Only"}
+                      </button>
+                    </div>
+                    
+                    <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
+                      {selectedHrmsIds.length > 0 && (
+                        <>
+                          {/* Bulk Schedule Button */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditingEmployee("bulk");
+                              setScheduleDate("");
+                              setScheduleTime("10:00");
+                              setScheduleReason("");
+                            }}
+                            style={{
+                              height: "40px",
+                              padding: "0 16px",
+                              borderRadius: "8px",
+                              fontWeight: "700",
+                              border: "1.5px solid #2563eb",
+                              background: "#ffffff",
+                              color: "#2563eb",
+                              cursor: "pointer",
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "6px",
+                              boxShadow: "0 2px 4px rgba(37,99,235,0.08)"
+                            }}
+                          >
+                            <Calendar size={14} />
+                            Schedule Selected ({selectedHrmsIds.length})
+                          </button>
+
+                          <button
+                            onClick={() => sendBatchExamAccessAOM(assessmentRoleTab, selectedHrmsIds)}
+                            style={{
+                              height: "40px",
+                              padding: "0 16px",
+                              borderRadius: "8px",
+                              fontWeight: "700",
+                              border: "none",
+                              background: "#2563eb",
+                              color: "#ffffff",
+                              cursor: "pointer",
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "6px"
+                            }}
+                          >
+                            <ShieldCheck size={14} />
+                            Activate Access ({selectedHrmsIds.length})
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Category-wise Table */}
+                  <div className="sdom-table-wrap">
+                    <table className="sdom-table" style={{ width: "100%", borderCollapse: "collapse" }}>
+                      <thead>
+                        <tr style={{ borderBottom: "1.5px solid #e2e8f0", background: "#f8fafc", textAlign: "left" }}>
+                          <th style={{ width: "40px", padding: "12px 16px" }}>
+                            <input
+                              type="checkbox"
+                              disabled={eligiblePms.length === 0}
+                              checked={isAllSelected}
+                              onChange={handleSelectAll}
+                              style={{ cursor: eligiblePms.length > 0 ? "pointer" : "not-allowed" }}
+                            />
+                          </th>
+                          <th style={{ padding: "12px 16px" }}>{isTI ? "TRAFFIC INSPECTOR" : "STATION SUPERINTENDENT"}</th>
+                          <th style={{ padding: "12px 16px" }}>HRMS ID</th>
+                          <th style={{ padding: "12px 16px" }}>STATION</th>
+                          <th style={{ padding: "12px 16px" }}>FREQUENCY</th>
+                          <th style={{ padding: "12px 16px" }}>LAST ASSESSMENT</th>
+                          <th style={{ padding: "12px 16px" }}>NEXT DUE DATE</th>
+                          <th style={{ padding: "12px 16px" }}>DAYS REMAINING</th>
+                          <th style={{ padding: "12px 16px" }}>DUE STATUS</th>
+                          <th style={{ padding: "12px 16px" }}>EXAM STATUS</th>
+                          <th style={{ padding: "12px 16px", textAlign: "center" }}>ACTION</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filteredByUpcoming.map(p => {
+                          const status = getEmpStatusText(p);
+                          const isChecked = selectedHrmsIds.includes(p.hrmsId || p.employeeId);
+                          const isEligible = isEligibleForActivation(p);
+                          const { frequency, lastAssessDate, nextDueDate, nextDueTime, daysRemaining, statusText, statusType } = p.sched;
+
+                          let badgeColor = "#475569";
+                          let badgeBg = "#f1f5f9";
+                          let badgeBorder = "1px solid #cbd5e1";
+                          if (status.type === "success") { badgeColor = "var(--success)"; badgeBg = "var(--success-bg)"; badgeBorder = "1px solid var(--success-border)"; }
+                          else if (status.type === "info") { badgeColor = "var(--info)"; badgeBg = "var(--info-bg)"; badgeBorder = "1px solid var(--info-border)"; }
+                          else if (status.type === "warning") { badgeColor = "var(--warning)"; badgeBg = "var(--warning-bg)"; badgeBorder = "1px solid var(--warning-border)"; }
+
+                          let daysColor = "var(--text-primary)";
+                          let statusClass = "sdom-badge-neutral";
+                          if (statusType === "danger") { daysColor = "var(--danger)"; statusClass = "sdom-badge-danger"; }
+                          else if (statusType === "warning") { daysColor = "var(--warning)"; statusClass = "sdom-badge-warning"; }
+                          else if (statusType === "success") { daysColor = "var(--success)"; statusClass = "sdom-badge-success"; }
+
+                          const isExamTaken = status.text === "MCQ Completed";
+                          const isExamSent = status.text === "Exam Active";
+                          const isExamApproved = status.text === "Approved";
+                          const isExamSubmitted = status.text === "Pending Approval";
+
+                          return (
+                            <tr key={p.hrmsId || p.employeeId} style={{ borderBottom: "1px solid #f1f5f9" }}>
+                              <td style={{ padding: "14px 16px" }}>
+                                <input
+                                  type="checkbox"
+                                  disabled={!isEligible}
+                                  checked={isChecked}
+                                  onChange={(e) => handleSelectOne(p.hrmsId || p.employeeId, e.target.checked)}
+                                  style={{ cursor: isEligible ? "pointer" : "not-allowed" }}
+                                />
+                              </td>
+                              <td style={{ padding: "14px 16px" }}>
+                                <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                                  <div style={{ width: "36px", height: "36px", borderRadius: "50%", background: "#1e3a8a", color: "#ffffff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: "700", fontSize: "14px" }}>
+                                    {p.name.charAt(0)}
+                                  </div>
+                                  <div>
+                                    <div style={{ fontWeight: "700", color: "#0f172a", fontSize: "14px" }}>{p.name}</div>
+                                  </div>
+                                </div>
+                              </td>
+                              <td style={{ padding: "14px 16px", color: "#475569", fontWeight: "600", fontSize: "13px", fontFamily: "monospace" }}>{p.hrmsId || p.employeeId}</td>
+                              <td style={{ padding: "14px 16px", color: "#475569", fontWeight: "600", fontSize: "13px" }}>{p.stationName}</td>
+                              <td style={{ padding: "14px 16px", color: "#475569", fontSize: "13px" }}>{frequency}</td>
+                              <td style={{ padding: "14px 16px", color: "#475569", fontSize: "13px" }}>{lastAssessDate}</td>
+                              <td style={{ padding: "14px 16px", fontSize: "13px" }}>
+                                <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+                                  <span style={{ fontWeight: "600" }}>{nextDueDate}</span>
+                                  {nextDueDate !== "Not Scheduled" && (
+                                    <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>
+                                      🕒 {nextDueTime}
+                                    </span>
+                                  )}
+                                </div>
+                              </td>
+                              <td style={{ padding: "14px 16px", fontWeight: "600", color: daysColor, fontSize: "13px" }}>
+                                {daysRemaining !== null ? (
+                                  daysRemaining === 0 ? "Today" : daysRemaining < 0 ? `${Math.abs(daysRemaining)} days overdue` : `${daysRemaining} days left`
+                                ) : (
+                                  "—"
+                                )}
+                              </td>
+                              <td style={{ padding: "14px 16px", fontSize: "13px" }}>
+                                {nextDueDate !== "Not Scheduled" ? (
+                                  <span className={`sdom-badge ${statusClass}`}>
+                                    {statusText}
+                                  </span>
+                                ) : (
+                                  "—"
+                                )}
+                              </td>
+                              <td style={{ padding: "14px 16px", fontSize: "13px" }}>
+                                <span className={`sdom-badge`} style={{ background: badgeBg, color: badgeColor, border: badgeBorder }}>
+                                  {status.text}
+                                </span>
+                              </td>
+                              <td style={{ padding: "14px 16px", textAlign: "center" }}>
+                                <div style={{ display: "flex", gap: "8px", justifyContent: "center", alignItems: "center" }}>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setEditingEmployee(p);
+                                      if (nextDueDate && nextDueDate !== "Not Scheduled") {
+                                        setScheduleDate(nextDueDate);
+                                        setScheduleTime(convertTo24Hour(nextDueTime));
+                                      } else {
+                                        setScheduleDate("");
+                                        setScheduleTime("10:00");
+                                      }
+                                      setScheduleReason("");
+                                    }}
+                                    style={{
+                                      background: "#ffffff",
+                                      border: "1px solid #cbd5e1",
+                                      padding: "5px 10px",
+                                      borderRadius: "6px",
+                                      fontSize: "12px",
+                                      fontWeight: "700",
+                                      color: "#475569",
+                                      display: "inline-flex",
+                                      alignItems: "center",
+                                      gap: "4px",
+                                      cursor: "pointer"
+                                    }}
+                                  >
+                                    <Calendar size={12} />
+                                    {nextDueDate !== "Not Scheduled" ? "Reschedule" : "Schedule"}
+                                  </button>
+
+                                  {isExamApproved && (
+                                    <button
+                                      onClick={() => openForm(p)}
+                                      style={{
+                                        background: "#ffffff",
+                                        border: "1px solid #cbd5e1",
+                                        padding: "5px 10px",
+                                        borderRadius: "6px",
+                                        fontSize: "12px",
+                                        fontWeight: "700",
+                                        color: "#475569",
+                                        display: "inline-flex",
+                                        alignItems: "center",
+                                        gap: "4px",
+                                        cursor: "pointer"
+                                      }}
+                                    >
+                                      View Form
+                                    </button>
+                                  )}
+                                  
+                                  {isExamSubmitted && (
+                                    <>
+                                      <button
+                                        onClick={() => openForm(p)}
+                                        style={{
+                                          background: "#2563eb",
+                                          border: "none",
+                                          color: "#ffffff",
+                                          padding: "6px 12px",
+                                          borderRadius: "6px",
+                                          cursor: "pointer",
+                                          fontWeight: "700",
+                                          fontSize: "12px"
+                                        }}
+                                      >
+                                        View Form
+                                      </button>
+                                      <button
+                                        onClick={() => openForm(p)}
+                                        style={{
+                                          background: "#ea580c",
+                                          border: "none",
+                                          color: "#ffffff",
+                                          padding: "6px 12px",
+                                          borderRadius: "6px",
+                                          cursor: "pointer",
+                                          fontWeight: "700",
+                                          fontSize: "12px"
+                                        }}
+                                      >
+                                        Edit
+                                      </button>
+                                    </>
+                                  )}
+
+                                  {isExamTaken && (
+                                    <button
+                                      onClick={() => openForm(p)}
+                                      style={{
+                                        background: "#16a34a",
+                                        border: "none",
+                                        color: "#ffffff",
+                                        padding: "6px 12px",
+                                        borderRadius: "6px",
+                                        cursor: "pointer",
+                                        fontWeight: "700",
+                                        fontSize: "12px"
+                                      }}
+                                    >
+                                      Start Assessment
+                                    </button>
+                                  )}
+
+                                  {isExamSent && (
+                                    <button
+                                      onClick={() => openForm(p)}
+                                      style={{
+                                        background: "#ffffff",
+                                        border: "1px solid #cbd5e1",
+                                        padding: "5px 10px",
+                                        borderRadius: "6px",
+                                        fontSize: "12px",
+                                        fontWeight: "700",
+                                        color: "#475569",
+                                        display: "inline-flex",
+                                        alignItems: "center",
+                                        gap: "4px",
+                                        cursor: "pointer"
+                                      }}
+                                    >
+                                      Open Form <ExternalLink size={12} />
+                                    </button>
+                                  )}
+
+                                  {!isExamApproved && !isExamSubmitted && !isExamTaken && !isExamSent && (
+                                    <button
+                                      onClick={() => openForm(p)}
+                                      style={{
+                                        background: "#ffffff",
+                                        border: "1px solid #cbd5e1",
+                                        padding: "5px 10px",
+                                        borderRadius: "6px",
+                                        fontSize: "12px",
+                                        fontWeight: "700",
+                                        color: "#475569",
+                                        display: "inline-flex",
+                                        alignItems: "center",
+                                        gap: "4px",
+                                        cursor: "pointer"
+                                      }}
+                                    >
+                                      Open Form <ExternalLink size={12} />
+                                    </button>
+                                  )}
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                        {filteredByUpcoming.length === 0 && (
+                          <tr>
+                            <td colSpan={11} style={{ padding: "30px", textAlign: "center", color: "#64748b", fontSize: "14px" }}>
+                              No staff found in this category matching search filters.
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+              {renderScheduleModal(assessmentRoleTab)}
+            </div>
+          );
+        }
+
         return (
           <div className="ti2-page-body animate-fade-in" style={{ padding: "24px", background: "#f8fafc", minHeight: "100%", width: "100%", boxSizing: "border-box" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
               <div>
                 <h1 style={{ fontSize: "28px", fontWeight: "800", color: "#0f172a", margin: "0 0 4px" }}>
-                  Assessments — {roleTitle}
+                  {t("Assessments")} — {roleTitle}
                 </h1>
                 <p style={{ margin: 0, fontSize: "14px", color: "#64748b", fontWeight: "500" }}>
                   {roleDesc}
                 </p>
               </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowCategoriesPanel(true);
+                  setSelectedCategory("A");
+                  setSelectedHrmsIds([]);
+                }}
+                style={{
+                  background: "#2563eb",
+                  color: "#ffffff",
+                  border: "none",
+                  borderRadius: "8px",
+                  padding: "10px 18px",
+                  fontSize: "13.5px",
+                  fontWeight: "700",
+                  cursor: "pointer",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "8px",
+                  boxShadow: "0 4px 6px -1px rgba(37,99,235,0.16)"
+                }}
+              >
+                <Layers size={15} /> {t("Categories View")}
+              </button>
             </div>
 
             {/* Unified Role Choice Selection Boxes */}
@@ -4238,12 +5253,12 @@ function AOmModule({ user, onLogout }) {
                           score: s.score !== undefined ? s.score : (s.marks !== undefined ? s.marks : 0),
                           max: s.max !== undefined ? s.max : (s.outOf !== undefined ? s.outOf : 20)
                         })) : [
-                          { title: "Station Management", score: Math.round(totalYes * 5 * 0.25), max: 25 },
-                          { title: "Safety & Compliance", score: Math.round(totalYes * 4 * 0.25), max: 20 },
-                          { title: "Staff Supervision", score: Math.round(totalYes * 3 * 0.20), max: 15 },
-                          { title: "Documentation & Reporting", score: Math.round(totalYes * 3 * 0.15), max: 15 },
-                          { title: "Emergency Handling", score: Math.round(totalYes * 5 * 0.25), max: 25 },
-                          { title: "Knowledge (Safety Exam)", score: knowledgeMarks, max: 25 }
+                          { title: "Knowledge of Rules (MCQ)", score: knowledgeMarks, max: 25 },
+                          { title: "Alertness and Observation of Rules", score: Math.round(totalYes * 5 * 0.25), max: 25 },
+                          { title: "Safety Record", score: Math.round(totalYes * 3 * 0.20), max: 15 },
+                          { title: "Leadership and Management", score: Math.round(totalYes * 3 * 0.20), max: 15 },
+                          { title: "Discipline", score: Math.round(totalYes * 2 * 0.15), max: 10 },
+                          { title: "Appearance and Neatness", score: Math.round(totalYes * 2 * 0.15), max: 10 }
                         ];
 
                         return secs.map(s => {
@@ -4539,29 +5554,29 @@ function AOmModule({ user, onLogout }) {
             {/* Hero header */}
             <div className="sdom-station-header" style={{ marginBottom: 24 }}>
               <div className="sdom-station-header-meta">
-                <div style={{ fontSize: "0.8rem", color: "rgba(255,255,255,0.6)", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.06em" }}>Staff Profile</div>
+                <div style={{ fontSize: "0.8rem", color: "rgba(255,255,255,0.6)", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.06em" }}>{t("Staff Profile")}</div>
                 <div style={{ fontSize: "1.8rem", fontWeight: 800, marginBottom: 4 }}>{user?.name || user?.full_name || "General Manager User"}</div>
-                <div style={{ fontSize: "0.9rem", color: "rgba(255,255,255,0.7)" }}>{user?.designation || user?.role || aomReadOnlyProfile.designation} &bull; {user?.division || "Nagpur"} Division &bull; {user?.zone || "Central Railway"}</div>
+                <div style={{ fontSize: "0.9rem", color: "rgba(255,255,255,0.7)" }}>{t(user?.designation || user?.role || aomReadOnlyProfile.designation)} &bull; {t(user?.division || "Nagpur")} {t("Division")} &bull; {t(user?.zone || "Central Railway")}</div>
                 <div style={{ marginTop: 12, display: "flex", gap: 10 }}>
-                  <span className="sdom-badge sdom-badge-success">Category A</span>
-                  <span className="sdom-badge sdom-badge-success">Executive</span>
-                  <span className="sdom-badge sdom-badge-success">Active</span>
+                  <span className="sdom-badge sdom-badge-success">{t("Category")} A</span>
+                  <span className="sdom-badge sdom-badge-success">{t("Executive")}</span>
+                  <span className="sdom-badge sdom-badge-success">{t("Active")}</span>
                 </div>
               </div>
               <div className="sdom-station-header-stats">
                 <div className="sdom-station-header-stat">
                   <span className="val">82%</span>
-                  <span className="lbl">Division Avg</span>
+                  <span className="lbl">{t("Division Avg")}</span>
                 </div>
                 <div style={{ width: 1, height: 60, background: "rgba(255,255,255,0.15)" }} />
                 <div className="sdom-station-header-stat">
                   <span className="val">{user?.mobile_no || user?.contact || aomReadOnlyProfile.contact}</span>
-                  <span className="lbl">Contact</span>
+                  <span className="lbl">{t("Contact")}</span>
                 </div>
                 <div style={{ width: 1, height: 60, background: "rgba(255,255,255,0.15)" }} />
                 <div className="sdom-station-header-stat">
                   <span className="val">2026-05-27</span>
-                  <span className="lbl">Last Audit</span>
+                  <span className="lbl">{t("Last Audit")}</span>
                 </div>
               </div>
             </div>
@@ -4569,19 +5584,19 @@ function AOmModule({ user, onLogout }) {
             {/* Info grid */}
             <div className="sdom-row-2" style={{ marginBottom: "24px" }}>
               <div className="sdom-chart-card">
-                <div className="sdom-chart-title" style={{ marginBottom: "16px" }}>Personal & Professional Details</div>
+                <div className="sdom-chart-title" style={{ marginBottom: "16px" }}>{t("Personal & Professional Details")}</div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '15px', paddingBottom: '20px' }}>
                   {[
-                    ["Employee ID / HRMS ID", user?.hrmsId || user?.hrms_id || "GM_1001"],
-                    ["Designation", user?.designation || user?.role || aomReadOnlyProfile.designation],
-                    ["Mobile Number", user?.mobile_no || user?.contact || aomReadOnlyProfile.contact],
-                    ["Email ID", user?.email || user?.email_id || aomReadOnlyProfile.email],
-                    ["Account Status", "Active"],
-                    ["Current Zone", user?.zone || "Central Railway"],
-                    ["Current Division", user?.division || aomReadOnlyProfile.division],
-                    ["Current Placement", user?.stationName || aomReadOnlyProfile.zoneHq],
-                    ["Reporting Officer", user?.reportingOfficer || aomReadOnlyProfile.reportingOfficer]
+                    [t("Employee ID / HRMS ID"), user?.hrmsId || user?.hrms_id || "GM_1001"],
+                    [t("Designation"), t(user?.designation || user?.role || aomReadOnlyProfile.designation)],
+                    [t("Mobile Number"), user?.mobile_no || user?.contact || aomReadOnlyProfile.contact],
+                    [t("Email ID"), user?.email || user?.email_id || aomReadOnlyProfile.email],
+                    [t("Account Status"), t("Active")],
+                    [t("Current Zone"), t(user?.zone || "Central Railway")],
+                    [t("Current Division"), t(user?.division || aomReadOnlyProfile.division)],
+                    [t("Current Placement"), t(user?.stationName || aomReadOnlyProfile.zoneHq)],
+                    [t("Reporting Officer"), t(user?.reportingOfficer || aomReadOnlyProfile.reportingOfficer)]
                   ].map(([lbl, val]) => (
                     <div key={lbl} style={{ background: "#f8fafc", borderRadius: 8, padding: "12px 16px", border: "1px solid #e2e8f0" }}>
                       <div style={{ fontSize: "0.75rem", color: "#64748b", fontWeight: 700, marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.04em" }}>{lbl}</div>
@@ -4593,16 +5608,18 @@ function AOmModule({ user, onLogout }) {
                 {/* Operational Specifications */}
                 <div style={{ background: '#f8fafc', padding: '16px', borderRadius: '10px', border: '1px solid #e2e8f0', marginTop: '10px' }}>
                   <h4 style={{ margin: '0 0 12px', fontSize: '14px', color: '#0f172a', fontWeight: '800', borderBottom: '1px solid #cbd5e1', paddingBottom: '6px' }}>
-                    Operational & Safety Dates
+                    {t("Operational & Safety Dates")}
                   </h4>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '15px', fontSize: '13px' }}>
-                    <div><strong>Last Division Audit Done:</strong><div style={{ fontWeight: 700, color: "#065f46", marginTop: 4 }}>2026-05-20</div></div>
-                    <div><strong>Next Audit Due:</strong><div style={{ fontWeight: 700, color: "#991b1b", marginTop: 4 }}>2026-06-20</div></div>
-                    <div><strong>Executive Safety Training:</strong><div style={{ fontWeight: 700, color: "#0d2c4d", marginTop: 4 }}>2025-10-12</div></div>
-                    <div><strong>Safety Summit Attended:</strong><div style={{ fontWeight: 700, color: "#0d2c4d", marginTop: 4 }}>2026-03-15</div></div>
-                    <div style={{ gridColumn: "span 2" }}><strong>Zonal Operations Review:</strong><div style={{ fontWeight: 700, color: "#d97706", marginTop: 4 }}>2026-04-18</div></div>
+                    <div><strong>{t("Last Division Audit Done")}:</strong><div style={{ fontWeight: 700, color: "#065f46", marginTop: 4 }}>2026-05-20</div></div>
+                    <div><strong>{t("Next Audit Due")}:</strong><div style={{ fontWeight: 700, color: "#991b1b", marginTop: 4 }}>2026-06-20</div></div>
+                    <div><strong>{t("Executive Safety Training")}:</strong><div style={{ fontWeight: 700, color: "#0d2c4d", marginTop: 4 }}>2025-10-12</div></div>
+                    <div><strong>{t("Safety Summit Attended")}:</strong><div style={{ fontWeight: 700, color: "#0d2c4d", marginTop: 4 }}>2026-03-15</div></div>
+                    <div style={{ gridColumn: "span 2" }}><strong>{t("Zonal Operations Review")}:</strong><div style={{ fontWeight: 700, color: "#d97706", marginTop: 4 }}>2026-04-18</div></div>
                   </div>
                 </div>
+
+
               </div>
 
               <div className="sdom-chart-card">
@@ -4913,20 +5930,20 @@ function AOmModule({ user, onLogout }) {
         <div className="brand-group">
           <div className="brand-mark"><img src="/logo.webp" alt="IR Logo" style={{ width: "100%", height: "100%", borderRadius: "inherit", objectFit: "cover" }} /></div>
           <div>
-            <h1>Indian Railway Evaluation System</h1>
-            <p>AOM Console</p>
+            <h1>{t("Indian Railway Evaluation System")}</h1>
+            <p>{t("AOM Console")}</p>
           </div>
         </div>
-        <div className="topbar-right">
+        <div className="topbar-right" style={{ gap: "16px" }}>
           <div className="admin-badge">
             <div className="avatar">{user.hrmsId.substring(0, 2).toUpperCase()}</div>
             <div>
-              <strong>AOM Console</strong>
-              <span>Zonal Headquarters</span>
+              <strong>{t("AOM Console")}</strong>
+              <span>{t("Zonal Headquarters")}</span>
             </div>
           </div>
           <button className="logout-btn" type="button" onClick={onLogout}>
-            <LogOut size={16} /> Logout
+            <LogOut size={16} /> {t("Logout")}
           </button>
         </div>
       </header>
@@ -4953,7 +5970,7 @@ function AOmModule({ user, onLogout }) {
                 onClick={() => handleSidebarClick(item.label)}
               >
                 <Icon size={19} />
-                <span>{item.label}</span>
+                <span>{t(item.label)}</span>
               </button>
             );
           })}

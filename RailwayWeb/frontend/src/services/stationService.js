@@ -209,6 +209,8 @@ export const stationService = {
         division_id: divisionId
       };
 
+      const stationId = stationData.station_id || stationData.stationId || stationData.id;
+
       if (mode === "add") {
         const { data, error } = await supabase.from("STATION").insert([payload]).select();
         if (error) throw error;
@@ -217,7 +219,7 @@ export const stationService = {
         const { data, error } = await supabase
           .from("STATION")
           .update(payload)
-          .eq("station_code", payload.station_code)
+          .eq("station_id", stationId)
           .select();
         if (error) throw error;
         return { success: true, station: data[0] };

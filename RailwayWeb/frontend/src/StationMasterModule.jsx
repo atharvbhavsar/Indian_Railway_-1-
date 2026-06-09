@@ -68,8 +68,11 @@ import { StationMasterDashboard } from './pages/modules/station_master/StationMa
 import { getCat, getCatColor, getCatBg, riskLevel, riskColor, formatQuarterPeriod } from './utils/scoreCalculator';
 import { CustomTooltip } from './components/charts/CustomTooltip';
 import { smProfile, initialPointsmen, pmAssessmentHistory, initialDrafts, YN_SECTIONS, defaultAssessForm, smTestQuestions, smAssessmentHistory, smSelfAssessment, monthlyTrend } from './data/mockStationMasterData';
+import { useLanguage } from "./contexts/LanguageContext";
+import { LanguageSelector } from "./components/LanguageSelector";
 
 function StationMasterModule({ user, onLogout }) {
+  const { t } = useLanguage();
   const state = useStationMasterState(user, onLogout);
 
   /* ── PME local state ── */
@@ -215,7 +218,14 @@ function StationMasterModule({ user, onLogout }) {
     counsellingQueue,
     scheduleCounselling,
     submitCounsellingResult,
-    submitMonitoringReview
+    submitMonitoringReview,
+    showCategoriesPanel, setShowCategoriesPanel,
+    selectedCategory, setSelectedCategory,
+    searchHrms, setSearchHrms,
+    selectedHrmsIds, setSelectedHrmsIds,
+    sendBatchAssessmentAccess,
+    allDbAssessments,
+    updateEmployeeSchedule
   } = state;
 
   /* ════ RENDERERS ════ */
@@ -326,6 +336,20 @@ function StationMasterModule({ user, onLogout }) {
       drafts={drafts}
       openAssessForm={openAssessForm}
       submittedAssessments={submittedAssessments}
+      pointsmen={pointsmen}
+      showCategoriesPanel={showCategoriesPanel}
+      setShowCategoriesPanel={setShowCategoriesPanel}
+      selectedCategory={selectedCategory}
+      setSelectedCategory={setSelectedCategory}
+      searchHrms={searchHrms}
+      setSearchHrms={setSearchHrms}
+      selectedHrmsIds={selectedHrmsIds}
+      setSelectedHrmsIds={setSelectedHrmsIds}
+      sendBatchAssessmentAccess={sendBatchAssessmentAccess}
+      user={user}
+      allDbAssessments={allDbAssessments}
+      updateEmployeeSchedule={updateEmployeeSchedule}
+      counsellingQueue={counsellingQueue}
     />
   );
 
@@ -421,11 +445,11 @@ function StationMasterModule({ user, onLogout }) {
     const handleFormSubmit = async (e) => {
       e.preventDefault();
       if (!pmeFormHrmsId) {
-        alert("Please select a pointsman.");
+        alert(t("Please select a pointsman."));
         return;
       }
       if (!pmeFormDueDate) {
-        alert("Please specify the PME due date.");
+        alert(t("Please specify the PME due date."));
         return;
       }
       const pmeData = {
@@ -445,50 +469,50 @@ function StationMasterModule({ user, onLogout }) {
 
     const statusBadge = (s) => {
       const map = { Fit: "sdom-badge-success", Pending: "sdom-badge-warning", Due: "sdom-badge-warning", Overdue: "sdom-badge-danger", Unfit: "sdom-badge-danger" };
-      return <span className={`sdom-badge ${map[s] || "sdom-badge-neutral"}`}>{s || "N/A"}</span>;
+      return <span className={`sdom-badge ${map[s] || "sdom-badge-neutral"}`}>{t(s) || "N/A"}</span>;
     };
 
     return (
       <div className="sdom-fade" style={{ background: "#f8fafc", padding: "24px", borderRadius: "16px" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px" }}>
           <div>
-            <h1 className="sdom-page-title" style={{ fontSize: "28px", fontWeight: "800", color: "#0f172a", margin: "0 0 4px" }}>PME Position & Compliance</h1>
-            <p className="sdom-page-subtitle" style={{ fontSize: "14px", color: "#64748b", margin: 0 }}>Monitor Periodical Medical Examination clearance, schedule exams, and record medical clearance logs for Pointsmen at your station.</p>
+            <h1 className="sdom-page-title" style={{ fontSize: "28px", fontWeight: "800", color: "#0f172a", margin: "0 0 4px" }}>{t("PME Position & Compliance")}</h1>
+            <p className="sdom-page-subtitle" style={{ fontSize: "14px", color: "#64748b", margin: 0 }}>{t("Monitor Periodical Medical Examination clearance, schedule exams, and record medical clearance logs for Pointsmen at your station.")}</p>
           </div>
           <button 
             onClick={() => handleOpenLogModal("")} 
             className="sdom-btn-primary" 
             style={{ height: "42px", display: "flex", alignItems: "center", gap: "8px", background: "#2563eb", color: "white", padding: "0 20px", border: "none", borderRadius: "8px", fontWeight: "700", cursor: "pointer", fontSize: "13px" }}
           >
-            <Plus size={16}/> Log PME Record
+            <Plus size={16}/> {t("Log PME Record")}
           </button>
         </div>
 
         {/* Stats Row */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "16px", marginBottom: "24px" }}>
           <div className="sdom-stat-card" style={{ background: "white", border: "1px solid #e2e8f0", padding: "20px", borderRadius: "12px", boxShadow: "0 1px 3px rgba(0,0,0,0.05)", borderLeft: "4px solid #16a34a" }}>
-            <div className="sdom-stat-value" style={{ fontSize: "24px", fontWeight: "800", color: "#16a34a" }}>{fitCount} staff</div>
-            <div className="sdom-stat-label" style={{ fontSize: "12px", color: "#64748b", marginTop: "4px", fontWeight: "600", textTransform: "uppercase" }}>PME FIT Clearance</div>
+            <div className="sdom-stat-value" style={{ fontSize: "24px", fontWeight: "800", color: "#16a34a" }}>{fitCount} {t("staff")}</div>
+            <div className="sdom-stat-label" style={{ fontSize: "12px", color: "#64748b", marginTop: "4px", fontWeight: "600", textTransform: "uppercase" }}>{t("PME FIT Clearance")}</div>
           </div>
           <div className="sdom-stat-card" style={{ background: "white", border: "1px solid #e2e8f0", padding: "20px", borderRadius: "12px", boxShadow: "0 1px 3px rgba(0,0,0,0.05)", borderLeft: "4px solid #d97706" }}>
-            <div className="sdom-stat-value" style={{ fontSize: "24px", fontWeight: "800", color: "#d97706" }}>{dueCount} staff</div>
-            <div className="sdom-stat-label" style={{ fontSize: "12px", color: "#64748b", marginTop: "4px", fontWeight: "600", textTransform: "uppercase" }}>PME Due / Pending</div>
+            <div className="sdom-stat-value" style={{ fontSize: "24px", fontWeight: "800", color: "#d97706" }}>{dueCount} {t("staff")}</div>
+            <div className="sdom-stat-label" style={{ fontSize: "12px", color: "#64748b", marginTop: "4px", fontWeight: "600", textTransform: "uppercase" }}>{t("PME Due / Pending")}</div>
           </div>
           <div className="sdom-stat-card" style={{ background: "white", border: "1px solid #e2e8f0", padding: "20px", borderRadius: "12px", boxShadow: "0 1px 3px rgba(0,0,0,0.05)", borderLeft: "4px solid #dc2626" }}>
-            <div className="sdom-stat-value" style={{ fontSize: "24px", fontWeight: "800", color: "#dc2626" }}>{overdueCount} staff</div>
-            <div className="sdom-stat-label" style={{ fontSize: "12px", color: "#64748b", marginTop: "4px", fontWeight: "600", textTransform: "uppercase" }}>PME Overdue (High Risk)</div>
+            <div className="sdom-stat-value" style={{ fontSize: "24px", fontWeight: "800", color: "#dc2626" }}>{overdueCount} {t("staff")}</div>
+            <div className="sdom-stat-label" style={{ fontSize: "12px", color: "#64748b", marginTop: "4px", fontWeight: "600", textTransform: "uppercase" }}>{t("PME Overdue (High Risk)")}</div>
           </div>
         </div>
 
         {/* Filter Bar */}
         <div className="sdom-filter-bar" style={{ display: "flex", gap: "16px", background: "white", padding: "16px", borderRadius: "12px", border: "1px solid #e2e8f0", marginBottom: "24px", alignItems: "flex-end" }}>
           <div style={{ display: "flex", flexDirection: "column", gap: "6px", flex: 2 }}>
-            <label style={{ fontSize: "11px", fontWeight: "800", color: "#475569", textTransform: "uppercase" }}>Search Staff</label>
+            <label style={{ fontSize: "11px", fontWeight: "800", color: "#475569", textTransform: "uppercase" }}>{t("Search Staff")}</label>
             <div style={{ position: "relative" }}>
               <Search size={15} style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", color: "#64748b" }} />
               <input 
                 type="text" 
-                placeholder="Search by name or HRMS ID..." 
+                placeholder={t("Search by name or HRMS ID...")} 
                 value={pmeSearch} 
                 onChange={e => setPmeSearch(e.target.value)} 
                 style={{ width: "100%", height: "42px", padding: "0 12px 0 36px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "13px", fontWeight: "600", outline: "none" }}
@@ -496,18 +520,18 @@ function StationMasterModule({ user, onLogout }) {
             </div>
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: "6px", flex: 1 }}>
-            <label style={{ fontSize: "11px", fontWeight: "800", color: "#475569", textTransform: "uppercase" }}>PME Status</label>
+            <label style={{ fontSize: "11px", fontWeight: "800", color: "#475569", textTransform: "uppercase" }}>{t("PME Status")}</label>
             <select 
               value={pmeStatusFilter} 
               onChange={e => setPmeStatusFilter(e.target.value)} 
               style={{ height: "42px", padding: "0 12px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "13px", fontWeight: "600" }}
             >
-              <option value="All">All Statuses</option>
-              <option value="Fit">Fit</option>
-              <option value="Pending">Pending</option>
-              <option value="Due">Due</option>
-              <option value="Overdue">Overdue</option>
-              <option value="Unfit">Unfit</option>
+              <option value="All">{t("All Statuses")}</option>
+              <option value="Fit">{t("Fit")}</option>
+              <option value="Pending">{t("Pending")}</option>
+              <option value="Due">{t("Due")}</option>
+              <option value="Overdue">{t("Overdue")}</option>
+              <option value="Unfit">{t("Unfit")}</option>
             </select>
           </div>
         </div>
@@ -518,14 +542,14 @@ function StationMasterModule({ user, onLogout }) {
             <table className="sdom-table" style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead>
                 <tr style={{ borderBottom: "1.5px solid #e2e8f0", background: "#f8fafc", textAlign: "left" }}>
-                  <th style={{ padding: "12px 16px", fontSize: "12px", color: "#475569", fontWeight: "700" }}>Name</th>
-                  <th style={{ padding: "12px 16px", fontSize: "12px", color: "#475569", fontWeight: "700" }}>HRMS ID</th>
-                  <th style={{ padding: "12px 16px", fontSize: "12px", color: "#475569", fontWeight: "700" }}>Designation</th>
-                  <th style={{ padding: "12px 16px", fontSize: "12px", color: "#475569", fontWeight: "700" }}>Station</th>
-                  <th style={{ padding: "12px 16px", fontSize: "12px", color: "#475569", fontWeight: "700" }}>PME Status</th>
-                  <th style={{ padding: "12px 16px", fontSize: "12px", color: "#475569", fontWeight: "700" }}>PME Done Date</th>
-                  <th style={{ padding: "12px 16px", fontSize: "12px", color: "#475569", fontWeight: "700" }}>PME Due Date</th>
-                  <th style={{ padding: "12px 16px", fontSize: "12px", color: "#475569", fontWeight: "700", textAlign: "right" }}>Actions</th>
+                  <th style={{ padding: "12px 16px", fontSize: "12px", color: "#475569", fontWeight: "700" }}>{t("Name")}</th>
+                  <th style={{ padding: "12px 16px", fontSize: "12px", color: "#475569", fontWeight: "700" }}>{t("HRMS ID")}</th>
+                  <th style={{ padding: "12px 16px", fontSize: "12px", color: "#475569", fontWeight: "700" }}>{t("Designation")}</th>
+                  <th style={{ padding: "12px 16px", fontSize: "12px", color: "#475569", fontWeight: "700" }}>{t("Station")}</th>
+                  <th style={{ padding: "12px 16px", fontSize: "12px", color: "#475569", fontWeight: "700" }}>{t("PME Status")}</th>
+                  <th style={{ padding: "12px 16px", fontSize: "12px", color: "#475569", fontWeight: "700" }}>{t("PME Done Date")}</th>
+                  <th style={{ padding: "12px 16px", fontSize: "12px", color: "#475569", fontWeight: "700" }}>{t("PME Due Date")}</th>
+                  <th style={{ padding: "12px 16px", fontSize: "12px", color: "#475569", fontWeight: "700", textAlign: "right" }}>{t("Actions")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -533,7 +557,7 @@ function StationMasterModule({ user, onLogout }) {
                   <tr key={emp.hrmsId} style={{ borderBottom: "1px solid #cbd5e1" }}>
                     <td style={{ padding: "12px 16px", fontSize: "13px", fontWeight: "700", color: "#1e293b" }}>{emp.name}</td>
                     <td style={{ padding: "12px 16px", fontSize: "13px", fontFamily: "monospace", color: "#475569" }}>{emp.hrmsId}</td>
-                    <td style={{ padding: "12px 16px", fontSize: "13px", color: "#475569" }}>{emp.designation}</td>
+                    <td style={{ padding: "12px 16px", fontSize: "13px", color: "#475569" }}>{t(emp.designation)}</td>
                     <td style={{ padding: "12px 16px", fontSize: "13px", color: "#475569", fontWeight: "600" }}>{emp.stationName || emp.station}</td>
                     <td style={{ padding: "12px 16px", fontSize: "13px" }}>{statusBadge(emp.pmeStatus)}</td>
                     <td style={{ padding: "12px 16px", fontSize: "13px", color: "#475569" }}>{emp.pmeDoneDate || "—"}</td>
@@ -544,14 +568,14 @@ function StationMasterModule({ user, onLogout }) {
                         className="sdom-btn-primary" 
                         style={{ height: "30px", padding: "0 12px", borderRadius: "6px", background: "#f1f5f9", color: "#0f172a", border: "1px solid #cbd5e1", fontSize: "11px", fontWeight: "700", cursor: "pointer" }}
                       >
-                        Update PME
+                        {t("Update PME")}
                       </button>
                     </td>
                   </tr>
                 ))}
                 {filtered.length === 0 && (
                   <tr>
-                    <td colSpan={8} style={{ padding: "30px", textAlign: "center", color: "#64748b", fontSize: "14px" }}>No employee matched your filters.</td>
+                    <td colSpan={8} style={{ padding: "30px", textAlign: "center", color: "#64748b", fontSize: "14px" }}>{t("No employee matched your filters.")}</td>
                   </tr>
                 )}
               </tbody>
@@ -564,13 +588,13 @@ function StationMasterModule({ user, onLogout }) {
           <div className="sdom-modal-overlay" style={{ zIndex: 99999 }} onClick={e => e.target === e.currentTarget && setShowPmeModal(false)}>
             <div className="sdom-modal" style={{ width: "500px", maxWidth: "95vw", padding: "24px", background: "white", borderRadius: "12px", boxShadow: "0 10px 25px -5px rgba(0,0,0,0.1)", boxSizing: "border-box" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
-                <h3 style={{ margin: 0, fontSize: "18px", fontWeight: "800", color: "#0f172a" }}>LOG PME MEDICAL RECORD</h3>
+                <h3 style={{ margin: 0, fontSize: "18px", fontWeight: "800", color: "#0f172a" }}>{t("LOG PME MEDICAL RECORD")}</h3>
                 <button type="button" onClick={() => setShowPmeModal(false)} style={{ background: "none", border: "none", fontSize: "18px", cursor: "pointer", color: "#64748b" }}>✕</button>
               </div>
 
               <form onSubmit={handleFormSubmit} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
                 <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-                  <label style={{ fontSize: "12px", fontWeight: "700", color: "#334155" }}>Select Staff *</label>
+                  <label style={{ fontSize: "12px", fontWeight: "700", color: "#334155" }}>{t("Select Staff *")}</label>
                   <select 
                     value={pmeFormHrmsId} 
                     onChange={e => {
@@ -583,31 +607,31 @@ function StationMasterModule({ user, onLogout }) {
                     style={{ height: "42px", padding: "0 12px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "13px", fontWeight: "600", width: "100%" }}
                     required
                   >
-                    <option value="">-- Choose Employee --</option>
+                    <option value="">{t("-- Choose Employee --")}</option>
                     {[...pointsmen].sort((a,b) => a.name.localeCompare(b.name)).map(emp => (
-                      <option key={emp.hrmsId} value={emp.hrmsId}>{emp.name} ({emp.hrmsId} - {emp.designation})</option>
+                      <option key={emp.hrmsId} value={emp.hrmsId}>{emp.name} ({emp.hrmsId} - {t(emp.designation)})</option>
                     ))}
                   </select>
                 </div>
 
                 <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-                  <label style={{ fontSize: "12px", fontWeight: "700", color: "#334155" }}>PME Status *</label>
+                  <label style={{ fontSize: "12px", fontWeight: "700", color: "#334155" }}>{t("PME Status *")}</label>
                   <select 
                     value={pmeFormStatus} 
                     onChange={e => setPmeFormStatus(e.target.value)} 
                     style={{ height: "42px", padding: "0 12px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "13px", fontWeight: "600", width: "100%" }}
                     required
                   >
-                    <option value="Fit">Fit</option>
-                    <option value="Unfit">Unfit</option>
-                    <option value="Pending">Pending</option>
-                    <option value="Overdue">Overdue</option>
+                    <option value="Fit">{t("Fit")}</option>
+                    <option value="Unfit">{t("Unfit")}</option>
+                    <option value="Pending">{t("Pending")}</option>
+                    <option value="Overdue">{t("Overdue")}</option>
                   </select>
                 </div>
 
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
                   <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-                    <label style={{ fontSize: "12px", fontWeight: "700", color: "#334155" }}>Done Date</label>
+                    <label style={{ fontSize: "12px", fontWeight: "700", color: "#334155" }}>{t("Done Date")}</label>
                     <input 
                       type="date" 
                       value={pmeFormDoneDate} 
@@ -616,7 +640,7 @@ function StationMasterModule({ user, onLogout }) {
                     />
                   </div>
                   <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-                    <label style={{ fontSize: "12px", fontWeight: "700", color: "#334155" }}>Due Date *</label>
+                    <label style={{ fontSize: "12px", fontWeight: "700", color: "#334155" }}>{t("Due Date *")}</label>
                     <input 
                       type="date" 
                       value={pmeFormDueDate} 
@@ -628,8 +652,8 @@ function StationMasterModule({ user, onLogout }) {
                 </div>
 
                 <div style={{ display: "flex", gap: "12px", justifyContent: "flex-end", marginTop: "10px" }}>
-                  <button type="button" onClick={() => setShowPmeModal(false)} className="sdom-btn-secondary" style={{ height: "42px", padding: "0 20px", border: "1px solid #cbd5e1", background: "#ffffff", color: "#334155", borderRadius: "8px", fontWeight: "700", cursor: "pointer" }}>Cancel</button>
-                  <button type="submit" className="sdom-btn-primary" style={{ height: "42px", padding: "0 20px", background: "#2563eb", color: "#ffffff", border: "none", borderRadius: "8px", fontWeight: "700", cursor: "pointer" }}>Save PME Log</button>
+                  <button type="button" onClick={() => setShowPmeModal(false)} className="sdom-btn-secondary" style={{ height: "42px", padding: "0 20px", border: "1px solid #cbd5e1", background: "#ffffff", color: "#334155", borderRadius: "8px", fontWeight: "700", cursor: "pointer" }}>{t("Cancel")}</button>
+                  <button type="submit" className="sdom-btn-primary" style={{ height: "42px", padding: "0 20px", background: "#2563eb", color: "#ffffff", border: "none", borderRadius: "8px", fontWeight: "700", cursor: "pointer" }}>{t("Save PME Log")}</button>
                 </div>
               </form>
             </div>
@@ -669,8 +693,8 @@ function StationMasterModule({ user, onLogout }) {
 
     const handleRefSubmit = async (e) => {
       e.preventDefault();
-      if (!refFormHrmsId) { alert("Please select a Pointsman."); return; }
-      if (!refFormDate)    { alert("Please enter the REF training date."); return; }
+      if (!refFormHrmsId) { alert(t("Please select a pointsman.")); return; }
+      if (!refFormDate)    { alert(t("Please enter the REF training date.")); return; }
       const refData = {
         courseName:  "Refresher Course (REF)",
         refStatus:   refFormStatus,
@@ -694,7 +718,7 @@ function StationMasterModule({ user, onLogout }) {
         Scheduled: "sdom-badge-warning", "In Progress": "sdom-badge-warning", Pending: "sdom-badge-warning",
         Expired: "sdom-badge-danger", Cancelled: "sdom-badge-danger"
       };
-      return <span className={`sdom-badge ${map[s] || "sdom-badge-neutral"}`}>{s || "N/A"}</span>;
+      return <span className={`sdom-badge ${map[s] || "sdom-badge-neutral"}`}>{t(s) || "N/A"}</span>;
     };
 
     return (
@@ -702,53 +726,53 @@ function StationMasterModule({ user, onLogout }) {
         {/* Header */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px" }}>
           <div>
-            <h1 className="sdom-page-title" style={{ fontSize: "28px", fontWeight: "800", color: "#0f172a", margin: "0 0 4px" }}>REF Course Management</h1>
-            <p className="sdom-page-subtitle" style={{ fontSize: "14px", color: "#64748b", margin: 0 }}>Schedule, conduct, and record Refresher Course (REF) training for Pointsmen at your station.</p>
+            <h1 className="sdom-page-title" style={{ fontSize: "28px", fontWeight: "800", color: "#0f172a", margin: "0 0 4px" }}>{t("REF Course Management")}</h1>
+            <p className="sdom-page-subtitle" style={{ fontSize: "14px", color: "#64748b", margin: 0 }}>{t("Schedule, conduct, and record Refresher Course (REF) training for Pointsmen at your station.")}</p>
           </div>
           <button
             onClick={() => handleOpenRefModal("")}
             style={{ height: "42px", display: "flex", alignItems: "center", gap: "8px", background: "#7c3aed", color: "white", padding: "0 20px", border: "none", borderRadius: "8px", fontWeight: "700", cursor: "pointer", fontSize: "13px" }}
           >
-            <Plus size={16}/> Log REF Record
+            <Plus size={16}/> {t("Log REF Record")}
           </button>
         </div>
 
         {/* Stats */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "16px", marginBottom: "24px" }}>
           <div style={{ background: "white", border: "1px solid #e2e8f0", padding: "20px", borderRadius: "12px", boxShadow: "0 1px 3px rgba(0,0,0,0.05)", borderLeft: "4px solid #16a34a" }}>
-            <div style={{ fontSize: "24px", fontWeight: "800", color: "#16a34a" }}>{clearedCount} staff</div>
-            <div style={{ fontSize: "12px", color: "#64748b", marginTop: "4px", fontWeight: "600", textTransform: "uppercase" }}>REF Completed / Cleared</div>
+            <div style={{ fontSize: "24px", fontWeight: "800", color: "#16a34a" }}>{clearedCount} {t("staff")}</div>
+            <div style={{ fontSize: "12px", color: "#64748b", marginTop: "4px", fontWeight: "600", textTransform: "uppercase" }}>{t("REF Completed / Cleared")}</div>
           </div>
           <div style={{ background: "white", border: "1px solid #e2e8f0", padding: "20px", borderRadius: "12px", boxShadow: "0 1px 3px rgba(0,0,0,0.05)", borderLeft: "4px solid #7c3aed" }}>
-            <div style={{ fontSize: "24px", fontWeight: "800", color: "#7c3aed" }}>{pendingCount} staff</div>
-            <div style={{ fontSize: "12px", color: "#64748b", marginTop: "4px", fontWeight: "600", textTransform: "uppercase" }}>Scheduled / In Progress</div>
+            <div style={{ fontSize: "24px", fontWeight: "800", color: "#7c3aed" }}>{pendingCount} {t("staff")}</div>
+            <div style={{ fontSize: "12px", color: "#64748b", marginTop: "4px", fontWeight: "600", textTransform: "uppercase" }}>{t("Scheduled / In Progress")}</div>
           </div>
           <div style={{ background: "white", border: "1px solid #e2e8f0", padding: "20px", borderRadius: "12px", boxShadow: "0 1px 3px rgba(0,0,0,0.05)", borderLeft: "4px solid #dc2626" }}>
-            <div style={{ fontSize: "24px", fontWeight: "800", color: "#dc2626" }}>{expiredCount} staff</div>
-            <div style={{ fontSize: "12px", color: "#64748b", marginTop: "4px", fontWeight: "600", textTransform: "uppercase" }}>Expired / Cancelled</div>
+            <div style={{ fontSize: "24px", fontWeight: "800", color: "#dc2626" }}>{expiredCount} {t("staff")}</div>
+            <div style={{ fontSize: "12px", color: "#64748b", marginTop: "4px", fontWeight: "600", textTransform: "uppercase" }}>{t("Expired / Cancelled")}</div>
           </div>
         </div>
 
         {/* Filter Bar */}
         <div style={{ display: "flex", gap: "16px", background: "white", padding: "16px", borderRadius: "12px", border: "1px solid #e2e8f0", marginBottom: "24px", alignItems: "flex-end" }}>
           <div style={{ display: "flex", flexDirection: "column", gap: "6px", flex: 2 }}>
-            <label style={{ fontSize: "11px", fontWeight: "800", color: "#475569", textTransform: "uppercase" }}>Search Staff</label>
+            <label style={{ fontSize: "11px", fontWeight: "800", color: "#475569", textTransform: "uppercase" }}>{t("Search Staff")}</label>
             <div style={{ position: "relative" }}>
               <Search size={15} style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", color: "#64748b" }} />
               <input
-                type="text" placeholder="Search by name or HRMS ID..."
+                type="text" placeholder={t("Search by name or HRMS ID...")}
                 value={refSearch} onChange={e => setRefSearch(e.target.value)}
                 style={{ width: "100%", height: "42px", padding: "0 12px 0 36px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "13px", fontWeight: "600", outline: "none" }}
               />
             </div>
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: "6px", flex: 1 }}>
-            <label style={{ fontSize: "11px", fontWeight: "800", color: "#475569", textTransform: "uppercase" }}>REF Status</label>
+            <label style={{ fontSize: "11px", fontWeight: "800", color: "#475569", textTransform: "uppercase" }}>{t("REF Status")}</label>
             <select value={refStatusFilter} onChange={e => setRefStatusFilter(e.target.value)}
               style={{ height: "42px", padding: "0 12px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "13px", fontWeight: "600" }}
             >
-              <option value="All">All Statuses</option>
-              {REF_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
+              <option value="All">{t("All Statuses")}</option>
+              {REF_STATUSES.map(s => <option key={s} value={s}>{t(s)}</option>)}
             </select>
           </div>
         </div>
@@ -759,7 +783,7 @@ function StationMasterModule({ user, onLogout }) {
             <thead>
               <tr style={{ borderBottom: "1.5px solid #e2e8f0", background: "#f8fafc", textAlign: "left" }}>
                 {["Name", "HRMS ID", "Station", "REF Status", "Last REF Date", "Next Due Date", "Actions"].map(h => (
-                  <th key={h} style={{ padding: "12px 16px", fontSize: "12px", color: "#475569", fontWeight: "700" }}>{h}</th>
+                  <th key={h} style={{ padding: "12px 16px", fontSize: "12px", color: "#475569", fontWeight: "700" }}>{t(h)}</th>
                 ))}
               </tr>
             </thead>
@@ -775,12 +799,12 @@ function StationMasterModule({ user, onLogout }) {
                   <td style={{ padding: "12px 16px" }}>
                     <button onClick={() => handleOpenRefModal(emp.hrmsId)}
                       style={{ height: "30px", padding: "0 12px", borderRadius: "6px", background: "#f1f5f9", color: "#0f172a", border: "1px solid #cbd5e1", fontSize: "11px", fontWeight: "700", cursor: "pointer" }}
-                    >Log REF</button>
+                    >{t("Log REF")}</button>
                   </td>
                 </tr>
               ))}
               {filtered.length === 0 && (
-                <tr><td colSpan={7} style={{ padding: "30px", textAlign: "center", color: "#64748b", fontSize: "14px" }}>No pointsmen matched your filters.</td></tr>
+                <tr><td colSpan={7} style={{ padding: "30px", textAlign: "center", color: "#64748b", fontSize: "14px" }}>{t("No pointsmen matched your filters.")}</td></tr>
               )}
             </tbody>
           </table>
@@ -792,8 +816,8 @@ function StationMasterModule({ user, onLogout }) {
             <div className="sdom-modal" style={{ width: "520px", maxWidth: "95vw", padding: "28px", background: "white", borderRadius: "14px", boxShadow: "0 20px 40px rgba(0,0,0,0.15)", boxSizing: "border-box" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
                 <div>
-                  <h3 style={{ margin: 0, fontSize: "18px", fontWeight: "800", color: "#0f172a" }}>LOG REF COURSE RECORD</h3>
-                  <p style={{ margin: "4px 0 0", fontSize: "12px", color: "#64748b" }}>Refresher Course Training Record</p>
+                  <h3 style={{ margin: 0, fontSize: "18px", fontWeight: "800", color: "#0f172a" }}>{t("LOG REF COURSE RECORD")}</h3>
+                  <p style={{ margin: "4px 0 0", fontSize: "12px", color: "#64748b" }}>{t("Refresher Course Training Record")}</p>
                 </div>
                 <button type="button" onClick={() => setShowRefModal(false)} style={{ background: "none", border: "none", fontSize: "20px", cursor: "pointer", color: "#64748b" }}>✕</button>
               </div>
@@ -801,7 +825,7 @@ function StationMasterModule({ user, onLogout }) {
               <form onSubmit={handleRefSubmit} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
                 {/* Staff Select */}
                 <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-                  <label style={{ fontSize: "12px", fontWeight: "700", color: "#334155" }}>Select Pointsman *</label>
+                  <label style={{ fontSize: "12px", fontWeight: "700", color: "#334155" }}>{t("Select Pointsman *")}</label>
                   <select value={refFormHrmsId}
                     onChange={e => {
                       setRefFormHrmsId(e.target.value);
@@ -811,7 +835,7 @@ function StationMasterModule({ user, onLogout }) {
                     style={{ height: "42px", padding: "0 12px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "13px", fontWeight: "600", width: "100%" }}
                     required
                   >
-                    <option value="">-- Choose Pointsman --</option>
+                    <option value="">{t("-- Choose Pointsman --")}</option>
                     {[...pointsmen].sort((a,b) => a.name.localeCompare(b.name)).map(emp => (
                       <option key={emp.hrmsId} value={emp.hrmsId}>{emp.name} ({emp.hrmsId})</option>
                     ))}
@@ -820,26 +844,26 @@ function StationMasterModule({ user, onLogout }) {
 
                 {/* REF Status */}
                 <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-                  <label style={{ fontSize: "12px", fontWeight: "700", color: "#334155" }}>REF Status *</label>
+                  <label style={{ fontSize: "12px", fontWeight: "700", color: "#334155" }}>{t("REF Status *")}</label>
                   <select value={refFormStatus} onChange={e => setRefFormStatus(e.target.value)}
                     style={{ height: "42px", padding: "0 12px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "13px", fontWeight: "600", width: "100%" }}
                     required
                   >
-                    {REF_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
+                    {REF_STATUSES.map(s => <option key={s} value={s}>{t(s)}</option>)}
                   </select>
                 </div>
 
                 {/* Dates */}
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
                   <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-                    <label style={{ fontSize: "12px", fontWeight: "700", color: "#334155" }}>REF Training Date *</label>
+                    <label style={{ fontSize: "12px", fontWeight: "700", color: "#334155" }}>{t("REF Training Date *")}</label>
                     <input type="date" value={refFormDate} onChange={e => setRefFormDate(e.target.value)}
                       style={{ height: "42px", padding: "0 12px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "13px" }}
                       required
                     />
                   </div>
                   <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-                    <label style={{ fontSize: "12px", fontWeight: "700", color: "#334155" }}>Next REF Due Date</label>
+                    <label style={{ fontSize: "12px", fontWeight: "700", color: "#334155" }}>{t("Next REF Due Date")}</label>
                     <input type="date" value={refFormNextDue} onChange={e => setRefFormNextDue(e.target.value)}
                       style={{ height: "42px", padding: "0 12px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "13px" }}
                     />
@@ -848,18 +872,18 @@ function StationMasterModule({ user, onLogout }) {
 
                 {/* Conducted By */}
                 <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-                  <label style={{ fontSize: "12px", fontWeight: "700", color: "#334155" }}>Conducted By</label>
+                  <label style={{ fontSize: "12px", fontWeight: "700", color: "#334155" }}>{t("Conducted By")}</label>
                   <input type="text" value={refFormConductedBy} onChange={e => setRefFormConductedBy(e.target.value)}
-                    placeholder={`SM: ${smName}`}
+                    placeholder={`${t("SM")}: ${smName}`}
                     style={{ height: "42px", padding: "0 12px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "13px", fontWeight: "600" }}
                   />
                 </div>
 
                 {/* Remarks */}
                 <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-                  <label style={{ fontSize: "12px", fontWeight: "700", color: "#334155" }}>Remarks / Observations</label>
+                  <label style={{ fontSize: "12px", fontWeight: "700", color: "#334155" }}>{t("Remarks / Observations")}</label>
                   <textarea value={refFormRemarks} onChange={e => setRefFormRemarks(e.target.value)}
-                    placeholder="Enter remarks about the REF training session..."
+                    placeholder={t("Enter remarks about the REF training session...")}
                     style={{ minHeight: "80px", padding: "10px 12px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "13px", fontFamily: "inherit", resize: "vertical" }}
                   />
                 </div>
@@ -868,10 +892,10 @@ function StationMasterModule({ user, onLogout }) {
                 <div style={{ display: "flex", gap: "12px", justifyContent: "flex-end", marginTop: "8px" }}>
                   <button type="button" onClick={() => setShowRefModal(false)}
                     style={{ height: "42px", padding: "0 20px", border: "1px solid #cbd5e1", background: "#ffffff", color: "#334155", borderRadius: "8px", fontWeight: "700", cursor: "pointer" }}
-                  >Cancel</button>
+                  >{t("Cancel")}</button>
                   <button type="submit"
                     style={{ height: "42px", padding: "0 20px", background: "#7c3aed", color: "#ffffff", border: "none", borderRadius: "8px", fontWeight: "700", cursor: "pointer" }}
-                  >Save REF Record</button>
+                  >{t("Save REF Record")}</button>
                 </div>
               </form>
             </div>
@@ -993,7 +1017,7 @@ function StationMasterModule({ user, onLogout }) {
         Completed: "sdom-badge-success",
         Absent: "sdom-badge-danger"
       };
-      return <span className={`sdom-badge ${map[s] || "sdom-badge-neutral"}`}>{s}</span>;
+      return <span className={`sdom-badge ${map[s] || "sdom-badge-neutral"}`}>{t(s)}</span>;
     };
 
     return (
@@ -1001,14 +1025,14 @@ function StationMasterModule({ user, onLogout }) {
         {/* Header */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px" }}>
           <div>
-            <h1 className="sdom-page-title" style={{ fontSize: "28px", fontWeight: "800", color: "#0f172a", margin: "0 0 4px" }}>Safety Counselling Queue</h1>
-            <p className="sdom-page-subtitle" style={{ fontSize: "14px", color: "#64748b", margin: 0 }}>Manage mandatory safety counselling and risk monitoring for Category D Pointsmen.</p>
+            <h1 className="sdom-page-title" style={{ fontSize: "28px", fontWeight: "800", color: "#0f172a", margin: "0 0 4px" }}>{t("Safety Counselling Queue")}</h1>
+            <p className="sdom-page-subtitle" style={{ fontSize: "14px", color: "#64748b", margin: 0 }}>{t("Manage mandatory safety counselling and risk monitoring for Category D Pointsmen.")}</p>
           </div>
           <button
             onClick={() => setShowCounsellingStats(!showCounsellingStats)}
             style={{ height: "42px", display: "flex", alignItems: "center", gap: "8px", background: "#ffffff", border: "1px solid #cbd5e1", borderRadius: "8px", padding: "0 16px", fontWeight: "700", cursor: "pointer", fontSize: "13px", color: "#334155" }}
           >
-            {showCounsellingStats ? "Hide Stats & Schedules" : "Show Stats & Schedules"}
+            {showCounsellingStats ? t("Hide Stats & Schedules") : t("Show Stats & Schedules")}
           </button>
         </div>
 
@@ -1017,7 +1041,7 @@ function StationMasterModule({ user, onLogout }) {
           <div style={{ background: "#fef2f2", border: "1px solid #fee2e2", padding: "20px", borderRadius: "12px", marginBottom: "24px", boxShadow: "0 1px 3px rgba(0,0,0,0.05)" }}>
             <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "16px" }}>
               <ShieldAlert size={20} color="#dc2626" />
-              <h3 style={{ margin: 0, fontSize: "16px", fontWeight: "800", color: "#991b1b" }}>Safety Counselling & Category D Monitoring Stats</h3>
+              <h3 style={{ margin: 0, fontSize: "16px", fontWeight: "800", color: "#991b1b" }}>{t("Safety Counselling & Category D Monitoring Stats")}</h3>
             </div>
             
             <div style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: "12px" }}>
@@ -1031,7 +1055,7 @@ function StationMasterModule({ user, onLogout }) {
               ].map((card, i) => (
                 <div key={i} style={{ background: card.bg, border: card.border, padding: "14px", borderRadius: "10px", textAlign: "center" }}>
                   <div style={{ fontSize: "20px", fontWeight: "800", color: card.color }}>{card.val}</div>
-                  <div style={{ fontSize: "10px", color: "#7f1d1d", fontWeight: "700", textTransform: "uppercase", marginTop: "4px", lineHeight: "1.2" }}>{card.label}</div>
+                  <div style={{ fontSize: "10px", color: "#7f1d1d", fontWeight: "700", textTransform: "uppercase", marginTop: "4px", lineHeight: "1.2" }}>{t(card.label)}</div>
                 </div>
               ))}
             </div>
@@ -1039,7 +1063,7 @@ function StationMasterModule({ user, onLogout }) {
             {/* Upcoming Review/Retest Dates */}
             {counsellingQueue.some(c => c.status === 'Scheduled') && (
               <div style={{ marginTop: "16px", background: "#ffffff", borderRadius: "8px", padding: "12px 16px", border: "1px solid #fee2e2" }}>
-                <div style={{ fontSize: "11px", fontWeight: "800", color: "#991b1b", textTransform: "uppercase", marginBottom: "8px" }}>Upcoming Session Schedule</div>
+                <div style={{ fontSize: "11px", fontWeight: "800", color: "#991b1b", textTransform: "uppercase", marginBottom: "8px" }}>{t("Upcoming Session Schedule")}</div>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: "12px" }}>
                   {counsellingQueue.filter(c => c.status === 'Scheduled').map(c => {
                     let parsed = {};
@@ -1059,22 +1083,22 @@ function StationMasterModule({ user, onLogout }) {
         {/* Filter Bar */}
         <div style={{ display: "flex", gap: "16px", background: "white", padding: "16px", borderRadius: "12px", border: "1px solid #e2e8f0", marginBottom: "24px", alignItems: "flex-end" }}>
           <div style={{ display: "flex", flexDirection: "column", gap: "6px", flex: 2 }}>
-            <label style={{ fontSize: "11px", fontWeight: "800", color: "#475569", textTransform: "uppercase" }}>Search Pointsman</label>
+            <label style={{ fontSize: "11px", fontWeight: "800", color: "#475569", textTransform: "uppercase" }}>{t("Search Pointsman")}</label>
             <div style={{ position: "relative" }}>
               <Search size={15} style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", color: "#64748b" }} />
               <input
-                type="text" placeholder="Search by name or HRMS ID..."
+                type="text" placeholder={t("Search by name or HRMS ID...")}
                 value={counselSearch} onChange={e => setCounselSearch(e.target.value)}
                 style={{ width: "100%", height: "42px", padding: "0 12px 0 36px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "13px", fontWeight: "600", outline: "none" }}
               />
             </div>
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: "6px", flex: 1 }}>
-            <label style={{ fontSize: "11px", fontWeight: "800", color: "#475569", textTransform: "uppercase" }}>Counselling Status</label>
+            <label style={{ fontSize: "11px", fontWeight: "800", color: "#475569", textTransform: "uppercase" }}>{t("Counselling Status")}</label>
             <select value={counselStatusFilter} onChange={e => setCounselStatusFilter(e.target.value)}
               style={{ height: "42px", padding: "0 12px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "13px", fontWeight: "600" }}
             >
-              {statuses.map(s => <option key={s} value={s}>{s === "All" ? "All Records" : s}</option>)}
+              {statuses.map(s => <option key={s} value={s}>{s === "All" ? t("All Records") : t(s)}</option>)}
             </select>
           </div>
         </div>
@@ -1085,7 +1109,7 @@ function StationMasterModule({ user, onLogout }) {
             <thead>
               <tr style={{ borderBottom: "1.5px solid #e2e8f0", background: "#f8fafc", textAlign: "left" }}>
                 {["Employee", "HRMS ID", "Trigger Assessment", "Latest Score", "Counselling Status", "Scheduled Date/Time", "Actions"].map(h => (
-                  <th key={h} style={{ padding: "12px 16px", fontSize: "12px", color: "#475569", fontWeight: "700" }}>{h}</th>
+                  <th key={h} style={{ padding: "12px 16px", fontSize: "12px", color: "#475569", fontWeight: "700" }}>{t(h)}</th>
                 ))}
               </tr>
             </thead>
@@ -1101,31 +1125,31 @@ function StationMasterModule({ user, onLogout }) {
                   <tr key={row.counselling_id} style={{ borderBottom: "1px solid #e8edf2" }}>
                     <td style={{ padding: "12px 16px", fontSize: "13px", fontWeight: "700", color: "#1e293b" }}>{row.employeeName}</td>
                     <td style={{ padding: "12px 16px", fontSize: "13px", fontFamily: "monospace", color: "#475569" }}>{row.employeeHrmsId}</td>
-                    <td style={{ padding: "12px 16px", fontSize: "13px", color: "#475569" }}>{type}</td>
+                    <td style={{ padding: "12px 16px", fontSize: "13px", color: "#475569" }}>{t(type)}</td>
                     <td style={{ padding: "12px 16px", fontSize: "13px", fontWeight: "700", color: "#dc2626" }}>{score}%</td>
                     <td style={{ padding: "12px 16px", fontSize: "13px" }}>{counselBadge(row.status)}</td>
                     <td style={{ padding: "12px 16px", fontSize: "13px", color: "#475569" }}>
-                      {parsedRemarks.scheduledDate ? `${parsedRemarks.scheduledDate} ${parsedRemarks.scheduledTime || ""}` : "Not Scheduled"}
+                      {parsedRemarks.scheduledDate ? `${parsedRemarks.scheduledDate} ${parsedRemarks.scheduledTime || ""}` : t("Not Scheduled")}
                     </td>
                     <td style={{ padding: "12px 16px" }}>
                       <div style={{ display: "flex", gap: "8px" }}>
                         {(row.status === "Pending" || row.status === "Absent") && (
                           <button onClick={() => handleOpenScheduleModal(row)}
                             style={{ height: "30px", padding: "0 12px", borderRadius: "6px", background: "#f1f5f9", color: "#0f172a", border: "1px solid #cbd5e1", fontSize: "11px", fontWeight: "700", cursor: "pointer" }}
-                          >Schedule</button>
+                          >{t("Schedule")}</button>
                         )}
                         {row.status === "Scheduled" && (
                           <button onClick={() => handleOpenResultModal(row)}
                             style={{ height: "30px", padding: "0 12px", borderRadius: "6px", background: "#7c3aed", color: "white", border: "none", fontSize: "11px", fontWeight: "700", cursor: "pointer" }}
-                          >Conduct Session</button>
+                          >{t("Conduct Session")}</button>
                         )}
                         <button onClick={() => setSelectedCounselRecord(row)}
                           style={{ height: "30px", padding: "0 12px", borderRadius: "6px", background: "#ffffff", color: "#475569", border: "1px solid #cbd5e1", fontSize: "11px", fontWeight: "700", cursor: "pointer" }}
-                        >Details</button>
+                        >{t("Details")}</button>
                         {row.status === "Completed" && (
                           <button onClick={() => handleOpenMonitoringModal(row)}
                             style={{ height: "30px", padding: "0 12px", borderRadius: "6px", background: "#059669", color: "white", border: "none", fontSize: "11px", fontWeight: "700", cursor: "pointer" }}
-                          >Monitor</button>
+                          >{t("Monitor")}</button>
                         )}
                       </div>
                     </td>
@@ -1133,7 +1157,7 @@ function StationMasterModule({ user, onLogout }) {
                 );
               })}
               {filteredQueue.length === 0 && (
-                <tr><td colSpan={7} style={{ padding: "30px", textAlign: "center", color: "#64748b", fontSize: "14px" }}>No pointsmen in counselling queue.</td></tr>
+                <tr><td colSpan={7} style={{ padding: "30px", textAlign: "center", color: "#64748b", fontSize: "14px" }}>{t("No pointsmen in counselling queue.")}</td></tr>
               )}
             </tbody>
           </table>
@@ -1144,29 +1168,29 @@ function StationMasterModule({ user, onLogout }) {
           <div className="sdom-modal-overlay" style={{ zIndex: 99999 }} onClick={() => setShowCounselScheduleModal(false)}>
             <div className="sdom-modal" style={{ width: "450px", padding: "24px" }} onClick={e => e.stopPropagation()}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
-                <h3 style={{ margin: 0, fontSize: "18px", fontWeight: "800" }}>Schedule Counselling Session</h3>
+                <h3 style={{ margin: 0, fontSize: "18px", fontWeight: "800" }}>{t("Schedule Counselling Session")}</h3>
                 <button type="button" onClick={() => setShowCounselScheduleModal(false)} style={{ background: "none", border: "none", fontSize: "20px", cursor: "pointer" }}>✕</button>
               </div>
               <form onSubmit={handleScheduleSubmit} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
                 <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-                  <label style={{ fontSize: "12px", fontWeight: "700" }}>Date *</label>
+                  <label style={{ fontSize: "12px", fontWeight: "700" }}>{t("Date *")}</label>
                   <input type="date" value={counselScheduleDate} onChange={e => setCounselScheduleDate(e.target.value)}
                     style={{ height: "40px", padding: "0 12px", borderRadius: "6px", border: "1px solid #cbd5e1" }} required />
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-                  <label style={{ fontSize: "12px", fontWeight: "700" }}>Time *</label>
+                  <label style={{ fontSize: "12px", fontWeight: "700" }}>{t("Time *")}</label>
                   <input type="time" value={counselScheduleTime} onChange={e => setCounselScheduleTime(e.target.value)}
                     style={{ height: "40px", padding: "0 12px", borderRadius: "6px", border: "1px solid #cbd5e1" }} required />
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-                  <label style={{ fontSize: "12px", fontWeight: "700" }}>Remarks / Preparation Instructions</label>
+                  <label style={{ fontSize: "12px", fontWeight: "700" }}>{t("Remarks / Preparation Instructions")}</label>
                   <textarea value={counselScheduleRemarks} onChange={e => setCounselScheduleRemarks(e.target.value)}
-                    placeholder="Enter initial details for the pointsman..."
+                    placeholder={t("Enter initial details for the pointsman...")}
                     style={{ minHeight: "80px", padding: "10px 12px", borderRadius: "6px", border: "1px solid #cbd5e1", fontFamily: "inherit" }} />
                 </div>
                 <div style={{ display: "flex", gap: "12px", justifyContent: "flex-end", marginTop: "12px" }}>
-                  <button type="button" onClick={() => setShowCounselScheduleModal(false)} className="sdom-btn-outline" style={{ height: "40px" }}>Cancel</button>
-                  <button type="submit" className="sdom-btn-primary" style={{ height: "40px", background: "#7c3aed" }}>Save Schedule</button>
+                  <button type="button" onClick={() => setShowCounselScheduleModal(false)} className="sdom-btn-outline" style={{ height: "40px" }}>{t("Cancel")}</button>
+                  <button type="submit" className="sdom-btn-primary" style={{ height: "40px", background: "#7c3aed" }}>{t("Save Schedule")}</button>
                 </div>
               </form>
             </div>
@@ -1178,20 +1202,20 @@ function StationMasterModule({ user, onLogout }) {
           <div className="sdom-modal-overlay" style={{ zIndex: 99999 }} onClick={() => setShowCounselResultModal(false)}>
             <div className="sdom-modal" style={{ width: "550px", padding: "24px", maxHeight: "90vh", overflowY: "auto" }} onClick={e => e.stopPropagation()}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
-                <h3 style={{ margin: 0, fontSize: "18px", fontWeight: "800" }}>Counselling Session Attendance & Observations</h3>
+                <h3 style={{ margin: 0, fontSize: "18px", fontWeight: "800" }}>{t("Counselling Session Attendance & Observations")}</h3>
                 <button type="button" onClick={() => setShowCounselResultModal(false)} style={{ background: "none", border: "none", fontSize: "20px", cursor: "pointer" }}>✕</button>
               </div>
               <form onSubmit={handleResultSubmit} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
                 <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-                  <label style={{ fontSize: "12px", fontWeight: "700" }}>Mark Attendance *</label>
+                  <label style={{ fontSize: "12px", fontWeight: "700" }}>{t("Mark Attendance *")}</label>
                   <div style={{ display: "flex", gap: "16px", marginTop: "4px" }}>
                     <label style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "13px", fontWeight: "600", cursor: "pointer" }}>
                       <input type="radio" name="attendance" value="Present" checked={counselAttendance === "Present"} onChange={() => setCounselAttendance("Present")} />
-                      Present
+                      {t("Present")}
                     </label>
                     <label style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "13px", fontWeight: "600", cursor: "pointer" }}>
                       <input type="radio" name="attendance" value="Absent" checked={counselAttendance === "Absent"} onChange={() => setCounselAttendance("Absent")} />
-                      Absent
+                      {t("Absent")}
                     </label>
                   </div>
                 </div>
@@ -1199,48 +1223,48 @@ function StationMasterModule({ user, onLogout }) {
                 {counselAttendance === "Present" ? (
                   <>
                     <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-                      <label style={{ fontSize: "12px", fontWeight: "700" }}>General Observations *</label>
+                      <label style={{ fontSize: "12px", fontWeight: "700" }}>{t("General Observations *")}</label>
                       <textarea value={counselObs} onChange={e => setCounselObs(e.target.value)} required
-                        placeholder="Detailed observations during session..."
+                        placeholder={t("Detailed observations during session...")}
                         style={{ minHeight: "60px", padding: "10px 12px", borderRadius: "6px", border: "1px solid #cbd5e1", fontFamily: "inherit" }} />
                     </div>
                     <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-                      <label style={{ fontSize: "12px", fontWeight: "700" }}>Safety Concerns Identified *</label>
+                      <label style={{ fontSize: "12px", fontWeight: "700" }}>{t("Safety Concerns Identified *")}</label>
                       <textarea value={counselSafety} onChange={e => setCounselSafety(e.target.value)} required
-                        placeholder="List of safety mistakes or logic slips..."
+                        placeholder={t("List of safety mistakes or logic slips...")}
                         style={{ minHeight: "60px", padding: "10px 12px", borderRadius: "6px", border: "1px solid #cbd5e1", fontFamily: "inherit" }} />
                     </div>
                     <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-                      <label style={{ fontSize: "12px", fontWeight: "700" }}>Behavioural Concerns</label>
+                      <label style={{ fontSize: "12px", fontWeight: "700" }}>{t("Behavioural Concerns")}</label>
                       <textarea value={counselBehavior} onChange={e => setCounselBehavior(e.target.value)}
-                        placeholder="Comportment, response to instruction..."
+                        placeholder={t("Comportment, response to instruction...")}
                         style={{ minHeight: "60px", padding: "10px 12px", borderRadius: "6px", border: "1px solid #cbd5e1", fontFamily: "inherit" }} />
                     </div>
                     <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-                      <label style={{ fontSize: "12px", fontWeight: "700" }}>Improvement Recommendations *</label>
+                      <label style={{ fontSize: "12px", fontWeight: "700" }}>{t("Improvement Recommendations *")}</label>
                       <textarea value={counselRecs} onChange={e => setCounselRecs(e.target.value)} required
-                        placeholder="Yard practice, mentoring steps..."
+                        placeholder={t("Yard practice, mentoring steps...")}
                         style={{ minHeight: "60px", padding: "10px 12px", borderRadius: "6px", border: "1px solid #cbd5e1", fontFamily: "inherit" }} />
                     </div>
                     <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-                      <label style={{ fontSize: "12px", fontWeight: "700" }}>Follow-up Actions</label>
+                      <label style={{ fontSize: "12px", fontWeight: "700" }}>{t("Follow-up Actions")}</label>
                       <textarea value={counselFollowUp} onChange={e => setCounselFollowUp(e.target.value)}
-                        placeholder="Scheduled assessments, review checks..."
+                        placeholder={t("Scheduled assessments, review checks...")}
                         style={{ minHeight: "60px", padding: "10px 12px", borderRadius: "6px", border: "1px solid #cbd5e1", fontFamily: "inherit" }} />
                     </div>
                   </>
                 ) : (
                   <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-                    <label style={{ fontSize: "12px", fontWeight: "700" }}>Absence Details / Audit Reason *</label>
+                    <label style={{ fontSize: "12px", fontWeight: "700" }}>{t("Absence Details / Audit Reason *")}</label>
                     <textarea value={counselAbsenceRemarks} onChange={e => setCounselAbsenceRemarks(e.target.value)} required
-                      placeholder="Why did the employee fail to attend the session?..."
+                      placeholder={t("Why did the employee fail to attend the session?...")}
                       style={{ minHeight: "100px", padding: "10px 12px", borderRadius: "6px", border: "1px solid #cbd5e1", fontFamily: "inherit" }} />
                   </div>
                 )}
 
                 <div style={{ display: "flex", gap: "12px", justifyContent: "flex-end", marginTop: "12px" }}>
-                  <button type="button" onClick={() => setShowCounselResultModal(false)} className="sdom-btn-outline" style={{ height: "40px" }}>Cancel</button>
-                  <button type="submit" className="sdom-btn-primary" style={{ height: "40px", background: "#7c3aed" }}>Save Details</button>
+                  <button type="button" onClick={() => setShowCounselResultModal(false)} className="sdom-btn-outline" style={{ height: "40px" }}>{t("Cancel")}</button>
+                  <button type="submit" className="sdom-btn-primary" style={{ height: "40px", background: "#7c3aed" }}>{t("Save Details")}</button>
                 </div>
               </form>
             </div>
@@ -1252,44 +1276,44 @@ function StationMasterModule({ user, onLogout }) {
           <div className="sdom-modal-overlay" style={{ zIndex: 99999 }} onClick={() => setShowMonitoringModal(false)}>
             <div className="sdom-modal" style={{ width: "480px", padding: "24px" }} onClick={e => e.stopPropagation()}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
-                <h3 style={{ margin: 0, fontSize: "18px", fontWeight: "800" }}>Safety Monitoring Review</h3>
+                <h3 style={{ margin: 0, fontSize: "18px", fontWeight: "800" }}>{t("Safety Monitoring Review")}</h3>
                 <button type="button" onClick={() => setShowMonitoringModal(false)} style={{ background: "none", border: "none", fontSize: "20px", cursor: "pointer" }}>✕</button>
               </div>
               <form onSubmit={handleMonitoringSubmit} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
                 <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-                  <label style={{ fontSize: "12px", fontWeight: "700" }}>Monitoring Status</label>
+                  <label style={{ fontSize: "12px", fontWeight: "700" }}>{t("Monitoring Status")}</label>
                   <select value={monitoringStatusVal} onChange={e => setMonitoringStatusVal(e.target.value)}
                     style={{ height: "40px", padding: "0 12px", borderRadius: "6px", border: "1px solid #cbd5e1", fontWeight: "600" }}
                   >
-                    <option value="Under Observation">Under Observation</option>
-                    <option value="Suspended">Suspended</option>
-                    <option value="Completed">Completed / Fit for Duty</option>
+                    <option value="Under Observation">{t("Under Observation")}</option>
+                    <option value="Suspended">{t("Suspended")}</option>
+                    <option value="Completed">{t("Completed / Fit for Duty")}</option>
                   </select>
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-                  <label style={{ fontSize: "12px", fontWeight: "700" }}>Risk Level</label>
+                  <label style={{ fontSize: "12px", fontWeight: "700" }}>{t("Risk Level")}</label>
                   <select value={monitoringRiskVal} onChange={e => setMonitoringRiskVal(e.target.value)}
                     style={{ height: "40px", padding: "0 12px", borderRadius: "6px", border: "1px solid #cbd5e1", fontWeight: "600" }}
                   >
-                    <option value="High">High Risk</option>
-                    <option value="Medium">Medium Risk</option>
-                    <option value="Low">Low Risk</option>
+                    <option value="High">{t("High Risk")}</option>
+                    <option value="Medium">{t("Medium Risk")}</option>
+                    <option value="Low">{t("Low Risk")}</option>
                   </select>
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-                  <label style={{ fontSize: "12px", fontWeight: "700" }}>Next Review Follow-up Date</label>
+                  <label style={{ fontSize: "12px", fontWeight: "700" }}>{t("Next Review Follow-up Date")}</label>
                   <input type="date" value={monitoringFollowUpDate} onChange={e => setMonitoringFollowUpDate(e.target.value)}
                     style={{ height: "40px", padding: "0 12px", borderRadius: "6px", border: "1px solid #cbd5e1" }} />
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-                  <label style={{ fontSize: "12px", fontWeight: "700" }}>Review History Remarks *</label>
+                  <label style={{ fontSize: "12px", fontWeight: "700" }}>{t("Review History Remarks *")}</label>
                   <textarea value={monitoringReviewText} onChange={e => setMonitoringReviewText(e.target.value)} required
-                    placeholder="Enter details of field safety check..."
+                    placeholder={t("Enter details of field safety check...")}
                     style={{ minHeight: "80px", padding: "10px 12px", borderRadius: "6px", border: "1px solid #cbd5e1", fontFamily: "inherit" }} />
                 </div>
                 <div style={{ display: "flex", gap: "12px", justifyContent: "flex-end", marginTop: "12px" }}>
-                  <button type="button" onClick={() => setShowMonitoringModal(false)} className="sdom-btn-outline" style={{ height: "40px" }}>Cancel</button>
-                  <button type="submit" className="sdom-btn-primary" style={{ height: "40px", background: "#059669" }}>Save Review</button>
+                  <button type="button" onClick={() => setShowMonitoringModal(false)} className="sdom-btn-outline" style={{ height: "40px" }}>{t("Cancel")}</button>
+                  <button type="submit" className="sdom-btn-primary" style={{ height: "40px", background: "#059669" }}>{t("Save Review")}</button>
                 </div>
               </form>
             </div>
@@ -1301,30 +1325,30 @@ function StationMasterModule({ user, onLogout }) {
           <div className="sdom-modal-overlay" style={{ zIndex: 99999 }} onClick={() => setSelectedCounselRecord(null)}>
             <div className="sdom-modal" style={{ width: "620px", padding: "24px", maxHeight: "90vh", overflowY: "auto" }} onClick={e => e.stopPropagation()}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px", borderBottom: "1px solid #e2e8f0", paddingBottom: "12px" }}>
-                <h3 style={{ margin: 0, fontSize: "18px", fontWeight: "800" }}>Safety Counselling File</h3>
+                <h3 style={{ margin: 0, fontSize: "18px", fontWeight: "800" }}>{t("Safety Counselling File")}</h3>
                 <button type="button" onClick={() => setSelectedCounselRecord(null)} style={{ background: "none", border: "none", fontSize: "20px", cursor: "pointer" }}>✕</button>
               </div>
 
               {/* Employee Bio */}
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", marginBottom: "20px" }}>
                 <div style={{ background: "#f8fafc", padding: "12px", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
-                  <div style={{ fontSize: "10px", color: "#64748b", fontWeight: "700", textTransform: "uppercase" }}>Employee Name</div>
+                  <div style={{ fontSize: "10px", color: "#64748b", fontWeight: "700", textTransform: "uppercase" }}>{t("Employee Name")}</div>
                   <div style={{ fontSize: "14px", fontWeight: "800", color: "#0f172a" }}>{selectedCounselRecord.employeeName}</div>
                 </div>
                 <div style={{ background: "#f8fafc", padding: "12px", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
-                  <div style={{ fontSize: "10px", color: "#64748b", fontWeight: "700", textTransform: "uppercase" }}>HRMS ID</div>
+                  <div style={{ fontSize: "10px", color: "#64748b", fontWeight: "700", textTransform: "uppercase" }}>{t("HRMS ID")}</div>
                   <div style={{ fontSize: "14px", fontWeight: "800", color: "#0f172a", fontFamily: "monospace" }}>{selectedCounselRecord.employeeHrmsId}</div>
                 </div>
               </div>
 
               {/* Session Details */}
               <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-                <h4 style={{ margin: 0, fontSize: "13px", fontWeight: "800", color: "#475569", textTransform: "uppercase" }}>Session State</h4>
+                <h4 style={{ margin: 0, fontSize: "13px", fontWeight: "800", color: "#475569", textTransform: "uppercase" }}>{t("Session State")}</h4>
                 <div style={{ border: "1px solid #e2e8f0", borderRadius: "8px", overflow: "hidden" }}>
                   <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px" }}>
                     <tbody>
                       <tr style={{ borderBottom: "1px solid #e2e8f0" }}>
-                        <td style={{ padding: "10px 14px", background: "#f8fafc", width: "40%", fontWeight: "700" }}>Current Status</td>
+                        <td style={{ padding: "10px 14px", background: "#f8fafc", width: "40%", fontWeight: "700" }}>{t("Current Status")}</td>
                         <td style={{ padding: "10px 14px" }}>{counselBadge(selectedCounselRecord.status)}</td>
                       </tr>
                       {(() => {
@@ -1333,68 +1357,68 @@ function StationMasterModule({ user, onLogout }) {
                         return (
                           <>
                             <tr style={{ borderBottom: "1px solid #e2e8f0" }}>
-                              <td style={{ padding: "10px 14px", background: "#f8fafc", fontWeight: "700" }}>Scheduled Date & Time</td>
+                              <td style={{ padding: "10px 14px", background: "#f8fafc", fontWeight: "700" }}>{t("Scheduled Date & Time")}</td>
                               <td style={{ padding: "10px 14px" }}>
-                                {parsed.scheduledDate ? `${parsed.scheduledDate} ${parsed.scheduledTime || ""}` : "Not Scheduled"}
+                                {parsed.scheduledDate ? `${parsed.scheduledDate} ${parsed.scheduledTime || ""}` : t("Not Scheduled")}
                               </td>
                             </tr>
                             <tr style={{ borderBottom: "1px solid #e2e8f0" }}>
-                              <td style={{ padding: "10px 14px", background: "#f8fafc", fontWeight: "700" }}>Counsellor (SM)</td>
+                              <td style={{ padding: "10px 14px", background: "#f8fafc", fontWeight: "700" }}>{t("Counsellor (SM)")}</td>
                               <td style={{ padding: "10px 14px" }}>
                                 {selectedCounselRecord.counsellorName} ({selectedCounselRecord.counsellorHrmsId})
                               </td>
                             </tr>
                             {parsed.schedulingRemarks && (
                               <tr style={{ borderBottom: "1px solid #e2e8f0" }}>
-                                <td style={{ padding: "10px 14px", background: "#f8fafc", fontWeight: "700" }}>Initial Instructions</td>
+                                <td style={{ padding: "10px 14px", background: "#f8fafc", fontWeight: "700" }}>{t("Initial Instructions")}</td>
                                 <td style={{ padding: "10px 14px", color: "#475569" }}>{parsed.schedulingRemarks}</td>
                               </tr>
                             )}
                             {parsed.observations && (
                               <tr style={{ borderBottom: "1px solid #e2e8f0" }}>
-                                <td style={{ padding: "10px 14px", background: "#f8fafc", fontWeight: "700" }}>General Observations</td>
+                                <td style={{ padding: "10px 14px", background: "#f8fafc", fontWeight: "700" }}>{t("General Observations")}</td>
                                 <td style={{ padding: "10px 14px", color: "#0f172a" }}>{parsed.observations}</td>
                               </tr>
                             )}
                             {parsed.safetyConcerns && (
                               <tr style={{ borderBottom: "1px solid #e2e8f0" }}>
-                                <td style={{ padding: "10px 14px", background: "#f8fafc", fontWeight: "700" }}>Safety Concerns</td>
+                                <td style={{ padding: "10px 14px", background: "#f8fafc", fontWeight: "700" }}>{t("Safety Concerns")}</td>
                                 <td style={{ padding: "10px 14px", color: "#dc2626", fontWeight: "600" }}>{parsed.safetyConcerns}</td>
                               </tr>
                             )}
                             {parsed.behaviouralConcerns && (
                               <tr style={{ borderBottom: "1px solid #e2e8f0" }}>
-                                <td style={{ padding: "10px 14px", background: "#f8fafc", fontWeight: "700" }}>Behavioural Remarks</td>
+                                <td style={{ padding: "10px 14px", background: "#f8fafc", fontWeight: "700" }}>{t("Behavioural Remarks")}</td>
                                 <td style={{ padding: "10px 14px", color: "#475569" }}>{parsed.behaviouralConcerns}</td>
                               </tr>
                             )}
                             {parsed.recommendations && (
                               <tr style={{ borderBottom: "1px solid #e2e8f0" }}>
-                                <td style={{ padding: "10px 14px", background: "#f8fafc", fontWeight: "700" }}>Recommendations</td>
+                                <td style={{ padding: "10px 14px", background: "#f8fafc", fontWeight: "700" }}>{t("Recommendations")}</td>
                                 <td style={{ padding: "10px 14px", color: "#2563eb", fontWeight: "600" }}>{parsed.recommendations}</td>
                               </tr>
                             )}
                             {parsed.followUpActions && (
                               <tr style={{ borderBottom: "1px solid #e2e8f0" }}>
-                                <td style={{ padding: "10px 14px", background: "#f8fafc", fontWeight: "700" }}>Follow-up Steps</td>
+                                <td style={{ padding: "10px 14px", background: "#f8fafc", fontWeight: "700" }}>{t("Follow-up Steps")}</td>
                                 <td style={{ padding: "10px 14px", color: "#16a34a", fontWeight: "600" }}>{parsed.followUpActions}</td>
                               </tr>
                             )}
                             {parsed.absenceRemarks && (
                               <tr style={{ borderBottom: "1px solid #e2e8f0" }}>
-                                <td style={{ padding: "10px 14px", background: "#f8fafc", fontWeight: "700" }}>Absence Remarks</td>
+                                <td style={{ padding: "10px 14px", background: "#f8fafc", fontWeight: "700" }}>{t("Absence Remarks")}</td>
                                 <td style={{ padding: "10px 14px", color: "#dc2626" }}>{parsed.absenceRemarks}</td>
                               </tr>
                             )}
                             {parsed.reschedules && parsed.reschedules.length > 0 && (
                               <tr>
-                                <td style={{ padding: "10px 14px", background: "#f8fafc", fontWeight: "700" }}>Audit Reschedule History</td>
+                                <td style={{ padding: "10px 14px", background: "#f8fafc", fontWeight: "700" }}>{t("Audit Reschedule History")}</td>
                                 <td style={{ padding: "10px 14px" }}>
                                   <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
                                     {parsed.reschedules.map((res, index) => (
                                       <div key={index} style={{ fontSize: "11px", border: "1px solid #fee2e2", background: "#fff5f5", padding: "6px", borderRadius: "4px" }}>
-                                        <strong>Reschedule #{index + 1}</strong>: Missed Date: {res.date} @ {res.time}
-                                        <div style={{ color: "#7f1d1d", marginTop: "2px" }}>Reason: {res.absenceRemarks}</div>
+                                        <strong>{t("Reschedule")} #{index + 1}</strong>: {t("Missed Date")}: {res.date} @ {res.time}
+                                        <div style={{ color: "#7f1d1d", marginTop: "2px" }}>{t("Reason")}: {res.absenceRemarks}</div>
                                       </div>
                                     ))}
                                   </div>
@@ -1410,7 +1434,7 @@ function StationMasterModule({ user, onLogout }) {
               </div>
 
               <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "20px" }}>
-                <button className="sdom-btn-primary" onClick={() => setSelectedCounselRecord(null)}>Close</button>
+                <button className="sdom-btn-primary" onClick={() => setSelectedCounselRecord(null)}>{t("Close")}</button>
               </div>
             </div>
           </div>
@@ -1449,18 +1473,19 @@ function StationMasterModule({ user, onLogout }) {
         <div className="sm2-topbar-brand">
           <div className="sm2-topbar-logo" style={{ background: "#1E3A5F", color: "#ffffff", fontWeight: "800", fontSize: "0.95rem", padding: "0" }}><img src="/logo.webp" alt="IR Logo" style={{ width: "100%", height: "100%", borderRadius: "inherit", objectFit: "cover" }} /></div>
           <div>
-            <h1>Indian Railway Evaluation System</h1>
-            <p>Station Master<span className="desktop-only-txt"> Module</span></p>
+            <h1>{t("Indian Railway Evaluation System")}</h1>
+            <p>{t("Station Master")}<span className="desktop-only-txt"> Module</span></p>
           </div>
         </div>
-        <div className="sm2-user-strip">
+        <div className="sm2-user-strip" style={{ gap: "12px", alignItems: "center" }}>
+          <LanguageSelector />
           <div className="sm2-user-avatar">{smName.charAt(0)}</div>
           <div>
             <strong>{smName}</strong>
             <span>{smId}</span>
           </div>
           <button className="sm2-logout-btn" onClick={onLogout}>
-            <LogOut size={15}/> Logout
+            <LogOut size={15}/> {t("Logout")}
           </button>
         </div>
       </header>
@@ -1474,7 +1499,7 @@ function StationMasterModule({ user, onLogout }) {
                 className={`sm2-nav-item ${activeTab === item.key ? "active" : ""}`}
                 onClick={() => switchTab(item.key)}>
                 <Icon size={17}/>
-                <span>{item.label}</span>
+                <span>{t(item.label)}</span>
               </button>
             );
           })}
@@ -1508,49 +1533,49 @@ function StationMasterModule({ user, onLogout }) {
                 </div>
                 <div>
                   <h2>
-                    {fullscreenChart === "monthly"     && "Monthly Assessment Trend — Deep Dive"}
-                    {fullscreenChart === "safety"      && "Safety Compliance Trend — Deep Dive"}
-                    {fullscreenChart === "performance" && "Performance Distribution — Deep Dive"}
+                    {fullscreenChart === "monthly"     && t("Monthly Assessment Trend — Deep Dive")}
+                    {fullscreenChart === "safety"      && t("Safety Compliance Trend — Deep Dive")}
+                    {fullscreenChart === "performance" && t("Performance Distribution — Deep Dive")}
                   </h2>
                   <p>
-                    Indian Railway Evaluation System · Station Master Analytics
+                    {t("Indian Railway Evaluation System · Station Master Analytics")}
                   </p>
                 </div>
               </div>
               <button className="sm2-fullscreen-close-btn" onClick={() => setFullscreenChart(null)}>
-                ✕ Close
+                ✕ {t("Close")}
               </button>
             </div>
 
             {/* ── Filter Bar ── */}
             <div className="sm2-fullscreen-filter-bar">
-              <span className="sm2-fs-filter-tag">FILTERS</span>
+              <span className="sm2-fs-filter-tag">{t("FILTERS")}</span>
               <input
-                type="text" placeholder="Search staff name / HRMS…"
+                type="text" placeholder={t("Search staff name / HRMS…")}
                 value={fsSearch} onChange={e => setFsSearch(e.target.value)}
                 className="sm2-fs-input"
               />
               <input type="date" value={fsStartDate} onChange={e => setFsStartDate(e.target.value)} className="sm2-fs-input" />
-              <span className="sm2-fs-label">to</span>
+              <span className="sm2-fs-label">{t("to")}</span>
               <input type="date" value={fsEndDate} onChange={e => setFsEndDate(e.target.value)} className="sm2-fs-input" />
               <select value={fsCategory} onChange={e => setFsCategory(e.target.value)} className="sm2-fs-select">
-                <option value="All">All Categories</option>
-                <option value="A">Category A</option>
-                <option value="B">Category B</option>
-                <option value="C">Category C</option>
-                <option value="D">Category D</option>
+                <option value="All">{t("All Categories")}</option>
+                <option value="A">{t("Category A")}</option>
+                <option value="B">{t("Category B")}</option>
+                <option value="C">{t("Category C")}</option>
+                <option value="D">{t("Category D")}</option>
               </select>
               <select value={fsRisk} onChange={e => setFsRisk(e.target.value)} className="sm2-fs-select">
-                <option value="All">All Risks</option>
-                <option value="Low">Low Risk</option>
-                <option value="Medium">Medium Risk</option>
-                <option value="High">High Risk</option>
+                <option value="All">{t("All Risks")}</option>
+                <option value="Low">{t("Low Risk")}</option>
+                <option value="Medium">{t("Medium Risk")}</option>
+                <option value="High">{t("High Risk")}</option>
               </select>
               <button onClick={() => { setFsSearch(""); setFsStartDate(""); setFsEndDate(""); setFsCategory("All"); setFsRisk("All"); }} className="sm2-fs-reset-btn">
-                Reset
+                {t("Reset")}
               </button>
               <div className="sm2-fs-counter">
-                Showing <strong>{filteredFsPointsmen.length}</strong> of {pointsmen.length} staff
+                {t("Showing")} <strong>{filteredFsPointsmen.length}</strong> {t("of")} {pointsmen.length} {t("staff")}
               </div>
             </div>
 
@@ -1568,7 +1593,7 @@ function StationMasterModule({ user, onLogout }) {
                 ].map(k => (
                   <div key={k.label} className="sm2-fs-kpi-card" style={{ "--glow": k.glowColor }}>
                     <div className="sm2-fs-kpi-value" style={{ color: k.color }}>{k.value}</div>
-                    <div className="sm2-fs-kpi-label">{k.label}</div>
+                    <div className="sm2-fs-kpi-label">{t(k.label)}</div>
                   </div>
                 ))}
               </div>
@@ -1576,9 +1601,9 @@ function StationMasterModule({ user, onLogout }) {
               {/* Large Chart */}
               <div className="sm2-fs-chart-container">
                 <h3>
-                  {fullscreenChart === "monthly"     && "📈 Monthly Avg Score & Assessment Volume"}
-                  {fullscreenChart === "safety"      && "🛡️ Monthly Safety Compliance Avg (%)"}
-                  {fullscreenChart === "performance" && "🏅 Staff Category Distribution"}
+                  {fullscreenChart === "monthly"     && `📈 ${t("Monthly Avg Score & Assessment Volume")}`}
+                  {fullscreenChart === "safety"      && `🛡️ ${t("Monthly Safety Compliance Avg (%)")}`}
+                  {fullscreenChart === "performance" && `🏅 ${t("Staff Category Distribution")}`}
                 </h3>
                 <div className="sm2-fs-chart-wrapper">
                   <ResponsiveContainer width="100%" height={320}>
@@ -1589,8 +1614,8 @@ function StationMasterModule({ user, onLogout }) {
                         <YAxis tick={{fontSize:12,fill:"#64748b"}} stroke="rgba(0,0,0,0.1)"/>
                         <Tooltip contentStyle={{background:"#ffffff",border:"1px solid #cbd5e1",borderRadius:8,color:"#0f172a",fontSize:12}}/>
                         <Legend wrapperStyle={{fontSize:12,color:"#4b5563"}}/>
-                        <Line type="monotone" dataKey="avgScore" name="Avg Score" stroke="#2563eb" strokeWidth={3} dot={{r:5,fill:"#2563eb"}} activeDot={{r:7}}/>
-                        <Line type="monotone" dataKey="assessments" name="Assessments" stroke="#16a34a" strokeWidth={2.5} dot={{r:4,fill:"#16a34a"}} strokeDasharray="6 3"/>
+                        <Line type="monotone" dataKey="avgScore" name={t("Avg Score")} stroke="#2563eb" strokeWidth={3} dot={{r:5,fill:"#2563eb"}} activeDot={{r:7}}/>
+                        <Line type="monotone" dataKey="assessments" name={t("Assessments")} stroke="#16a34a" strokeWidth={2.5} dot={{r:4,fill:"#16a34a"}} strokeDasharray="6 3"/>
                       </LineChart>
                     ) : fullscreenChart === "safety" ? (
                       <BarChart data={dynamicMonthlyTrend} margin={{top:10,right:30,left:-10,bottom:0}}>
@@ -1599,8 +1624,8 @@ function StationMasterModule({ user, onLogout }) {
                         <YAxis domain={[0,100]} tick={{fontSize:12,fill:"#64748b"}} stroke="rgba(0,0,0,0.1)"/>
                         <Tooltip contentStyle={{background:"#ffffff",border:"1px solid #cbd5e1",borderRadius:8,color:"#0f172a",fontSize:12}}/>
                         <Legend wrapperStyle={{fontSize:12,color:"#4b5563"}}/>
-                        <Bar dataKey="safetyAvg" name="Safety Avg %" fill="#7c3aed" radius={[6,6,0,0]}/>
-                        <Bar dataKey="avgScore"  name="Score Avg %"  fill="#2563eb" radius={[6,6,0,0]}/>
+                        <Bar dataKey="safetyAvg" name={t("Safety Avg %")} fill="#7c3aed" radius={[6,6,0,0]}/>
+                        <Bar dataKey="avgScore"  name={t("Score Avg %")}  fill="#2563eb" radius={[6,6,0,0]}/>
                       </BarChart>
                     ) : (
                       <PieChart>
@@ -1608,7 +1633,7 @@ function StationMasterModule({ user, onLogout }) {
                           data={(() => {
                             const counts = {A:0,B:0,C:0,D:0};
                             filteredFsPointsmen.forEach(p => { counts[getCat(p.lastScore)]++; });
-                            return Object.entries(counts).filter(([,c])=>c>0).map(([cat,count])=>({name:`Cat. ${cat}`,value:count}));
+                            return Object.entries(counts).filter(([,c])=>c>0).map(([cat,count])=>({name:`${t("Cat.")} ${cat}`,value:count}));
                           })()}
                           cx="50%" cy="50%" innerRadius={90} outerRadius={140}
                           dataKey="value" paddingAngle={4}
@@ -1626,7 +1651,7 @@ function StationMasterModule({ user, onLogout }) {
               {/* Low Performers Deep-Dive Table */}
               <div className="sm2-fs-low-perf-section">
                 <h3>
-                  <span style={{color:"#f87171",marginRight:6}}>⚠</span> Low Performing Staff — Direct Intervention Required
+                  <span style={{color:"#f87171",marginRight:6}}>⚠</span> {t("Low Performing Staff — Direct Intervention Required")}
                 </h3>
                 <div className="sm2-fs-grid">
                   {[...filteredFsPointsmen]
@@ -1648,19 +1673,19 @@ function StationMasterModule({ user, onLogout }) {
                               <div className="sm2-fs-card-id">{p.hrmsId}</div>
                             </div>
                             <span className="sm2-fs-card-cat" style={{ background: CAT_BG[cat] || "#f1f5f9", color: CAT_COLOR[cat] || "#64748b" }}>
-                              {cat === "Untested" ? "Untested" : `Cat. ${cat}`}
+                              {cat === "Untested" ? t("Untested") : `${t("Cat.")} ${cat}`}
                             </span>
                           </div>
                           <div className="sm2-fs-card-meta-row">
                             <span className="sm2-fs-card-risk-badge" style={{
                               background: risk==="High"?"rgba(248,113,113,0.15)":risk==="Medium"?"rgba(251,191,36,0.15)":"rgba(52,211,153,0.15)",
                               color: rColor
-                            }}>{risk} Risk</span>
-                            <span className="sm2-fs-card-incident-lbl">{p.incidents} incident{p.incidents!==1?"s":""}</span>
+                            }}>{t(risk)} {t("Risk")}</span>
+                            <span className="sm2-fs-card-incident-lbl">{p.incidents} {p.incidents === 1 ? t("incident") : t("incidents")}</span>
                           </div>
                           <div className="sm2-fs-card-progress-item">
                             <div className="sm2-fs-card-progress-lbl">
-                              <span>Score</span>
+                              <span>{t("Score")}</span>
                               <span style={{color:p.lastScore<50?"#f87171":"#fbbf24"}}>{p.lastScore}/100</span>
                             </div>
                             <div className="sm2-fs-card-progress-track">
@@ -1669,7 +1694,7 @@ function StationMasterModule({ user, onLogout }) {
                           </div>
                           <div className="sm2-fs-card-progress-item" style={{ marginTop: 10 }}>
                             <div className="sm2-fs-card-progress-lbl">
-                              <span>Safety Score</span>
+                              <span>{t("Safety Score")}</span>
                               <span style={{color:p.safetyScore<60?"#f87171":"#a78bfa"}}>{p.safetyScore}%</span>
                             </div>
                             <div className="sm2-fs-card-progress-track">
@@ -1680,7 +1705,7 @@ function StationMasterModule({ user, onLogout }) {
                     );
                   })}
                 {filteredFsPointsmen.length === 0 && (
-                  <p style={{color:"#64748b",fontSize:13,gridColumn:"1/-1",textAlign:"center",padding:"24px 0"}}>No staff match the current filters.</p>
+                  <p style={{color:"#64748b",fontSize:13,gridColumn:"1/-1",textAlign:"center",padding:"24px 0"}}>{t("No staff match the current filters.")}</p>
                 )}
               </div>
             </div>

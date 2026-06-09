@@ -10,42 +10,43 @@ import {
 import { Bar, BarChart, Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis, LineChart, Line, CartesianGrid, LabelList } from 'recharts';
 import { saDataService } from '../services/saDataService';
 import { supabase, isSupabaseConfigured } from '../supabaseClient';
-import { TI_TM_CRITERIA } from '../constants/trafficInspectorConstants';
+import { TI_SM_CRITERIA, TI_SS_CRITERIA, TI_TM_CRITERIA } from '../constants/trafficInspectorConstants';
 import { monitoringService } from '../services/monitoringService';
+import { SAStaffModal } from '../components/super-admin/SAStaffModal';
+import { SAStationDetail } from '../components/super-admin/views/SAStationDetail';
+import { SAStationDirectory } from '../components/super-admin/views/SAStationDirectory';
 
 export function useAomState(user, onLogout) {
   const [activePage, setActivePage] = useState("Dashboard");
   const [pmModal, setPmModal] = useState(null);
   const [pmF, setPmF] = useState({ name: "", station: "All", cat: "All", risk: "All" });
 
+  const [allDbAssessments, setAllDbAssessments] = useState([]);
+  const [selectedCategory, setSelectedCategory] = useState(null);
+  const [selectedHrmsIds, setSelectedHrmsIds] = useState([]);
+  const [viewUpcomingOnly, setViewUpcomingOnly] = useState(false);
+
   const openPmAdd = () => {
     setPmModal({
       mode: "add",
+      role: "pointsmen",
       data: {
-        hrmsId: `PM_${Date.now().toString().slice(-4)}`,
+        id: `PM_${Date.now().toString().slice(-4)}`,
         name: "",
-        gender: "Male",
-        age: 35,
-        doj: new Date().toISOString().split('T')[0],
-        basePay: "₹25,000",
-        lastScore: 80,
-        safetyScore: 90,
-        totalAssessments: 1,
-        pmeStatus: "Fit",
-        refStatus: "Cleared",
-        disciplinary: "None",
-        incidents: 0,
-        approvalStatus: "Approved",
-        monitoringStatus: "Active",
-        stationCode: "NGP",
-        stationName: "Nagpur Junction",
         contact: "",
         email: "",
+        password: "",
+        division: "Nagpur",
+        smDivision: "Nagpur",
+        zone: "Central Railway",
+        smZone: "Central Railway",
+        station: stations[0]?.name || "Nagpur Junction",
+        smStation: stations[0]?.name || "Nagpur Junction",
         cat: "A",
-        risk: "Low",
         reportingSm: "",
         workLocation: "",
-        shift: ""
+        shift: "",
+        lastDate: new Date().toISOString().split('T')[0]
       }
     });
   };
@@ -53,39 +54,52 @@ export function useAomState(user, onLogout) {
   const openPmEdit = (pm) => {
     setPmModal({
       mode: "edit",
-      data: { ...pm }
+      role: "pointsmen",
+      data: {
+        ...pm,
+        id: pm.hrmsId || pm.id,
+        station: pm.station || pm.stationName,
+        smStation: pm.station || pm.stationName
+      }
     });
   };
 
   const openPmShift = (pm) => {
     setPmModal({
       mode: "shift",
-      data: { ...pm }
+      role: "pointsmen",
+      data: {
+        ...pm,
+        id: pm.hrmsId || pm.id,
+        station: pm.station || pm.stationName,
+        smStation: pm.station || pm.stationName
+      }
     });
   };
 
   const savePmModal = async () => {
-    if (!pmModal.data.name || !pmModal.data.hrmsId) {
+    if (!pmModal.data.name || !pmModal.data.id) {
       alert("Name and HRMS ID are required.");
       return;
     }
     try {
       const data = pmModal.data;
       const modalData = {
-        id: data.hrmsId || data.employeeId || data.id,
+        id: data.id,
         name: data.name,
-        contact: data.contact || data.phone || data.contactNumber,
-        email: data.email || data.emailId,
+        contact: data.contact,
+        email: data.email,
+        password: data.password,
         role: pmModal.mode === "shift" ? pmModal.role : "Pointsman",
-        station: data.stationName || data.station || data.smStation,
-        division: data.division || data.smDivision || data.tiArea,
-        lastDate: data.doj || data.lastDate,
-        score: data.lastScore || data.score,
-        cat: data.cat || data.category,
-        reportingSm: data.reportingSm,
-        workLocation: data.workLocation,
-        shift: data.shift,
-        jurisdiction: data.jurisdiction
+        station: data.station || data.smStation,
+        division: data.division || data.smDivision,
+        lastDate: data.lastDate || new Date().toISOString().split('T')[0],
+        score: data.score !== undefined ? data.score : 80,
+        cat: data.cat || "A",
+        reportingSm: data.reportingSm || "",
+        workLocation: data.workLocation || "",
+        shift: data.shift || "",
+        jurisdiction: data.jurisdiction || ""
       };
       await saDataService.saveUser(modalData, pmModal.mode);
       setPmModal(null);
@@ -109,31 +123,21 @@ export function useAomState(user, onLogout) {
   const openSmAdd = () => {
     setSmModal({
       mode: "add",
+      role: "sm",
       data: {
-        hrmsId: `SM_${Date.now().toString().slice(-4)}`,
+        id: `SM_${Date.now().toString().slice(-4)}`,
         name: "",
-        gender: "Male",
-        age: 38,
-        doj: new Date().toISOString().split('T')[0],
-        basePay: "₹52,000",
-        lastScore: 80,
-        safetyScore: 88,
-        totalAssessments: 1,
-        pmeStatus: "Fit",
-        refStatus: "Cleared",
-        disciplinary: "None",
-        incidents: 0,
-        approvalStatus: "Approved",
-        monitoringStatus: "Active",
-        stationCode: "NGP",
-        stationName: "Nagpur Junction",
         contact: "",
         email: "",
-        cat: "A",
-        risk: "Low",
-        smStation: "Nagpur Junction",
+        password: "",
+        division: "Nagpur",
+        smDivision: "Nagpur",
+        zone: "Central Railway",
         smZone: "Central Railway",
-        smDivision: "Nagpur"
+        station: stations[0]?.name || "Nagpur Junction",
+        smStation: stations[0]?.name || "Nagpur Junction",
+        cat: "A",
+        lastDate: new Date().toISOString().split('T')[0]
       }
     });
   };
@@ -141,39 +145,60 @@ export function useAomState(user, onLogout) {
   const openSmEdit = (sm) => {
     setSmModal({
       mode: "edit",
-      data: { ...sm, smStation: sm.stationName, smDivision: sm.division, smZone: sm.zone }
+      role: "sm",
+      data: {
+        ...sm,
+        id: sm.hrmsId || sm.id,
+        station: sm.station || sm.stationName,
+        smStation: sm.station || sm.stationName,
+        division: sm.division,
+        smDivision: sm.division,
+        zone: sm.zone,
+        smZone: sm.zone
+      }
     });
   };
 
   const openSmShift = (sm) => {
     setSmModal({
       mode: "shift",
-      data: { ...sm }
+      role: "sm",
+      data: {
+        ...sm,
+        id: sm.hrmsId || sm.id,
+        station: sm.station || sm.stationName,
+        smStation: sm.station || sm.stationName,
+        division: sm.division,
+        smDivision: sm.division,
+        zone: sm.zone,
+        smZone: sm.zone
+      }
     });
   };
 
   const saveSmModal = async () => {
-    if (!smModal.data.name || !smModal.data.hrmsId) {
+    if (!smModal.data.name || !smModal.data.id) {
       alert("Name and HRMS ID are required.");
       return;
     }
     try {
       const data = smModal.data;
       const modalData = {
-        id: data.hrmsId || data.employeeId || data.id,
+        id: data.id,
         name: data.name,
-        contact: data.contact || data.phone || data.contactNumber,
-        email: data.email || data.emailId,
+        contact: data.contact,
+        email: data.email,
+        password: data.password,
         role: smModal.mode === "shift" ? smModal.role : "Station Master",
-        station: data.stationName || data.station || data.smStation || "Nagpur Junction",
-        division: data.division || data.smDivision || data.tiArea || "Nagpur",
-        lastDate: data.doj || data.lastDate,
-        score: data.lastScore || data.score,
-        cat: data.cat || data.category,
-        reportingSm: data.reportingSm,
-        workLocation: data.workLocation,
-        shift: data.shift,
-        jurisdiction: data.jurisdiction
+        station: data.station || data.smStation,
+        division: data.division || data.smDivision,
+        lastDate: data.lastDate || new Date().toISOString().split('T')[0],
+        score: data.score !== undefined ? data.score : 80,
+        cat: data.cat || "A",
+        reportingSm: data.reportingSm || "",
+        workLocation: data.workLocation || "",
+        shift: data.shift || "",
+        jurisdiction: data.jurisdiction || ""
       };
       await saDataService.saveUser(modalData, smModal.mode);
       setSmModal(null);
@@ -197,18 +222,23 @@ export function useAomState(user, onLogout) {
   const openTiAdd = () => {
     setTiModal({
       mode: "add",
+      role: "ti",
       data: {
-        employeeId: `TI_${Date.now().toString().slice(-4)}`,
+        id: `TI_${Date.now().toString().slice(-4)}`,
         name: "",
-        stationName: "Nagpur Junction",
-        tiArea: "TI NGP",
-        division: "TI NGP",
-        category: "A",
-        riskLevel: "Low",
-        lastScore: 85,
-        assessmentStatus: "Pending",
-        phone: "",
-        email: ""
+        contact: "",
+        email: "",
+        password: "",
+        division: "Nagpur",
+        smDivision: "Nagpur",
+        zone: "Central Railway",
+        smZone: "Central Railway",
+        station: stations[0]?.name || "Nagpur Junction",
+        smStation: stations[0]?.name || "Nagpur Junction",
+        cat: "A",
+        jurisdiction: "",
+        linkedStations: "",
+        lastDate: new Date().toISOString().split('T')[0]
       }
     });
   };
@@ -216,19 +246,18 @@ export function useAomState(user, onLogout) {
   const openTiEdit = (ti) => {
     setTiModal({
       mode: "edit",
+      role: "ti",
       data: {
-        id: ti.id,
-        name: ti.name,
-        employeeId: ti.hrmsId,
-        stationName: ti.stationName,
-        tiArea: ti.division,
+        ...ti,
+        id: ti.employeeId || ti.hrmsId || ti.id,
+        station: ti.station || ti.stationName,
+        smStation: ti.station || ti.stationName,
         division: ti.division,
-        category: ti.category,
-        riskLevel: ti.riskLevel,
-        lastScore: ti.lastScore,
-        assessmentStatus: ti.assessmentStatus === "Approved" ? "Completed" : "Pending",
-        phone: ti.contactNumber,
-        email: ti.emailId
+        smDivision: ti.division,
+        zone: ti.zone,
+        smZone: ti.zone,
+        contact: ti.contact || ti.phone || ti.contactNumber,
+        email: ti.email || ti.emailId
       }
     });
   };
@@ -245,27 +274,29 @@ export function useAomState(user, onLogout) {
   };
 
   const saveTiModal = async () => {
-    if (!tiModal.data.name || !tiModal.data.employeeId) {
+    if (!tiModal.data.name || !tiModal.data.id) {
       alert("Name and Employee ID are required.");
       return;
     }
     try {
       const data = tiModal.data;
       const modalData = {
-        id: data.hrmsId || data.employeeId || data.id,
+        id: data.id,
         name: data.name,
-        contact: data.contact || data.phone || data.contactNumber,
-        email: data.email || data.emailId,
+        contact: data.contact,
+        email: data.email,
+        password: data.password,
         role: "Traffic Inspector",
-        station: data.stationName || data.station || data.smStation,
-        division: data.division || data.smDivision || data.tiArea,
-        lastDate: data.doj || data.lastDate,
-        score: data.lastScore || data.score,
-        cat: data.cat || data.category,
-        reportingSm: data.reportingSm,
-        workLocation: data.workLocation,
-        shift: data.shift,
-        jurisdiction: data.jurisdiction
+        station: data.station || data.smStation,
+        division: data.division || data.smDivision,
+        lastDate: data.lastDate || new Date().toISOString().split('T')[0],
+        score: data.score !== undefined ? data.score : 85,
+        cat: data.cat || "A",
+        reportingSm: data.reportingSm || "",
+        workLocation: data.workLocation || "",
+        shift: data.shift || "",
+        jurisdiction: data.jurisdiction || "",
+        linkedStations: data.linkedStations || ""
       };
       await saDataService.saveUser(modalData, tiModal.mode);
       setTiModal(null);
@@ -278,24 +309,21 @@ export function useAomState(user, onLogout) {
   const openSsAdd = () => {
     setSsModal({
       mode: "add",
+      role: "ss",
       data: {
-        employeeId: `SS_${Date.now().toString().slice(-4)}`,
+        id: `SS_${Date.now().toString().slice(-4)}`,
         name: "",
-        role: "ss",
-        designation: "Station Superintendent",
-        station: "Nagpur Junction",
-        division: "Nagpur",
-        zone: "Central Railway",
-        cat: "A",
-        risk: "Low",
-        score: 80,
         contact: "",
         email: "",
-        lastDate: new Date().toISOString().split('T')[0],
-        status: "Approved",
-        smStation: "Nagpur Junction",
+        password: "",
+        division: "Nagpur",
+        smDivision: "Nagpur",
+        zone: "Central Railway",
         smZone: "Central Railway",
-        smDivision: "Nagpur"
+        station: stations[0]?.name || "Nagpur Junction",
+        smStation: stations[0]?.name || "Nagpur Junction",
+        cat: "A",
+        lastDate: new Date().toISOString().split('T')[0]
       }
     });
   };
@@ -303,39 +331,60 @@ export function useAomState(user, onLogout) {
   const openSsEdit = (ss) => {
     setSsModal({
       mode: "edit",
-      data: { ...ss, smStation: ss.station, smDivision: ss.division, smZone: ss.zone }
+      role: "ss",
+      data: {
+        ...ss,
+        id: ss.employeeId || ss.hrmsId || ss.id,
+        station: ss.station || ss.stationName,
+        smStation: ss.station || ss.stationName,
+        division: ss.division,
+        smDivision: ss.division,
+        zone: ss.zone,
+        smZone: ss.zone
+      }
     });
   };
 
   const openSsShift = (ss) => {
     setSsModal({
       mode: "shift",
-      data: { ...ss }
+      role: "ss",
+      data: {
+        ...ss,
+        id: ss.employeeId || ss.hrmsId || ss.id,
+        station: ss.station || ss.stationName,
+        smStation: ss.station || ss.stationName,
+        division: ss.division,
+        smDivision: ss.division,
+        zone: ss.zone,
+        smZone: ss.zone
+      }
     });
   };
 
   const saveSsModal = async () => {
-    if (!ssModal.data.name || !ssModal.data.employeeId) {
-      alert("Name and HRMS ID are required.");
+    if (!ssModal.data.name || !ssModal.data.id) {
+      alert("Name and Employee ID are required.");
       return;
     }
     try {
       const data = ssModal.data;
       const modalData = {
-        id: data.hrmsId || data.employeeId || data.id,
+        id: data.id,
         name: data.name,
-        contact: data.contact || data.phone || data.contactNumber,
-        email: data.email || data.emailId,
+        contact: data.contact,
+        email: data.email,
+        password: data.password,
         role: ssModal.mode === "shift" ? ssModal.role : "Station Superintendent",
-        station: data.stationName || data.station || data.smStation,
-        division: data.division || data.smDivision || data.tiArea,
-        lastDate: data.doj || data.lastDate,
-        score: data.lastScore || data.score,
-        cat: data.cat || data.category,
-        reportingSm: data.reportingSm,
-        workLocation: data.workLocation,
-        shift: data.shift,
-        jurisdiction: data.jurisdiction
+        station: data.station || data.smStation,
+        division: data.division || data.smDivision,
+        lastDate: data.lastDate || new Date().toISOString().split('T')[0],
+        score: data.score !== undefined ? data.score : 80,
+        cat: data.cat || "A",
+        reportingSm: data.reportingSm || "",
+        workLocation: data.workLocation || "",
+        shift: data.shift || "",
+        jurisdiction: data.jurisdiction || ""
       };
       await saDataService.saveUser(modalData, ssModal.mode);
       setSsModal(null);
@@ -359,27 +408,22 @@ export function useAomState(user, onLogout) {
   const openTmAdd = () => {
     setTmModal({
       mode: "add",
+      role: "tm",
       data: {
-        employeeId: `TM_${Date.now().toString().slice(-4)}`,
+        id: `TM_${Date.now().toString().slice(-4)}`,
         name: "",
-        role: "tm",
-        designation: "Train Manager",
-        station: "Nagpur Junction",
-        division: "Nagpur",
-        zone: "Central Railway",
-        cat: "A",
-        risk: "Low",
-        score: 80,
         contact: "",
         email: "",
-        lastDate: new Date().toISOString().split('T')[0],
-        status: "Approved",
-        workLocation: "Nagpur Depot",
-        reportingSm: "NGP-BSL Section",
-        shift: "Goods Train Beat",
-        smStation: "Nagpur Junction",
+        password: "",
+        division: "Nagpur",
+        smDivision: "Nagpur",
+        zone: "Central Railway",
         smZone: "Central Railway",
-        smDivision: "Nagpur"
+        station: stations[0]?.name || "Nagpur Junction",
+        smStation: stations[0]?.name || "Nagpur Junction",
+        cat: "A",
+        workLocation: "Nagpur Depot",
+        lastDate: new Date().toISOString().split('T')[0]
       }
     });
   };
@@ -387,39 +431,60 @@ export function useAomState(user, onLogout) {
   const openTmEdit = (tm) => {
     setTmModal({
       mode: "edit",
-      data: { ...tm, smStation: tm.station, smDivision: tm.division, smZone: tm.zone }
+      role: "tm",
+      data: {
+        ...tm,
+        id: tm.employeeId || tm.hrmsId || tm.id,
+        station: tm.station || tm.stationName,
+        smStation: tm.station || tm.stationName,
+        division: tm.division,
+        smDivision: tm.division,
+        zone: tm.zone,
+        smZone: tm.zone
+      }
     });
   };
 
   const openTmShift = (tm) => {
     setTmModal({
       mode: "shift",
-      data: { ...tm }
+      role: "tm",
+      data: {
+        ...tm,
+        id: tm.employeeId || tm.hrmsId || tm.id,
+        station: tm.station || tm.stationName,
+        smStation: tm.station || tm.stationName,
+        division: tm.division,
+        smDivision: tm.division,
+        zone: tm.zone,
+        smZone: tm.zone
+      }
     });
   };
 
   const saveTmModal = async () => {
-    if (!tmModal.data.name || !tmModal.data.employeeId) {
-      alert("Name and HRMS ID are required.");
+    if (!tmModal.data.name || !tmModal.data.id) {
+      alert("Name and Employee ID are required.");
       return;
     }
     try {
       const data = tmModal.data;
       const modalData = {
-        id: data.hrmsId || data.employeeId || data.id,
+        id: data.id,
         name: data.name,
-        contact: data.contact || data.phone || data.contactNumber,
-        email: data.email || data.emailId,
+        contact: data.contact,
+        email: data.email,
+        password: data.password,
         role: tmModal.mode === "shift" ? tmModal.role : "Train Manager",
-        station: data.stationName || data.station || data.smStation,
-        division: data.division || data.smDivision || data.tiArea,
-        lastDate: data.doj || data.lastDate,
-        score: data.lastScore || data.score,
-        cat: data.cat || data.category,
-        reportingSm: data.reportingSm,
-        workLocation: data.workLocation,
-        shift: data.shift,
-        jurisdiction: data.jurisdiction
+        station: data.station || data.smStation,
+        division: data.division || data.smDivision,
+        lastDate: data.lastDate || new Date().toISOString().split('T')[0],
+        score: data.score !== undefined ? data.score : 80,
+        cat: data.cat || "A",
+        reportingSm: data.reportingSm || "",
+        workLocation: data.workLocation || "",
+        shift: data.shift || "",
+        jurisdiction: data.jurisdiction || ""
       };
       await saDataService.saveUser(modalData, tmModal.mode);
       setTmModal(null);
@@ -496,10 +561,9 @@ export function useAomState(user, onLogout) {
       const total = rec.score || 0;
       builtSecs = [
         { title: "Knowledge of Rules (MCQ)", score: Math.round(total * 0.25), max: 25 },
-        { title: "Knowledge of Rules", score: Math.round(total * 0.15), max: 15 },
-        { title: "Alertness and Observance of Rules", score: Math.round(total * 0.15), max: 15 },
+        { title: "Alertness and Observation of Rules", score: Math.round(total * 0.25), max: 25 },
         { title: "Safety Record", score: Math.round(total * 0.15), max: 15 },
-        { title: "Leadership and Management", score: Math.round(total * 0.10), max: 10 },
+        { title: "Leadership and Management", score: Math.round(total * 0.15), max: 15 },
         { title: "Discipline", score: Math.round(total * 0.10), max: 10 },
         { title: "Appearance and Neatness", score: Math.round(total * 0.10), max: 10 }
       ];
@@ -591,7 +655,7 @@ export function useAomState(user, onLogout) {
         if (existingAttempt?.answers) {
           originalAnswers = existingAttempt.answers;
           if (typeof originalAnswers === "string") {
-            try { originalAnswers = JSON.parse(originalAnswers); } catch (e) {}
+            try { originalAnswers = JSON.parse(originalAnswers); } catch (e) { }
           }
         }
 
@@ -757,7 +821,23 @@ export function useAomState(user, onLogout) {
   const [tableSearch, setTableSearch] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [stations, setStations] = useState([]);
-  const [stationFormData, setStationFormData] = useState(initialStationFormData);
+  const defaultStationForm = {
+    stationName: "",
+    stationCode: "",
+    zone: "Central Railway",
+    division: "Nagpur",
+    section: "Nagpur - Wardha",
+    category: "A",
+    status: "Active",
+    assignedTi: "",
+    platforms: "3",
+    runningLines: "5",
+    address: "",
+    district: "Nagpur",
+    state: "Maharashtra",
+    stationType: "Junction"
+  };
+  const [stationFormData, setStationFormData] = useState(defaultStationForm);
   const [stationFormErrors, setStationFormErrors] = useState({});
   const [pendingStationFilters, setPendingStationFilters] = useState(initialStationFilterData);
   const [appliedStationFilters, setAppliedStationFilters] = useState(initialStationFilterData);
@@ -939,9 +1019,9 @@ export function useAomState(user, onLogout) {
         .select('user_id')
         .eq('hrms_id', employeeHrmsId)
         .single();
-      
+
       if (uErr || !uData?.user_id) throw new Error("Employee not found in database.");
-      
+
       const userId = uData.user_id;
       const res = await monitoringService.logPmeRecord(userId, pmeData);
       if (res && res.success) {
@@ -1197,7 +1277,9 @@ export function useAomState(user, onLogout) {
         pmeStatus: ti.pmeStatus || "Fit",
         pmeDueDate: ti.pmeDueDate || null,
         pmeDoneDate: ti.pmeDoneDate || null,
-        refStatus: ti.refStatus || "Cleared"
+        refStatus: ti.refStatus || "Cleared",
+        jurisdiction: ti.jurisdiction || "",
+        linkedStations: ti.linkedStations || ""
       }))
     ];
   }, [aomPointsmen, aomStationMasters, stations, aomSuperintendents, aomTrainManagers, trafficInspectors, deactivatedUserIds]);
@@ -1285,39 +1367,42 @@ export function useAomState(user, onLogout) {
 
   const getTiSectionScore = (criterionKey, answers, quizMarks = null) => {
     if (criterionKey === "knowledgeOfRules" || criterionKey === "knowledgeMarks") {
-      return (quizMarks !== null && quizMarks !== undefined) ? Number(quizMarks) : (answers.knowledgeOfRules === "yes" ? 25 : 0);
+      return (quizMarks !== null && quizMarks !== undefined) ? Number(quizMarks) : (answers.knowledgeOfRules === "yes" || answers.knowledgeOfRules === "Yes" ? 25 : 0);
     }
-    let score = 0;
+    let weight = 0;
     
-    const tmKeys = ["trainSafety", "signaling", "shunting", "documentation", "emergency"];
-    if (tmKeys.includes(criterionKey)) {
-      for (let i = 0; i < 5; i++) {
-        const arrVal = Array.isArray(answers[criterionKey]) ? answers[criterionKey][i] : null;
-        const val = answers[`${criterionKey}_${i}`] || arrVal;
-        if (val === "yes" || val === "Yes") score += 3;
+    const tmCrit = TI_TM_CRITERIA.find(c => c.key === criterionKey);
+    if (tmCrit) {
+      weight = 3;
+    } else {
+      const ssCrit = TI_SS_CRITERIA.find(c => c.key === criterionKey);
+      if (ssCrit) {
+        weight = ssCrit.weight;
+      } else {
+        const smCrit = TI_SM_CRITERIA.find(c => c.key === criterionKey);
+        if (smCrit) {
+          weight = smCrit.weight;
+        } else {
+          const tiCrit = assessmentCriteria.find(c => c.key === criterionKey);
+          if (tiCrit) {
+            if (criterionKey === "alertnessAndObservation") weight = 5;
+            else if (criterionKey === "safetyRecord") weight = 3;
+            else if (criterionKey === "leadershipAndManagement") weight = 3;
+            else if (criterionKey === "discipline") weight = 2;
+            else if (criterionKey === "appearanceAndNeatness") weight = 2;
+          }
+        }
       }
-      return score;
     }
 
-    if (criterionKey === "alertnessAndObservation") {
-      for (let i = 0; i < 5; i++) {
-        if (answers[`alertnessAndObservation_${i}`] === "yes") score += 5;
-      }
-    } else if (criterionKey === "safetyRecord") {
-      for (let i = 0; i < 5; i++) {
-        if (answers[`safetyRecord_${i}`] === "yes") score += 3;
-      }
-    } else if (criterionKey === "leadershipAndManagement") {
-      for (let i = 0; i < 5; i++) {
-        if (answers[`leadershipAndManagement_${i}`] === "yes") score += 3;
-      }
-    } else if (criterionKey === "discipline") {
-      for (let i = 0; i < 5; i++) {
-        if (answers[`discipline_${i}`] === "yes") score += 2;
-      }
-    } else if (criterionKey === "appearanceAndNeatness") {
-      for (let i = 0; i < 5; i++) {
-        if (answers[`appearanceAndNeatness_${i}`] === "yes") score += 2;
+    if (weight === 0) return 0;
+
+    let score = 0;
+    for (let i = 0; i < 5; i++) {
+      const arrVal = Array.isArray(answers[criterionKey]) ? answers[criterionKey][i] : null;
+      const val = answers[`${criterionKey}_${i}`] || arrVal;
+      if (val === "yes" || val === "Yes") {
+        score += weight;
       }
     }
     return score;
@@ -1359,13 +1444,13 @@ export function useAomState(user, onLogout) {
       const offlineSm = JSON.parse(sessionStorage.getItem(`sm_mcq_test_${hrmsId}`) || localStorage.getItem(`sm_mcq_test_${hrmsId}`) || "null");
       const offlineTm = JSON.parse(sessionStorage.getItem(`tm_mcq_test_${hrmsId}`) || localStorage.getItem(`tm_mcq_test_${hrmsId}`) || "null");
       const offlinePm = JSON.parse(sessionStorage.getItem(`pm_mcq_test_${hrmsId}`) || localStorage.getItem(`pm_mcq_test_${hrmsId}`) || "null");
-      
+
       if (offlineSs && offlineSs.correctCount !== undefined) effectiveQuizMarks = offlineSs.correctCount;
       else if (offlineSm && offlineSm.correctCount !== undefined) effectiveQuizMarks = offlineSm.correctCount;
       else if (offlineTm && offlineTm.correctCount !== undefined) effectiveQuizMarks = offlineTm.correctCount;
       else if (offlinePm && offlinePm.correctCount !== undefined) effectiveQuizMarks = offlinePm.correctCount;
     }
-    
+
     const score = calculateAssessmentScore(effectiveAnswers, isMultiSection, effectiveQuizMarks, tab);
     let grade = score >= 90 ? "A" : score >= 80 ? "B" : "C";
     if (effectiveAnswers.alcoholicStatus === "Alcoholic") {
@@ -1541,12 +1626,17 @@ export function useAomState(user, onLogout) {
           localStorage.setItem(`pm_test_activated_time_${employeeHrmsId}`, Date.now().toString());
           localStorage.setItem(`pm_test_assigned_${employeeHrmsId}`, "Assigned");
           localStorage.removeItem(`pm_mcq_test_${employeeHrmsId}`);
+        } else if (roleName === "Traffic Inspector" || assessmentType === "Safety Exam" || assessmentType === "TI Assessment") {
+          localStorage.setItem(`ti_test_activated_${employeeHrmsId}`, "true");
+          localStorage.setItem(`ti_test_activated_time_${employeeHrmsId}`, Date.now().toString());
+          localStorage.setItem(`ti_test_assigned_${employeeHrmsId}`, "Assigned");
+          localStorage.removeItem(`ti_mcq_test_${employeeHrmsId}`);
         }
         window.dispatchEvent(new Event("storage"));
       }
 
       setAssessmentActionNotice(`Exam access sent successfully!`);
-      if (assessmentType === "Traffic Inspector") {
+      if (assessmentType === "Safety Exam") {
         window.alert("test is been send to the TI.");
       } else {
         window.alert("Assessment access has been successfully sent to the employee.");
@@ -1555,6 +1645,219 @@ export function useAomState(user, onLogout) {
     } catch (err) {
       console.error("Error assigning assessment:", err);
       setAssessmentActionNotice(`Failed to assign assessment: ${err.message || err.details || JSON.stringify(err)}`);
+    }
+  };
+
+  const sendBatchExamAccessAOM = async (role, hrmsIds) => {
+    try {
+      const today = new Date().toISOString().slice(0, 10);
+      let aomUserUuid = user?.userId;
+      const isValidUUID = (v) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
+
+      if (!isValidUUID(aomUserUuid)) {
+        const aomHrms = user.hrmsId || user.hrms_id;
+        if (aomHrms) {
+          const { data: aomData } = await supabase
+            .from("USERS")
+            .select("user_id")
+            .eq("hrms_id", aomHrms)
+            .single();
+          if (aomData?.user_id) aomUserUuid = aomData.user_id;
+        }
+      }
+
+      const roleName = role === "TI" ? "Traffic Inspector" : "Station Superintendent";
+      const assessType = role === "TI" ? "Safety Exam" : "Station Superintendent Assessment";
+      const keyPrefix = role.toLowerCase(); // "ti" or "ss"
+
+      for (const hrmsId of hrmsIds) {
+        // Set local storage flags
+        localStorage.setItem(`${keyPrefix}_test_activated_${hrmsId}`, "true");
+        localStorage.setItem(`${keyPrefix}_test_activated_time_${hrmsId}`, Date.now().toString());
+        localStorage.setItem(`${keyPrefix}_test_assigned_${hrmsId}`, "Assigned");
+        localStorage.removeItem(`${keyPrefix}_mcq_test_${hrmsId}`);
+
+        if (isSupabaseConfigured) {
+          // Resolve Employee UUID
+          const { data: empUser, error: empErr } = await supabase
+            .from("USERS")
+            .select("user_id")
+            .eq("hrms_id", hrmsId)
+            .single();
+
+          if (!empErr && empUser?.user_id) {
+            const empUserUuid = empUser.user_id;
+
+            // Check if there is a LOCKED/pending assessment
+            const { data: lockedAssessments } = await supabase
+              .from("ASSESSMENT")
+              .select("assessment_id")
+              .eq("employee_id", empUserUuid)
+              .eq("status", "LOCKED")
+              .limit(1);
+
+            if (lockedAssessments && lockedAssessments.length > 0) {
+              await supabase
+                .from("ASSESSMENT")
+                .update({
+                  status: "AVAILABLE",
+                  conducted_by: aomUserUuid || empUserUuid,
+                  assessment_date: today,
+                  assessment_type: assessType
+                })
+                .eq("assessment_id", lockedAssessments[0].assessment_id);
+            } else {
+              // Insert a new AVAILABLE assessment record
+              await supabase.from("ASSESSMENT").insert([{
+                employee_id: empUserUuid,
+                conducted_by: aomUserUuid || empUserUuid,
+                assessment_type: assessType,
+                status: "AVAILABLE",
+                assessment_date: today
+              }]);
+            }
+
+            // Create notification for employee
+            const aomName = user?.name || "AOM";
+            await supabase.from("NOTIFICATION").insert([{
+              user_id: empUserUuid,
+              title: "Assessment Access Granted",
+              message: `Your safety competency assessment has been activated by Area Operations Manager ${aomName}. You can now attempt the safety exam in your portal.`,
+              is_read: false
+            }]);
+          }
+        }
+      }
+
+      window.dispatchEvent(new Event("storage"));
+      await fetchLiveDatabaseData();
+      setSelectedHrmsIds([]);
+      setAssessmentActionNotice(`Successfully activated assessment access for ${hrmsIds.length} employee(s).`);
+    } catch (err) {
+      console.error("Error in batch activation:", err);
+      alert("Error sending batch assessment access: " + err.message);
+    }
+  };
+
+  const updateEmployeeScheduleAOM = async (role, hrmsId, date, time, reason) => {
+    if (!hrmsId || !date) return { success: false, error: "Missing required fields" };
+    try {
+      const today = new Date().toISOString().slice(0, 10);
+      
+      // Resolve AOM User UUID
+      let aomUserUuid = user?.userId;
+      const isValidUUID = (v) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
+
+      if (!isValidUUID(aomUserUuid)) {
+        const aomHrms = user.hrmsId || user.hrms_id;
+        if (aomHrms) {
+          const { data: aomData } = await supabase
+            .from("USERS")
+            .select("user_id")
+            .eq("hrms_id", aomHrms)
+            .single();
+          if (aomData?.user_id) aomUserUuid = aomData.user_id;
+        }
+      }
+
+      if (isSupabaseConfigured) {
+        // Resolve Employee UUID
+        const { data: empUser, error: empErr } = await supabase
+          .from("USERS")
+          .select("user_id")
+          .eq("hrms_id", hrmsId)
+          .single();
+
+        if (empErr || !empUser?.user_id) throw new Error("Could not resolve employee UUID.");
+        const empUserUuid = empUser.user_id;
+
+        const baseAssessType = role === "TI" ? "Safety Exam" : "Station Superintendent Assessment";
+        const assessmentType = `${baseAssessType} | Time: ${time || "10:00 AM"}`;
+
+        // Check if there is an active assessment
+        const { data: activeAssess } = await supabase
+          .from("ASSESSMENT")
+          .select("assessment_id, due_date, assessment_type")
+          .eq("employee_id", empUserUuid)
+          .eq("assessment_type", baseAssessType)
+          .in("status", ["LOCKED", "AVAILABLE", "IN_PROGRESS", "Pending", "Draft", "Scheduled"])
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        let finalActiveAssess = activeAssess;
+        if (!finalActiveAssess) {
+          const { data: activeAssessPrefix } = await supabase
+            .from("ASSESSMENT")
+            .select("assessment_id, due_date, assessment_type")
+            .eq("employee_id", empUserUuid)
+            .ilike("assessment_type", `${baseAssessType}%`)
+            .in("status", ["LOCKED", "AVAILABLE", "IN_PROGRESS", "Pending", "Draft", "Scheduled"])
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          finalActiveAssess = activeAssessPrefix;
+        }
+
+        let prevDate = "None";
+        let assessmentId = null;
+
+        if (finalActiveAssess) {
+          prevDate = finalActiveAssess.due_date || "None";
+          assessmentId = finalActiveAssess.assessment_id;
+
+          // Update active assessment
+          await supabase
+            .from("ASSESSMENT")
+            .update({
+              due_date: date,
+              assessment_type: assessmentType
+            })
+            .eq("assessment_id", assessmentId);
+        } else {
+          // Create a new LOCKED assessment
+          const { data: newAssess, error: newAssessErr } = await supabase
+            .from("ASSESSMENT")
+            .insert([{
+              employee_id: empUserUuid,
+              conducted_by: aomUserUuid || empUserUuid,
+              assessment_type: assessmentType,
+              status: "LOCKED",
+              due_date: date,
+              assessment_date: today
+            }])
+            .select()
+            .single();
+
+          if (newAssessErr) throw newAssessErr;
+          assessmentId = newAssess.assessment_id;
+        }
+
+        // Insert into AUDIT_LOG
+        await supabase.from("AUDIT_LOG").insert([{
+          user_id: aomUserUuid || empUserUuid,
+          action: `Prev: ${prevDate} | New: ${date} ${time || "10:00 AM"} | Reason: ${reason} | Emp: ${hrmsId}`,
+          table_name: "ASSESSMENT",
+          record_id: assessmentId
+        }]);
+
+        // Insert Notification for Employee
+        const aomName = user?.name || "AOM";
+        await supabase.from("NOTIFICATION").insert([{
+          user_id: empUserUuid,
+          title: "Assessment Schedule Modified",
+          message: `Your safety assessment schedule has been modified by Area Operations Manager ${aomName}. New Due Date: ${date} ${time || "10:00 AM"}.`,
+          is_read: false
+        }]);
+      }
+
+      // Refresh DB data
+      await fetchLiveDatabaseData();
+      return { success: true };
+    } catch (err) {
+      console.error("Error updating schedule:", err);
+      alert("Error updating schedule: " + err.message);
+      return { success: false, error: err.message };
     }
   };
 
@@ -1619,8 +1922,18 @@ export function useAomState(user, onLogout) {
     }
 
     for (const key of requiredKeys) {
-      const val = answers[key];
-      if (val !== "yes" && val !== "no") {
+      let val = answers[key];
+      if (val === undefined || val === null || val === "") {
+        const underIdx = key.lastIndexOf("_");
+        if (underIdx !== -1) {
+          const secKey = key.substring(0, underIdx);
+          const idx = parseInt(key.substring(underIdx + 1));
+          if (Array.isArray(answers[secKey])) {
+            val = answers[secKey][idx];
+          }
+        }
+      }
+      if (val !== "yes" && val !== "no" && val !== "Yes" && val !== "No") {
         alert("Validation Error: Please answer all checklist questions (Yes/No).");
         return;
       }
@@ -1985,7 +2298,7 @@ export function useAomState(user, onLogout) {
     }
 
     if (label === "Add Station") {
-      setStationFormData(initialStationFormData);
+      setStationFormData(defaultStationForm);
       setStationFormErrors({});
       setStationDetailId(null);
       setIsStationEditMode(false);
@@ -2008,7 +2321,7 @@ export function useAomState(user, onLogout) {
     setActivePage(label);
 
     if (label === "Add Station") {
-      setStationFormData(initialStationFormData);
+      setStationFormData(defaultStationForm);
       setStationFormErrors({});
       setStationDetailId(null);
       setIsStationEditMode(false);
@@ -2178,16 +2491,29 @@ export function useAomState(user, onLogout) {
 
   const handleStationFormChange = (e) => {
     const { name, value } = e.target;
-    setStationFormData((prev) => ({
-      ...prev,
-      [name]: name === "stationCode" ? value.toUpperCase() : value
-    }));
+    setStationFormData((prev) => {
+      const updated = {
+        ...prev,
+        [name]: name === "stationCode" ? value.toUpperCase() : value
+      };
+      if (name === "runningLines") {
+        updated.tracks = value;
+      } else if (name === "tracks") {
+        updated.runningLines = value;
+      }
+      return updated;
+    });
 
     if (stationFormErrors[name]) {
       setStationFormErrors((prev) => ({
         ...prev,
         [name]: ""
       }));
+    }
+    if (name === "runningLines" && stationFormErrors.tracks) {
+      setStationFormErrors((prev) => ({ ...prev, tracks: "" }));
+    } else if (name === "tracks" && stationFormErrors.runningLines) {
+      setStationFormErrors((prev) => ({ ...prev, runningLines: "" }));
     }
   };
 
@@ -2200,27 +2526,32 @@ export function useAomState(user, onLogout) {
 
   const validateStationForm = (formMode) => {
     const errors = {};
+    const nameExists = stations.some(
+      (station) => station.stationName.trim().toLowerCase() === stationFormData.stationName.trim().toLowerCase() && station.id !== stationDetailId
+    );
     const codeExists = stations.some(
-      (station) => station.stationCode === stationFormData.stationCode.trim().toUpperCase() && station.id !== stationDetailId
+      (station) => station.stationCode.trim().toUpperCase() === stationFormData.stationCode.trim().toUpperCase() && station.id !== stationDetailId
     );
 
-    if (!stationFormData.stationName.trim()) errors.stationName = "Station Name is required";
-    if (!stationFormData.stationCode.trim()) errors.stationCode = "Station Code is required";
-    if (codeExists) errors.stationCode = "Station Code must be unique";
-    if (!stationFormData.zone) errors.zone = "Zone is required";
-    if (!stationFormData.division) errors.division = "Division is required";
-    if (!stationFormData.category) errors.category = "Station Category is required";
-    if (!stationFormData.stationType) errors.stationType = "Station Type is required";
+    if (!stationFormData.stationName.trim()) {
+      errors.stationName = "Station Name is required";
+    } else if (nameExists) {
+      errors.stationName = "Station Name must be unique";
+    }
+
+    if (!stationFormData.stationCode.trim()) {
+      errors.stationCode = "Station Code is required";
+    } else if (codeExists) {
+      errors.stationCode = "Station Code must be unique";
+    }
+
     if (!stationFormData.platforms) errors.platforms = "Platforms count is required";
-    if (!stationFormData.tracks) errors.tracks = "Tracks count is required";
+    if (!stationFormData.runningLines && !stationFormData.tracks) {
+      errors.runningLines = "Running Lines count is required";
+    }
     if (!stationFormData.address.trim()) errors.address = "Address is required";
-    if (!stationFormData.city.trim()) errors.city = "City is required";
+    if (!stationFormData.district.trim()) errors.district = "District is required";
     if (!stationFormData.state.trim()) errors.state = "State is required";
-    if (!stationFormData.pincode.trim()) errors.pincode = "Pincode is required";
-    if (!stationFormData.contactNumber.trim()) errors.contactNumber = "Contact Number is required";
-    if (!stationFormData.emailId.trim()) errors.emailId = "Email ID is required";
-    if (!stationFormData.latitude.trim()) errors.latitude = "Latitude is required";
-    if (!stationFormData.longitude.trim()) errors.longitude = "Longitude is required";
 
     return errors;
   };
@@ -2236,20 +2567,24 @@ export function useAomState(user, onLogout) {
 
     try {
       const payload = {
-        station_name: stationFormData.stationName,
-        station_code: stationFormData.stationCode.trim().toUpperCase(),
-        division: stationFormData.division || "Nagpur",
-        zone: stationFormData.zone || "Central Railway",
+        stationName: stationFormData.stationName.trim(),
+        stationCode: stationFormData.stationCode.trim().toUpperCase(),
+        division: "Nagpur",
+        zone: "Central Railway",
         category: stationFormData.category || "A",
         platforms: Number(stationFormData.platforms),
-        tracks: Number(stationFormData.tracks),
-        station_type: stationFormData.stationType || "Junction",
-        status: "Active",
-        location: stationFormData.address || ""
+        runningLines: Number(stationFormData.runningLines || stationFormData.tracks),
+        stationType: stationFormData.stationType || "Junction",
+        status: stationFormData.status || "Active",
+        address: stationFormData.address.trim(),
+        district: stationFormData.district.trim(),
+        state: stationFormData.state.trim(),
+        section: "",
+        assignedTi: ""
       };
 
       await saDataService.saveStation(payload, "add");
-      setStationFormData(initialStationFormData);
+      setStationFormData(defaultStationForm);
       setStationFormErrors({});
       await fetchLiveDatabaseData();
       setActivePage("Station Management");
@@ -2260,7 +2595,7 @@ export function useAomState(user, onLogout) {
   };
 
   const handleResetStationForm = () => {
-    setStationFormData(initialStationFormData);
+    setStationFormData(defaultStationForm);
     setStationFormErrors({});
   };
 
@@ -2309,23 +2644,35 @@ export function useAomState(user, onLogout) {
   };
 
   const openStationView = (stationId, editable = false) => {
-    const target = stations.find((station) => station.id === stationId);
+    const target = stations.find((station) => station.id === stationId || station.stationId === stationId);
     if (!target) {
       return;
     }
 
     setStationDetailId(stationId);
     setStationFormData({
-      ...target,
-      platforms: String(target.platforms),
-      tracks: String(target.tracks)
+      stationName: target.stationName || target.name || "",
+      stationCode: target.stationCode || target.code || "",
+      zone: target.zone || "Central Railway",
+      division: target.division || "Nagpur",
+      section: target.section || "Nagpur - Wardha",
+      category: target.category || "A",
+      status: target.status || "Active",
+      assignedTi: target.assignedTi || "",
+      platforms: String(target.platforms || "3"),
+      runningLines: String(target.runningLines || target.tracks || "5"),
+      tracks: String(target.runningLines || target.tracks || "5"),
+      address: target.address || "",
+      district: target.district || "Nagpur",
+      state: target.state || "Maharashtra",
+      stationType: target.stationType || "Junction"
     });
     setStationFormErrors({});
     setIsStationEditMode(editable);
     setActivePage("View / Edit Station");
   };
 
-  const handleUpdateStation = (e) => {
+  const handleUpdateStation = async (e) => {
     e.preventDefault();
 
     const errors = validateStationForm("update");
@@ -2334,30 +2681,70 @@ export function useAomState(user, onLogout) {
       return;
     }
 
-    setStations((prev) =>
-      prev.map((station) =>
-        station.id === stationDetailId
-          ? {
-            ...station,
-            ...stationFormData,
-            stationCode: stationFormData.stationCode.trim().toUpperCase(),
-            platforms: Number(stationFormData.platforms),
-            tracks: Number(stationFormData.tracks)
-          }
-          : station
-      )
-    );
+    try {
+      const payload = {
+        id: stationDetailId,
+        stationName: stationFormData.stationName.trim(),
+        stationCode: stationFormData.stationCode.trim().toUpperCase(),
+        division: "Nagpur",
+        zone: "Central Railway",
+        category: stationFormData.category || "A",
+        platforms: Number(stationFormData.platforms),
+        runningLines: Number(stationFormData.runningLines || stationFormData.tracks),
+        stationType: stationFormData.stationType || "Junction",
+        status: stationFormData.status || "Active",
+        address: stationFormData.address.trim(),
+        district: stationFormData.district.trim(),
+        state: stationFormData.state.trim(),
+        section: "",
+        assignedTi: ""
+      };
 
-    setIsStationEditMode(false);
-    setStationFormErrors({});
+      await saDataService.saveStation(payload, "edit");
+      setStationFormData(defaultStationForm);
+      setStationFormErrors({});
+      setIsStationEditMode(false);
+      setStationDetailId(null);
+      await fetchLiveDatabaseData();
+      setActivePage("Station Management");
+    } catch (err) {
+      console.error("Error updating station in AOM:", err);
+      alert("Failed to update station: " + err.message);
+    }
   };
 
-  const handleDeleteStation = (stationId) => {
-    setStations((prev) => prev.filter((station) => station.id !== stationId));
-    if (stationDetailId === stationId) {
-      setActivePage("Station Management");
-      setStationDetailId(null);
-      setIsStationEditMode(false);
+  const handleDeleteStation = async (stationId) => {
+    const targetStation = stations.find((station) => station.id === stationId || station.stationId === stationId);
+    if (!targetStation) return;
+
+    if (!window.confirm(`Are you sure you want to permanently delete station ${targetStation.stationName}?`)) {
+      return;
+    }
+
+    // Check dependency: has operational staff assigned
+    const assignedStaff = users.filter((u) => u.station === targetStation.stationName);
+    if (assignedStaff.length > 0) {
+      const staffNames = assignedStaff.map(u => `${u.name} (${u.hrmsId})`).join(", ");
+      alert(`Cannot delete station. Operational staff are currently assigned to this station: ${staffNames}. Please reassign or delete these staff members first.`);
+      return;
+    }
+
+    try {
+      const res = await saDataService.deleteStation(stationId, targetStation.stationName);
+      if (res && res.success) {
+        setStations((prev) => prev.filter((station) => station.id !== stationId && station.stationId !== stationId));
+        if (stationDetailId === stationId) {
+          setStationDetailId(null);
+          setIsStationEditMode(false);
+        }
+        await fetchLiveDatabaseData();
+        setActivePage("Station Management");
+      } else {
+        alert("Failed to delete station: " + (res?.error || "Unknown error"));
+      }
+    } catch (err) {
+      console.error("Error deleting station:", err);
+      alert("Error deleting station: " + err.message);
     }
   };
 
@@ -2564,6 +2951,8 @@ export function useAomState(user, onLogout) {
       <>
         <div className="add-user-grid station-grid">
           <div className="add-user-col">
+            <h3 style={{ margin: "0 0 15px 0", color: "#1e293b", fontSize: "1rem", borderBottom: "1px solid #e2e8f0", paddingBottom: "5px" }}>Station Information</h3>
+            
             <div className="form-group">
               <label>Station Name *</label>
               <input
@@ -2585,91 +2974,45 @@ export function useAomState(user, onLogout) {
                 name="stationCode"
                 value={stationFormData.stationCode}
                 onChange={handleStationFormChange}
-                placeholder="e.g. PUNE, NDLS"
+                placeholder="e.g. NGP, WR"
                 className={stationFormErrors.stationCode ? "error" : ""}
                 readOnly={isReadOnly}
               />
               {stationFormErrors.stationCode && <span className="error-text">{stationFormErrors.stationCode}</span>}
             </div>
 
-            <div className="form-group">
-              <label>Zone *</label>
-              <select
-                name="zone"
-                value={stationFormData.zone}
-                onChange={handleStationFormChange}
-                className={stationFormErrors.zone ? "error" : ""}
-                disabled={isReadOnly}
-              >
-                <option value="">Select Zone</option>
-                {stationZoneOptions.map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </select>
-              {stationFormErrors.zone && <span className="error-text">{stationFormErrors.zone}</span>}
-            </div>
 
             <div className="form-group">
-              <label>Division *</label>
+              <label>Station Status</label>
               <select
+                name="status"
+                value={stationFormData.status}
+                onChange={handleStationFormChange}
+                disabled={isReadOnly}
+              >
+                <option value="Active">Active</option>
+                <option value="Inactive">Inactive</option>
+              </select>
+            </div>
+
+            <h3 style={{ margin: "25px 0 15px 0", color: "#1e293b", fontSize: "1rem", borderBottom: "1px solid #e2e8f0", paddingBottom: "5px" }}>Railway Hierarchy</h3>
+
+            <div className="form-group">
+              <label>Division (Nagpur Division Only)</label>
+              <input
+                type="text"
                 name="division"
-                value={stationFormData.division}
-                onChange={handleStationFormChange}
-                className={stationFormErrors.division ? "error" : ""}
-                disabled={isReadOnly}
-              >
-                <option value="">Select Division</option>
-                {stationDivisionOptions.map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </select>
-              {stationFormErrors.division && <span className="error-text">{stationFormErrors.division}</span>}
-            </div>
-
-            <div className="form-group">
-              <label>Station Category *</label>
-              <select
-                name="category"
-                value={stationFormData.category}
-                onChange={handleStationFormChange}
-                className={stationFormErrors.category ? "error" : ""}
-                disabled={isReadOnly}
-              >
-                <option value="">Select Category</option>
-                {stationCategoryOptions.map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </select>
-              {stationFormErrors.category && <span className="error-text">{stationFormErrors.category}</span>}
-            </div>
-
-            <div className="form-group">
-              <label>Station Type *</label>
-              <select
-                name="stationType"
-                value={stationFormData.stationType}
-                onChange={handleStationFormChange}
-                className={stationFormErrors.stationType ? "error" : ""}
-                disabled={isReadOnly}
-              >
-                <option value="">Select Station Type</option>
-                {stationTypeOptions.map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </select>
-              {stationFormErrors.stationType && <span className="error-text">{stationFormErrors.stationType}</span>}
+                value={stationFormData.division || "Nagpur"}
+                readOnly={true}
+                className="readonly-input"
+                style={{ backgroundColor: "#f1f5f9", cursor: "not-allowed" }}
+              />
             </div>
           </div>
 
           <div className="add-user-col">
+            <h3 style={{ margin: "0 0 15px 0", color: "#1e293b", fontSize: "1rem", borderBottom: "1px solid #e2e8f0", paddingBottom: "5px" }}>Operational & Location Details</h3>
+
             <div className="form-group">
               <label>Number of Platforms *</label>
               <input
@@ -2686,45 +3029,32 @@ export function useAomState(user, onLogout) {
             </div>
 
             <div className="form-group">
-              <label>Number of Tracks *</label>
+              <label>Number of Running Lines *</label>
               <input
                 type="number"
                 min="0"
-                name="tracks"
-                value={stationFormData.tracks}
+                name="runningLines"
+                value={stationFormData.runningLines || stationFormData.tracks || ""}
                 onChange={handleStationFormChange}
-                placeholder="Enter number of tracks"
-                className={stationFormErrors.tracks ? "error" : ""}
+                placeholder="Enter number of running lines"
+                className={stationFormErrors.runningLines ? "error" : ""}
                 readOnly={isReadOnly}
               />
-              {stationFormErrors.tracks && <span className="error-text">{stationFormErrors.tracks}</span>}
+              {stationFormErrors.runningLines && <span className="error-text">{stationFormErrors.runningLines}</span>}
             </div>
 
             <div className="form-group">
-              <label>Address *</label>
-              <textarea
-                name="address"
-                value={stationFormData.address}
-                onChange={handleStationFormChange}
-                placeholder="Enter address"
-                className={stationFormErrors.address ? "error" : ""}
-                readOnly={isReadOnly}
-              />
-              {stationFormErrors.address && <span className="error-text">{stationFormErrors.address}</span>}
-            </div>
-
-            <div className="form-group">
-              <label>City *</label>
+              <label>District *</label>
               <input
                 type="text"
-                name="city"
-                value={stationFormData.city}
+                name="district"
+                value={stationFormData.district}
                 onChange={handleStationFormChange}
-                placeholder="Enter city"
-                className={stationFormErrors.city ? "error" : ""}
+                placeholder="Enter district"
+                className={stationFormErrors.district ? "error" : ""}
                 readOnly={isReadOnly}
               />
-              {stationFormErrors.city && <span className="error-text">{stationFormErrors.city}</span>}
+              {stationFormErrors.district && <span className="error-text">{stationFormErrors.district}</span>}
             </div>
 
             <div className="form-group">
@@ -2742,101 +3072,18 @@ export function useAomState(user, onLogout) {
             </div>
 
             <div className="form-group">
-              <label>Pincode *</label>
-              <input
-                type="number"
-                min="0"
-                name="pincode"
-                value={stationFormData.pincode}
+              <label>Address *</label>
+              <textarea
+                name="address"
+                value={stationFormData.address}
                 onChange={handleStationFormChange}
-                placeholder="Enter pincode"
-                className={stationFormErrors.pincode ? "error" : ""}
+                placeholder="Enter address"
+                className={stationFormErrors.address ? "error" : ""}
                 readOnly={isReadOnly}
+                style={{ height: "80px" }}
               />
-              {stationFormErrors.pincode && <span className="error-text">{stationFormErrors.pincode}</span>}
+              {stationFormErrors.address && <span className="error-text">{stationFormErrors.address}</span>}
             </div>
-          </div>
-        </div>
-
-        <div className="station-additional-grid">
-          <div className="form-group">
-            <label>Station Master Name (Optional)</label>
-            <input
-              type="text"
-              name="stationMasterName"
-              value={stationFormData.stationMasterName}
-              onChange={handleStationFormChange}
-              placeholder="Enter station master name"
-              readOnly={isReadOnly}
-            />
-          </div>
-
-          <div className="form-group">
-            <label>Contact Number *</label>
-            <input
-              type="text"
-              name="contactNumber"
-              value={stationFormData.contactNumber}
-              onChange={handleStationFormChange}
-              placeholder="Enter contact number"
-              className={stationFormErrors.contactNumber ? "error" : ""}
-              readOnly={isReadOnly}
-            />
-            {stationFormErrors.contactNumber && <span className="error-text">{stationFormErrors.contactNumber}</span>}
-          </div>
-
-          <div className="form-group">
-            <label>Email ID *</label>
-            <input
-              type="email"
-              name="emailId"
-              value={stationFormData.emailId}
-              onChange={handleStationFormChange}
-              placeholder="Enter email ID"
-              className={stationFormErrors.emailId ? "error" : ""}
-              readOnly={isReadOnly}
-            />
-            {stationFormErrors.emailId && <span className="error-text">{stationFormErrors.emailId}</span>}
-          </div>
-
-          <div className="form-group">
-            <label>Latitude *</label>
-            <input
-              type="text"
-              name="latitude"
-              value={stationFormData.latitude}
-              onChange={handleStationFormChange}
-              placeholder="Enter latitude"
-              className={stationFormErrors.latitude ? "error" : ""}
-              readOnly={isReadOnly}
-            />
-            {stationFormErrors.latitude && <span className="error-text">{stationFormErrors.latitude}</span>}
-          </div>
-
-          <div className="form-group">
-            <label>Longitude *</label>
-            <input
-              type="text"
-              name="longitude"
-              value={stationFormData.longitude}
-              onChange={handleStationFormChange}
-              placeholder="Enter longitude"
-              className={stationFormErrors.longitude ? "error" : ""}
-              readOnly={isReadOnly}
-            />
-            {stationFormErrors.longitude && <span className="error-text">{stationFormErrors.longitude}</span>}
-          </div>
-
-          <div className="form-group status-toggle-group">
-            <label>Status</label>
-            <button
-              type="button"
-              className={`status-toggle-btn ${stationFormData.status === "Active" ? "active" : "inactive"}`}
-              onClick={handleStationStatusToggle}
-              disabled={isReadOnly}
-            >
-              {stationFormData.status}
-            </button>
           </div>
         </div>
       </>
@@ -3417,1023 +3664,66 @@ export function useAomState(user, onLogout) {
 
   const renderPmModal = () => {
     if (!pmModal) return null;
-    const isShift = pmModal.mode === "shift";
     return (
-      <div className="sdom-modal-overlay" style={{ zIndex: 99999 }} onClick={e => e.target === e.currentTarget && setPmModal(null)}>
-        <div className="sdom-modal" style={!isShift ? { width: "900px", maxWidth: "95vw" } : undefined}>
-
-          {!isShift ? (
-            <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
-              {/* Header inside modal */}
-              <div style={{ display: "flex", alignItems: "center", gap: "16px", marginBottom: "8px" }}>
-                <div style={{
-                  background: "linear-gradient(135deg, #0d2c4d 0%, #1e40af 100%)",
-                  width: "56px",
-                  height: "56px",
-                  borderRadius: "14px",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  boxShadow: "0 4px 12px rgba(13, 44, 77, 0.2)",
-                  color: "#ffffff"
-                }}>
-                  <UserPlus size={28} />
-                </div>
-                <div>
-                  <h2 style={{ margin: 0, fontSize: "22px", fontWeight: "800", color: "#0d2c4d", letterSpacing: "-0.5px" }}>
-                    {pmModal.mode === "edit" ? "EDIT OPERATIONAL POINTSMAN" : "ADD NEW OPERATIONAL POINTSMAN"}
-                  </h2>
-                  <p style={{ margin: "4px 0 0 0", fontSize: "13px", color: "#64748b", fontWeight: "500" }}>
-                    Role-Based Operational Staff Provisioning & Management Console
-                  </p>
-                </div>
-              </div>
-
-              {/* Section 1: General & Contact Information */}
-              <div>
-                <h4 style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#0d2c4d', margin: '0 0 10px', fontSize: '15px', fontWeight: '800' }}>
-                  <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#0d2c4d', display: 'inline-block' }}></span>
-                  1. General & Contact Information
-                </h4>
-                <div style={{ height: '1px', background: '#d5dfeb', marginBottom: '16px' }}></div>
-
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
-                  <div className="sdom-modal-field">
-                    <label>Full Name *</label>
-                    <input
-                      value={pmModal.data.name || ""}
-                      onChange={e => setPmModal(p => ({ ...p, data: { ...p.data, name: e.target.value } }))}
-                      placeholder="Enter full name (e.g. A. K. Sharma)"
-                    />
-                  </div>
-                  <div className="sdom-modal-field">
-                    <label>Mobile Number *</label>
-                    <input
-                      value={pmModal.data.contact || ""}
-                      onChange={e => setPmModal(p => ({ ...p, data: { ...p.data, contact: e.target.value } }))}
-                      placeholder="Enter 10-digit mobile number"
-                    />
-                  </div>
-                  <div className="sdom-modal-field">
-                    <label>HRMS ID / Employee ID *</label>
-                    <input
-                      value={pmModal.data.hrmsId || ""}
-                      disabled={pmModal.mode === "edit"}
-                      onChange={e => setPmModal(p => ({ ...p, data: { ...p.data, hrmsId: e.target.value } }))}
-                      placeholder="Enter unique ID (e.g. PM_8820)"
-                    />
-                  </div>
-                  <div className="sdom-modal-field">
-                    <label>Email ID *</label>
-                    <input
-                      value={pmModal.data.email || ""}
-                      onChange={e => setPmModal(p => ({ ...p, data: { ...p.data, email: e.target.value } }))}
-                      placeholder="Enter email address (e.g. user@rail.in)"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Section 2: Designation & Station Placement Setup */}
-              <div>
-                <h4 style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#0d2c4d', margin: '0 0 10px', fontSize: '15px', fontWeight: '800' }}>
-                  <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#0d2c4d', display: 'inline-block' }}></span>
-                  2. Designation & Station Placement Setup
-                </h4>
-                <div style={{ height: '1px', background: '#d5dfeb', marginBottom: '16px' }}></div>
-
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
-                  <div className="sdom-modal-field">
-                    <label>Role / Designation *</label>
-                    <select value="pointsmen" disabled>
-                      <option value="pointsmen">Pointsman</option>
-                    </select>
-                  </div>
-                  <div className="sdom-modal-field">
-                    <label>Division *</label>
-                    <select
-                      value={pmModal.data.division || "Nagpur"}
-                      onChange={e => {
-                        const div = e.target.value;
-                        setPmModal(p => ({ ...p, data: { ...p.data, division: div } }));
-                      }}
-                    >
-                      {["Nagpur", "Pune", "Mumbai", "Solapur", "Bhusawal"].map(d => <option key={d} value={d}>{d}</option>)}
-                    </select>
-                  </div>
-                  <div className="sdom-modal-field">
-                    <label>Railway Zone *</label>
-                    <select
-                      value={pmModal.data.zone || "Central Railway"}
-                      onChange={e => {
-                        const zone = e.target.value;
-                        setPmModal(p => ({ ...p, data: { ...p.data, zone: zone } }));
-                      }}
-                    >
-                      {["Central Railway", "Western Railway", "Northern Railway", "Southern Railway", "Eastern Railway"].map(z => <option key={z} value={z}>{z}</option>)}
-                    </select>
-                  </div>
-                  <div className="sdom-modal-field">
-                    <label>Station Name *</label>
-                    <select
-                      value={pmModal.data.stationName || ""}
-                      onChange={e => {
-                        const stName = e.target.value;
-                        const matchedSt = stations.find(s => s.stationName === stName);
-                        setPmModal(p => ({
-                          ...p,
-                          data: {
-                            ...p.data,
-                            stationName: stName,
-                            stationCode: matchedSt ? matchedSt.stationCode : p.data.stationCode
-                          }
-                        }));
-                      }}
-                    >
-                      <option value="">Select Station</option>
-                      {stations.map(s => <option key={s.id || s.stationCode} value={s.stationName}>{s.stationName}</option>)}
-                    </select>
-                  </div>
-                  <div className="sdom-modal-field">
-                    <label>Category *</label>
-                    <select
-                      value={pmModal.data.cat || "A"}
-                      onChange={e => setPmModal(p => ({ ...p, data: { ...p.data, cat: e.target.value } }))}
-                    >
-                      <option>A</option><option>B</option><option>C</option><option>D</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-
-              {/* Section 3: Pointsman Operational Setup */}
-              <div style={{ padding: 18, background: "#f0f7ff", border: "1px solid #c2e0ff", borderRadius: 10 }}>
-                <h4 style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#0d2c4d', margin: '0 0 10px', fontSize: '14px', fontWeight: '800' }}>
-                  Pointsman Operational Setup
-                </h4>
-                <div style={{ height: '1px', backgroundColor: '#c2e0ff', marginBottom: '16px' }}></div>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
-                  <div className="sdom-modal-field">
-                    <label>Reporting Station Master *</label>
-                    <input
-                      value={pmModal.data.reportingSm || ""}
-                      onChange={e => setPmModal(p => ({ ...p, data: { ...p.data, reportingSm: e.target.value } }))}
-                      placeholder="Station Master Name"
-                    />
-                  </div>
-                  <div className="sdom-modal-field">
-                    <label>Work Location Setup *</label>
-                    <select
-                      value={pmModal.data.workLocation || ""}
-                      onChange={e => setPmModal(p => ({ ...p, data: { ...p.data, workLocation: e.target.value } }))}
-                    >
-                      <option value="">Select Location</option>
-                      <option value="Yard">Yard Area</option>
-                      <option value="Cabin A">Cabin A</option>
-                      <option value="Cabin B">Cabin B</option>
-                      <option value="Platform Area">Platform Area</option>
-                      <option value="Level Crossing Gate">Level Crossing Gate</option>
-                    </select>
-                  </div>
-                  <div className="sdom-modal-field">
-                    <label>Assigned Shift *</label>
-                    <select
-                      value={pmModal.data.shift || ""}
-                      onChange={e => setPmModal(p => ({ ...p, data: { ...p.data, shift: e.target.value } }))}
-                    >
-                      <option value="">Select Shift</option>
-                      <option value="Morning Shift (06:00 - 14:00)">Morning Shift (06:00 - 14:00)</option>
-                      <option value="Evening Shift (14:00 - 22:00)">Evening Shift (14:00 - 22:00)</option>
-                      <option value="Night Shift (22:00 - 06:00)">Night Shift (22:00 - 06:00)</option>
-                      <option value="General Shift (09:00 - 18:00)">General Shift (09:00 - 18:00)</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-            </div>
-          ) : (
-            <>
-              <div className="sdom-modal-title" style={{ marginBottom: 20 }}>Shift Staff Role</div>
-              <div className="sdom-modal-field">
-                <label>Role (Shift to)</label>
-                <select
-                  value={pmModal.role || "pointsmen"}
-                  onChange={e => setPmModal(p => ({ ...p, role: e.target.value }))}
-                >
-                  <option value="pointsmen">Pointsman</option>
-                  <option value="sm">Station Master</option>
-                  <option value="ss">Station Superintendent</option>
-                  <option value="tm">Train Manager</option>
-                  <option value="ti">Traffic Inspector</option>
-                </select>
-              </div>
-            </>
-          )}
-
-          <div className="sdom-modal-actions" style={{ marginTop: 24 }}>
-            <button className="sdom-btn-primary" style={{ flex: 1 }} onClick={savePmModal}>
-              {pmModal.mode === "edit" ? "🔒 UPDATE POINTSMAN" : isShift ? "🔄 SHIFT POINTSMAN ROLE" : "👤 ADD POINTSMAN"}
-            </button>
-            <button className="sdom-btn-ghost" style={{ flex: 1 }} onClick={() => setPmModal(null)}>Cancel</button>
-          </div>
-        </div>
-      </div>
+      <SAStaffModal
+        modal={pmModal}
+        setModal={setPmModal}
+        stations={stations}
+        staff={users}
+        saveModal={savePmModal}
+      />
     );
   };
 
   const renderTiModal = () => {
     if (!tiModal) return null;
-    const isShift = tiModal.mode === "shift";
     return (
-      <div className="sdom-modal-overlay" style={{ zIndex: 99999 }} onClick={e => e.target === e.currentTarget && setTiModal(null)}>
-        <div className="sdom-modal" style={!isShift ? { width: "900px", maxWidth: "95vw" } : undefined}>
-
-          <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
-            {/* Header inside modal */}
-            <div style={{ display: "flex", alignItems: "center", gap: "16px", marginBottom: "8px" }}>
-              <div style={{
-                background: "linear-gradient(135deg, #0d2c4d 0%, #1e40af 100%)",
-                width: "56px",
-                height: "56px",
-                borderRadius: "14px",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                boxShadow: "0 4px 12px rgba(13, 44, 77, 0.2)",
-                color: "#ffffff"
-              }}>
-                <UserPlus size={28} />
-              </div>
-              <div>
-                <h2 style={{ margin: 0, fontSize: "22px", fontWeight: "800", color: "#0d2c4d", letterSpacing: "-0.5px" }}>
-                  {tiModal.mode === "edit" ? "EDIT TRAFFIC INSPECTOR" : "ADD NEW TRAFFIC INSPECTOR"}
-                </h2>
-                <p style={{ margin: "4px 0 0 0", fontSize: "13px", color: "#64748b", fontWeight: "500" }}>
-                  Role-Based Operational Staff Provisioning & Management Console
-                </p>
-              </div>
-            </div>
-
-            {/* Section 1: General & Contact Information */}
-            <div>
-              <h4 style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#0d2c4d', margin: '0 0 10px', fontSize: '15px', fontWeight: '800' }}>
-                <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#0d2c4d', display: 'inline-block' }}></span>
-                1. General & Contact Information
-              </h4>
-              <div style={{ height: '1px', background: '#d5dfeb', marginBottom: '16px' }}></div>
-
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
-                <div className="sdom-modal-field">
-                  <label>Full Name *</label>
-                  <input
-                    value={tiModal.data.name || ""}
-                    onChange={e => setTiModal(p => ({ ...p, data: { ...p.data, name: e.target.value } }))}
-                    placeholder="Enter full name (e.g. A. K. Kulkarni)"
-                  />
-                </div>
-                <div className="sdom-modal-field">
-                  <label>Mobile Number *</label>
-                  <input
-                    value={tiModal.data.phone || ""}
-                    onChange={e => setTiModal(p => ({ ...p, data: { ...p.data, phone: e.target.value } }))}
-                    placeholder="Enter 10-digit mobile number"
-                  />
-                </div>
-                <div className="sdom-modal-field">
-                  <label>Employee ID *</label>
-                  <input
-                    value={tiModal.data.employeeId || ""}
-                    disabled={tiModal.mode === "edit"}
-                    onChange={e => setTiModal(p => ({ ...p, data: { ...p.data, employeeId: e.target.value } }))}
-                    placeholder="Enter unique ID (e.g. TI_1004)"
-                  />
-                </div>
-                <div className="sdom-modal-field">
-                  <label>Email ID *</label>
-                  <input
-                    value={tiModal.data.email || ""}
-                    onChange={e => setTiModal(p => ({ ...p, data: { ...p.data, email: e.target.value } }))}
-                    placeholder="Enter email address (e.g. user@rail.in)"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Section 2: Designation & Station Placement Setup */}
-            <div>
-              <h4 style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#0d2c4d', margin: '0 0 10px', fontSize: '15px', fontWeight: '800' }}>
-                <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#0d2c4d', display: 'inline-block' }}></span>
-                2. Designation & Station Placement Setup
-              </h4>
-              <div style={{ height: '1px', background: '#d5dfeb', marginBottom: '16px' }}></div>
-
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
-                <div className="sdom-modal-field">
-                  <label>Role / Designation *</label>
-                  <select value="ti" disabled>
-                    <option value="ti">Traffic Inspector</option>
-                  </select>
-                </div>
-                <div className="sdom-modal-field">
-                  <label>TI Area *</label>
-                  <select
-                    value={tiModal.data.tiArea || "TI NGP"}
-                    onChange={e => {
-                      const area = e.target.value;
-                      setTiModal(p => ({ ...p, data: { ...p.data, tiArea: area, division: area } }));
-                    }}
-                  >
-                    {["TI NGP", "TI PAR", "TI AMLA"].map(d => <option key={d} value={d}>{d}</option>)}
-                  </select>
-                </div>
-                <div className="sdom-modal-field">
-                  <label>Station Placement *</label>
-                  <select
-                    value={tiModal.data.stationName || "Nagpur Junction"}
-                    onChange={e => setTiModal(p => ({ ...p, data: { ...p.data, stationName: e.target.value } }))}
-                  >
-                    {["Nagpur Junction", "Pune Junction", "Parbhani Junction", "Amla", "New Delhi"].map(s => <option key={s} value={s}>{s}</option>)}
-                  </select>
-                </div>
-                <div className="sdom-modal-field">
-                  <label>Category *</label>
-                  <select
-                    value={tiModal.data.category || "A"}
-                    onChange={e => setTiModal(p => ({ ...p, data: { ...p.data, category: e.target.value } }))}
-                  >
-                    {["A", "B", "C", "D"].map(c => <option key={c} value={c}>Category {c}</option>)}
-                  </select>
-                </div>
-                <div className="sdom-modal-field">
-                  <label>Risk Level *</label>
-                  <select
-                    value={tiModal.data.riskLevel || "Low"}
-                    onChange={e => setTiModal(p => ({ ...p, data: { ...p.data, riskLevel: e.target.value } }))}
-                  >
-                    {["Low", "Medium", "High"].map(r => <option key={r} value={r}>{r} Risk</option>)}
-                  </select>
-                </div>
-                <div className="sdom-modal-field">
-                  <label>Last Assessment Score *</label>
-                  <input
-                    type="number"
-                    value={tiModal.data.lastScore || ""}
-                    onChange={e => setTiModal(p => ({ ...p, data: { ...p.data, lastScore: e.target.value } }))}
-                    placeholder="Enter last assessment score (e.g. 85)"
-                  />
-                </div>
-                <div className="sdom-modal-field">
-                  <label>Assessment Status *</label>
-                  <select
-                    value={tiModal.data.assessmentStatus || "Pending"}
-                    onChange={e => setTiModal(p => ({ ...p, data: { ...p.data, assessmentStatus: e.target.value } }))}
-                  >
-                    <option value="Completed">Completed (Approved)</option>
-                    <option value="Pending">Pending</option>
-                  </select>
-                </div>
-              </div>
-            </div>
-
-            {/* Actions */}
-            <div style={{ display: "flex", gap: "12px", marginTop: "12px" }}>
-              <button className="sdom-btn-primary" style={{ flex: 1 }} onClick={saveTiModal}>
-                {tiModal.mode === "edit" ? "🔒 UPDATE TRAFFIC INSPECTOR" : "👤 ADD TRAFFIC INSPECTOR"}
-              </button>
-              <button className="sdom-btn-ghost" style={{ flex: 1 }} onClick={() => setTiModal(null)}>Cancel</button>
-            </div>
-          </div>
-        </div>
-      </div>
+      <SAStaffModal
+        modal={tiModal}
+        setModal={setTiModal}
+        stations={stations}
+        staff={users}
+        saveModal={saveTiModal}
+      />
     );
   };
 
   const renderSmModal = () => {
     if (!smModal) return null;
-    const isShift = smModal.mode === "shift";
-    const ROLE_MAP = { pointsmen: "Pointsman", sm: "Station Master", ss: "Station Superintendent", tm: "Train Manager", ti: "Traffic Inspector" };
     return (
-      <div className="sdom-modal-overlay" style={{ zIndex: 99999 }} onClick={e => e.target === e.currentTarget && setSmModal(null)}>
-        <div className="sdom-modal" style={!isShift ? { width: "900px", maxWidth: "95vw" } : undefined}>
-
-          {!isShift ? (
-            <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
-              {/* Header inside modal */}
-              <div style={{ display: "flex", alignItems: "center", gap: "16px", marginBottom: "8px" }}>
-                <div style={{
-                  background: "linear-gradient(135deg, #0d2c4d 0%, #1e40af 100%)",
-                  width: "56px",
-                  height: "56px",
-                  borderRadius: "14px",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  boxShadow: "0 4px 12px rgba(13, 44, 77, 0.2)",
-                  color: "#ffffff"
-                }}>
-                  <UserPlus size={28} />
-                </div>
-                <div>
-                  <h2 style={{ margin: 0, fontSize: "22px", fontWeight: "800", color: "#0d2c4d", letterSpacing: "-0.5px" }}>
-                    {smModal.mode === "edit" ? "EDIT STATION MASTER" : "ADD NEW STATION MASTER"}
-                  </h2>
-                  <p style={{ margin: "4px 0 0 0", fontSize: "13px", color: "#64748b", fontWeight: "500" }}>
-                    Role-Based Operational Staff Provisioning & Management Console
-                  </p>
-                </div>
-              </div>
-
-              {/* Section 1: General & Contact Information */}
-              <div>
-                <h4 style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#0d2c4d', margin: '0 0 10px', fontSize: '15px', fontWeight: '800' }}>
-                  <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#0d2c4d', display: 'inline-block' }}></span>
-                  1. General & Contact Information
-                </h4>
-                <div style={{ height: '1px', background: '#d5dfeb', marginBottom: '16px' }}></div>
-
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
-                  <div className="sdom-modal-field">
-                    <label>Full Name *</label>
-                    <input
-                      value={smModal.data.name || ""}
-                      onChange={e => setSmModal(p => ({ ...p, data: { ...p.data, name: e.target.value } }))}
-                      placeholder="Enter full name (e.g. A. K. Sharma)"
-                    />
-                  </div>
-                  <div className="sdom-modal-field">
-                    <label>Mobile Number *</label>
-                    <input
-                      value={smModal.data.contact || smModal.data.contactNumber || ""}
-                      onChange={e => setSmModal(p => ({ ...p, data: { ...p.data, contact: e.target.value, contactNumber: e.target.value } }))}
-                      placeholder="Enter 10-digit mobile number"
-                    />
-                  </div>
-                  <div className="sdom-modal-field">
-                    <label>HRMS ID / Employee ID *</label>
-                    <input
-                      value={smModal.data.hrmsId || smModal.data.id || ""}
-                      disabled={smModal.mode === "edit"}
-                      onChange={e => setSmModal(p => ({ ...p, data: { ...p.data, hrmsId: e.target.value, id: e.target.value } }))}
-                      placeholder="Enter unique ID (e.g. SM_8820)"
-                    />
-                  </div>
-                  <div className="sdom-modal-field">
-                    <label>Email ID *</label>
-                    <input
-                      value={smModal.data.email || smModal.data.emailId || ""}
-                      onChange={e => setSmModal(p => ({ ...p, data: { ...p.data, email: e.target.value, emailId: e.target.value } }))}
-                      placeholder="Enter email address (e.g. user@rail.in)"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Section 2: Designation & Station Placement Setup */}
-              <div>
-                <h4 style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#0d2c4d', margin: '0 0 10px', fontSize: '15px', fontWeight: '800' }}>
-                  <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#0d2c4d', display: 'inline-block' }}></span>
-                  2. Designation & Station Placement Setup
-                </h4>
-                <div style={{ height: '1px', background: '#d5dfeb', marginBottom: '16px' }}></div>
-
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
-                  <div className="sdom-modal-field">
-                    <label>Role / Designation *</label>
-                    <select value="sm" disabled>
-                      <option value="sm">Station Master</option>
-                    </select>
-                  </div>
-                  <div className="sdom-modal-field">
-                    <label>Division *</label>
-                    <select
-                      value={smModal.data.smDivision || "Nagpur"}
-                      onChange={e => {
-                        const div = e.target.value;
-                        setSmModal(p => ({ ...p, data: { ...p.data, smDivision: div, division: div } }));
-                      }}
-                    >
-                      {["Nagpur", "Pune", "Mumbai", "Delhi", "Chennai"].map(d => <option key={d} value={d}>{d}</option>)}
-                    </select>
-                  </div>
-                  <div className="sdom-modal-field">
-                    <label>Railway Zone *</label>
-                    <select
-                      value={smModal.data.smZone || "Central Railway"}
-                      onChange={e => {
-                        const zone = e.target.value;
-                        setSmModal(p => ({ ...p, data: { ...p.data, smZone: zone, zone } }));
-                      }}
-                    >
-                      {["Central Railway", "Western Railway", "Northern Railway", "Southern Railway", "Eastern Railway"].map(z => <option key={z} value={z}>{z}</option>)}
-                    </select>
-                  </div>
-                  <div className="sdom-modal-field">
-                    <label>Station Name *</label>
-                    <select
-                      value={smModal.data.smStation || ""}
-                      onChange={e => {
-                        const stName = e.target.value;
-                        setSmModal(p => ({ ...p, data: { ...p.data, smStation: stName, stationName: stName } }));
-                      }}
-                    >
-                      {stations.map(st => <option key={st.id} value={st.stationName}>{st.stationName}</option>)}
-                    </select>
-                  </div>
-                  <div className="sdom-modal-field">
-                    <label>Category *</label>
-                    <select
-                      value={smModal.data.cat || smModal.data.category || "A"}
-                      onChange={e => setSmModal(p => ({ ...p, data: { ...p.data, cat: e.target.value, category: e.target.value } }))}
-                    >
-                      <option>A</option><option>B</option><option>C</option><option>D</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-
-              {/* Section 3: Station Master Operational Setup */}
-              <div style={{ padding: 18, background: "#ecfdf5", border: "1px solid #a7f3d0", borderRadius: 10 }}>
-                <h4 style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#065f46', margin: '0 0 10px', fontSize: '14px', fontWeight: '800' }}>
-                  Station Master Operational Setup
-                </h4>
-                <div style={{ height: '1px', backgroundColor: '#a7f3d0', marginBottom: '16px' }}></div>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
-                  <div className="sdom-modal-field">
-                    <label>Operational Station *</label>
-                    <select
-                      value={smModal.data.smStation || ""}
-                      onChange={e => setSmModal(p => ({ ...p, data: { ...p.data, smStation: e.target.value, stationName: e.target.value } }))}
-                    >
-                      <option value="">Select Operational Station</option>
-                      {stations.map(st => <option key={st.id} value={st.stationName}>{st.stationName}</option>)}
-                    </select>
-                  </div>
-                  <div className="sdom-modal-field">
-                    <label>Operational Zone *</label>
-                    <select
-                      value={smModal.data.smZone || ""}
-                      onChange={e => setSmModal(p => ({ ...p, data: { ...p.data, smZone: e.target.value, zone: e.target.value } }))}
-                    >
-                      <option value="">Select Zone</option>
-                      {["Central Railway", "Western Railway", "Northern Railway", "Southern Railway", "Eastern Railway"].map(z => <option key={z} value={z}>{z}</option>)}
-                    </select>
-                  </div>
-                  <div className="sdom-modal-field">
-                    <label>Operational Division *</label>
-                    <select
-                      value={smModal.data.smDivision || ""}
-                      onChange={e => setSmModal(p => ({ ...p, data: { ...p.data, smDivision: e.target.value, division: e.target.value } }))}
-                    >
-                      <option value="">Select Division</option>
-                      {["Nagpur", "Pune", "Mumbai", "Delhi", "Chennai"].map(d => <option key={d} value={d}>{d}</option>)}
-                    </select>
-                  </div>
-                </div>
-              </div>
-            </div>
-          ) : (
-            <>
-              <div className="sdom-modal-title" style={{ marginBottom: 20 }}>Shift Station Master Role</div>
-              <div className="sdom-modal-field">
-                <label>Role (Shift to)</label>
-                <select
-                  value={smModal.role || "sm"}
-                  onChange={e => setSmModal(p => ({ ...p, role: e.target.value }))}
-                >
-                  {Object.entries(ROLE_MAP).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-                </select>
-              </div>
-            </>
-          )}
-
-          <div className="sdom-modal-actions" style={{ marginTop: 24 }}>
-            <button className="sdom-btn-primary" style={{ flex: 1 }} onClick={saveSmModal}>
-              {smModal.mode === "edit" ? "🔒 UPDATE STATION MASTER" : isShift ? "🔄 SHIFT STATION MASTER ROLE" : "👤 ADD STATION MASTER"}
-            </button>
-            <button className="sdom-btn-ghost" style={{ flex: 1 }} onClick={() => setSmModal(null)}>Cancel</button>
-          </div>
-        </div>
-      </div>
+      <SAStaffModal
+        modal={smModal}
+        setModal={setSmModal}
+        stations={stations}
+        staff={users}
+        saveModal={saveSmModal}
+      />
     );
   };
 
   const renderSsModal = () => {
     if (!ssModal) return null;
-    const isShift = ssModal.mode === "shift";
-    const ROLE_MAP = { pointsmen: "Pointsman", sm: "Station Master", ss: "Station Superintendent", tm: "Train Manager", ti: "Traffic Inspector" };
     return (
-      <div className="sdom-modal-overlay" style={{ zIndex: 99999 }} onClick={e => e.target === e.currentTarget && setSsModal(null)}>
-        <div className="sdom-modal" style={!isShift ? { width: "900px", maxWidth: "95vw" } : undefined}>
-
-          {!isShift ? (
-            <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
-              {/* Header inside modal */}
-              <div style={{ display: "flex", alignItems: "center", gap: "16px", marginBottom: "8px" }}>
-                <div style={{
-                  background: "linear-gradient(135deg, #0d2c4d 0%, #1e40af 100%)",
-                  width: "56px",
-                  height: "56px",
-                  borderRadius: "14px",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  boxShadow: "0 4px 12px rgba(13, 44, 77, 0.2)",
-                  color: "#ffffff"
-                }}>
-                  <UserPlus size={28} />
-                </div>
-                <div>
-                  <h2 style={{ margin: 0, fontSize: "22px", fontWeight: "800", color: "#0d2c4d", letterSpacing: "-0.5px" }}>
-                    {ssModal.mode === "edit" ? "EDIT STATION SUPERINTENDENT" : "ADD NEW STATION SUPERINTENDENT"}
-                  </h2>
-                  <p style={{ margin: "4px 0 0 0", fontSize: "13px", color: "#64748b", fontWeight: "500" }}>
-                    Role-Based Operational Staff Provisioning & Management Console
-                  </p>
-                </div>
-              </div>
-
-              {/* Section 1: General & Contact Information */}
-              <div>
-                <h4 style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#0d2c4d', margin: '0 0 10px', fontSize: '15px', fontWeight: '800' }}>
-                  <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#0d2c4d', display: 'inline-block' }}></span>
-                  1. General & Contact Information
-                </h4>
-                <div style={{ height: '1px', background: '#d5dfeb', marginBottom: '16px' }}></div>
-
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
-                  <div className="sdom-modal-field">
-                    <label>Full Name *</label>
-                    <input
-                      value={ssModal.data.name || ""}
-                      onChange={e => setSsModal(p => ({ ...p, data: { ...p.data, name: e.target.value } }))}
-                      placeholder="Enter full name (e.g. A. K. Sharma)"
-                    />
-                  </div>
-                  <div className="sdom-modal-field">
-                    <label>Mobile Number *</label>
-                    <input
-                      value={ssModal.data.contact || ssModal.data.contactNumber || ""}
-                      onChange={e => setSsModal(p => ({ ...p, data: { ...p.data, contact: e.target.value, contactNumber: e.target.value } }))}
-                      placeholder="Enter 10-digit mobile number"
-                    />
-                  </div>
-                  <div className="sdom-modal-field">
-                    <label>HRMS ID / Employee ID *</label>
-                    <input
-                      value={ssModal.data.employeeId || ssModal.data.id || ""}
-                      disabled={ssModal.mode === "edit"}
-                      onChange={e => setSsModal(p => ({ ...p, data: { ...p.data, employeeId: e.target.value, id: e.target.value } }))}
-                      placeholder="Enter unique ID (e.g. SS_8820)"
-                    />
-                  </div>
-                  <div className="sdom-modal-field">
-                    <label>Email ID *</label>
-                    <input
-                      value={ssModal.data.email || ssModal.data.emailId || ""}
-                      onChange={e => setSsModal(p => ({ ...p, data: { ...p.data, email: e.target.value, emailId: e.target.value } }))}
-                      placeholder="Enter email address (e.g. user@rail.in)"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Section 2: Designation & Station Placement Setup */}
-              <div>
-                <h4 style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#0d2c4d', margin: '0 0 10px', fontSize: '15px', fontWeight: '800' }}>
-                  <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#0d2c4d', display: 'inline-block' }}></span>
-                  2. Designation & Station Placement Setup
-                </h4>
-                <div style={{ height: '1px', background: '#d5dfeb', marginBottom: '16px' }}></div>
-
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
-                  <div className="sdom-modal-field">
-                    <label>Role / Designation *</label>
-                    <select value="ss" disabled>
-                      <option value="ss">Station Superintendent</option>
-                    </select>
-                  </div>
-                  <div className="sdom-modal-field">
-                    <label>Division *</label>
-                    <select
-                      value={ssModal.data.smDivision || "Nagpur"}
-                      onChange={e => {
-                        const div = e.target.value;
-                        setSsModal(p => ({ ...p, data: { ...p.data, smDivision: div, division: div } }));
-                      }}
-                    >
-                      {["Nagpur", "Pune", "Mumbai", "Delhi", "Chennai"].map(d => <option key={d} value={d}>{d}</option>)}
-                    </select>
-                  </div>
-                  <div className="sdom-modal-field">
-                    <label>Railway Zone *</label>
-                    <select
-                      value={ssModal.data.smZone || "Central Railway"}
-                      onChange={e => {
-                        const zone = e.target.value;
-                        setSsModal(p => ({ ...p, data: { ...p.data, smZone: zone, zone } }));
-                      }}
-                    >
-                      {["Central Railway", "Western Railway", "Northern Railway", "Southern Railway", "Eastern Railway"].map(z => <option key={z} value={z}>{z}</option>)}
-                    </select>
-                  </div>
-                  <div className="sdom-modal-field">
-                    <label>Station Name *</label>
-                    <select
-                      value={ssModal.data.smStation || ""}
-                      onChange={e => {
-                        const stName = e.target.value;
-                        setSsModal(p => ({ ...p, data: { ...p.data, smStation: stName, station: stName } }));
-                      }}
-                    >
-                      {stations.map(st => <option key={st.id} value={st.stationName}>{st.stationName}</option>)}
-                    </select>
-                  </div>
-                  <div className="sdom-modal-field">
-                    <label>Category *</label>
-                    <select
-                      value={ssModal.data.cat || ssModal.data.category || "A"}
-                      onChange={e => setSsModal(p => ({ ...p, data: { ...p.data, cat: e.target.value, category: e.target.value } }))}
-                    >
-                      <option>A</option><option>B</option><option>C</option><option>D</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-
-              {/* Section 3: Station Superintendent Operational Setup */}
-              <div style={{ padding: 18, background: "#ecfdf5", border: "1px solid #a7f3d0", borderRadius: 10 }}>
-                <h4 style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#065f46', margin: '0 0 10px', fontSize: '14px', fontWeight: '800' }}>
-                  Station Superintendent Operational Setup
-                </h4>
-                <div style={{ height: '1px', backgroundColor: '#a7f3d0', marginBottom: '16px' }}></div>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
-                  <div className="sdom-modal-field">
-                    <label>Operational Station *</label>
-                    <select
-                      value={ssModal.data.smStation || ""}
-                      onChange={e => setSsModal(p => ({ ...p, data: { ...p.data, smStation: e.target.value, station: e.target.value } }))}
-                    >
-                      <option value="">Select Operational Station</option>
-                      {stations.map(st => <option key={st.id} value={st.stationName}>{st.stationName}</option>)}
-                    </select>
-                  </div>
-                  <div className="sdom-modal-field">
-                    <label>Operational Zone *</label>
-                    <select
-                      value={ssModal.data.smZone || ""}
-                      onChange={e => setSsModal(p => ({ ...p, data: { ...p.data, smZone: e.target.value, zone: e.target.value } }))}
-                    >
-                      <option value="">Select Zone</option>
-                      {["Central Railway", "Western Railway", "Northern Railway", "Southern Railway", "Eastern Railway"].map(z => <option key={z} value={z}>{z}</option>)}
-                    </select>
-                  </div>
-                  <div className="sdom-modal-field">
-                    <label>Operational Division *</label>
-                    <select
-                      value={ssModal.data.smDivision || ""}
-                      onChange={e => setSsModal(p => ({ ...p, data: { ...p.data, smDivision: e.target.value, division: e.target.value } }))}
-                    >
-                      <option value="">Select Division</option>
-                      {["Nagpur", "Pune", "Mumbai", "Delhi", "Chennai"].map(d => <option key={d} value={d}>{d}</option>)}
-                    </select>
-                  </div>
-                </div>
-              </div>
-            </div>
-          ) : (
-            <>
-              <div className="sdom-modal-title" style={{ marginBottom: 20 }}>Shift Station Superintendent Role</div>
-              <div className="sdom-modal-field">
-                <label>Role (Shift to)</label>
-                <select
-                  value={ssModal.role || "ss"}
-                  onChange={e => setSsModal(p => ({ ...p, role: e.target.value }))}
-                >
-                  {Object.entries(ROLE_MAP).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-                </select>
-              </div>
-            </>
-          )}
-
-          <div className="sdom-modal-actions" style={{ marginTop: 24 }}>
-            <button className="sdom-btn-primary" style={{ flex: 1 }} onClick={saveSsModal}>
-              {ssModal.mode === "edit" ? "🔒 UPDATE STATION SUPERINTENDENT" : isShift ? "🔄 SHIFT STATION SUPERINTENDENT ROLE" : "👤 ADD STATION SUPERINTENDENT"}
-            </button>
-            <button className="sdom-btn-ghost" style={{ flex: 1 }} onClick={() => setSsModal(null)}>Cancel</button>
-          </div>
-        </div>
-      </div>
+      <SAStaffModal
+        modal={ssModal}
+        setModal={setSsModal}
+        stations={stations}
+        staff={users}
+        saveModal={saveSsModal}
+      />
     );
   };
 
   const renderTmModal = () => {
     if (!tmModal) return null;
-    const isShift = tmModal.mode === "shift";
-    const ROLE_MAP = { pointsmen: "Pointsman", sm: "Station Master", ss: "Station Superintendent", tm: "Train Manager", ti: "Traffic Inspector" };
     return (
-      <div className="sdom-modal-overlay" style={{ zIndex: 99999 }} onClick={e => e.target === e.currentTarget && setTmModal(null)}>
-        <div className="sdom-modal" style={!isShift ? { width: "900px", maxWidth: "95vw" } : undefined}>
-
-          {!isShift ? (
-            <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
-              {/* Header inside modal */}
-              <div style={{ display: "flex", alignItems: "center", gap: "16px", marginBottom: "8px" }}>
-                <div style={{
-                  background: "linear-gradient(135deg, #0d2c4d 0%, #1e40af 100%)",
-                  width: "56px",
-                  height: "56px",
-                  borderRadius: "14px",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  boxShadow: "0 4px 12px rgba(13, 44, 77, 0.2)",
-                  color: "#ffffff"
-                }}>
-                  <UserPlus size={28} />
-                </div>
-                <div>
-                  <h2 style={{ margin: 0, fontSize: "22px", fontWeight: "800", color: "#0d2c4d", letterSpacing: "-0.5px" }}>
-                    {tmModal.mode === "edit" ? "EDIT TRAIN MANAGER" : "ADD NEW TRAIN MANAGER"}
-                  </h2>
-                  <p style={{ margin: "4px 0 0 0", fontSize: "13px", color: "#64748b", fontWeight: "500" }}>
-                    Role-Based Operational Staff Provisioning & Management Console
-                  </p>
-                </div>
-              </div>
-
-              {/* Section 1: General & Contact Information */}
-              <div>
-                <h4 style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#0d2c4d', margin: '0 0 10px', fontSize: '15px', fontWeight: '800' }}>
-                  <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#0d2c4d', display: 'inline-block' }}></span>
-                  1. General & Contact Information
-                </h4>
-                <div style={{ height: '1px', background: '#d5dfeb', marginBottom: '16px' }}></div>
-
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
-                  <div className="sdom-modal-field">
-                    <label>Full Name *</label>
-                    <input
-                      value={tmModal.data.name || ""}
-                      onChange={e => setTmModal(p => ({ ...p, data: { ...p.data, name: e.target.value } }))}
-                      placeholder="Enter full name (e.g. A. K. Sharma)"
-                    />
-                  </div>
-                  <div className="sdom-modal-field">
-                    <label>Mobile Number *</label>
-                    <input
-                      value={tmModal.data.contact || ""}
-                      onChange={e => setTmModal(p => ({ ...p, data: { ...p.data, contact: e.target.value } }))}
-                      placeholder="Enter 10-digit mobile number"
-                    />
-                  </div>
-                  <div className="sdom-modal-field">
-                    <label>HRMS ID / Employee ID *</label>
-                    <input
-                      value={tmModal.data.employeeId || ""}
-                      disabled={tmModal.mode === "edit"}
-                      onChange={e => setTmModal(p => ({ ...p, data: { ...p.data, employeeId: e.target.value } }))}
-                      placeholder="Enter unique ID (e.g. TM_3001)"
-                    />
-                  </div>
-                  <div className="sdom-modal-field">
-                    <label>Email ID *</label>
-                    <input
-                      value={tmModal.data.email || ""}
-                      onChange={e => setTmModal(p => ({ ...p, data: { ...p.data, email: e.target.value } }))}
-                      placeholder="Enter email address (e.g. user@rail.in)"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Section 2: Designation & Station Placement Setup */}
-              <div>
-                <h4 style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#0d2c4d', margin: '0 0 10px', fontSize: '15px', fontWeight: '800' }}>
-                  <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#0d2c4d', display: 'inline-block' }}></span>
-                  2. Designation & Station Placement Setup
-                </h4>
-                <div style={{ height: '1px', background: '#d5dfeb', marginBottom: '16px' }}></div>
-
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
-                  <div className="sdom-modal-field">
-                    <label>Role / Designation *</label>
-                    <select value="tm" disabled>
-                      <option value="tm">Train Manager</option>
-                    </select>
-                  </div>
-                  <div className="sdom-modal-field">
-                    <label>Division *</label>
-                    <select
-                      value={tmModal.data.division || "Nagpur"}
-                      onChange={e => {
-                        const div = e.target.value;
-                        setTmModal(p => ({ ...p, data: { ...p.data, division: div } }));
-                      }}
-                    >
-                      {["Nagpur", "Pune", "Mumbai", "Delhi", "Chennai"].map(d => <option key={d} value={d}>{d}</option>)}
-                    </select>
-                  </div>
-                  <div className="sdom-modal-field">
-                    <label>Railway Zone *</label>
-                    <select
-                      value={tmModal.data.zone || "Central Railway"}
-                      onChange={e => {
-                        const zone = e.target.value;
-                        setTmModal(p => ({ ...p, data: { ...p.data, zone: zone } }));
-                      }}
-                    >
-                      {["Central Railway", "Western Railway", "Northern Railway", "Southern Railway", "Eastern Railway"].map(z => <option key={z} value={z}>{z}</option>)}
-                    </select>
-                  </div>
-                  <div className="sdom-modal-field">
-                    <label>Station Name *</label>
-                    <select
-                      value={tmModal.data.station || ""}
-                      onChange={e => {
-                        const stName = e.target.value;
-                        setTmModal(p => ({ ...p, data: { ...p.data, station: stName } }));
-                      }}
-                    >
-                      {stations.map(st => <option key={st.id} value={st.stationName}>{st.stationName}</option>)}
-                    </select>
-                  </div>
-                  <div className="sdom-modal-field">
-                    <label>Category *</label>
-                    <select
-                      value={tmModal.data.cat || "A"}
-                      onChange={e => setTmModal(p => ({ ...p, data: { ...p.data, cat: e.target.value } }))}
-                    >
-                      <option>A</option><option>B</option><option>C</option><option>D</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-
-              {/* Section 3: Train Manager Operational Setup */}
-              <div style={{ padding: 18, background: "#faf5ff", border: "1px solid #e9d5ff", borderRadius: 10 }}>
-                <h4 style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#6b21a8', margin: '0 0 10px', fontSize: '14px', fontWeight: '800' }}>
-                  Train Manager Operational Setup
-                </h4>
-                <div style={{ height: '1px', backgroundColor: '#e9d5ff', marginBottom: '16px' }}></div>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
-                  <div className="sdom-modal-field">
-                    <label>Crew Depot *</label>
-                    <select
-                      value={tmModal.data.workLocation || "Nagpur Depot"}
-                      onChange={e => setTmModal(p => ({ ...p, data: { ...p.data, workLocation: e.target.value } }))}
-                    >
-                      <option value="Nagpur Depot">Nagpur Depot</option>
-                      <option value="Pune Depot">Pune Depot</option>
-                      <option value="Mumbai Depot">Mumbai Depot</option>
-                      <option value="Solapur Depot">Solapur Depot</option>
-                      <option value="Bhusawal Depot">Bhusawal Depot</option>
-                    </select>
-                  </div>
-                  <div className="sdom-modal-field">
-                    <label>Assigned Section Beats *</label>
-                    <input
-                      value={tmModal.data.reportingSm || "NGP-BSL Section"}
-                      onChange={e => setTmModal(p => ({ ...p, data: { ...p.data, reportingSm: e.target.value } }))}
-                      placeholder="E.g. NGP-BSL, NGP-DURG"
-                    />
-                  </div>
-                  <div className="sdom-modal-field">
-                    <label>Assigned Shift *</label>
-                    <select
-                      value={tmModal.data.shift || "Goods Train Beat"}
-                      onChange={e => setTmModal(p => ({ ...p, data: { ...p.data, shift: e.target.value } }))}
-                    >
-                      <option value="Mail/Express Beat">Mail/Express Beat</option>
-                      <option value="Passenger Beat">Passenger Beat</option>
-                      <option value="Goods Train Beat">Goods Train Beat</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-            </div>
-          ) : (
-            <>
-              <div className="sdom-modal-title" style={{ marginBottom: 20 }}>Shift Train Manager Role</div>
-              <div className="sdom-modal-field">
-                <label>Role (Shift to)</label>
-                <select
-                  value={tmModal.role || "tm"}
-                  onChange={e => setTmModal(p => ({ ...p, role: e.target.value }))}
-                >
-                  {Object.entries(ROLE_MAP).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-                </select>
-              </div>
-            </>
-          )}
-
-          <div className="sdom-modal-actions" style={{ marginTop: 24 }}>
-            <button className="sdom-btn-primary" style={{ flex: 1 }} onClick={saveTmModal}>
-              {tmModal.mode === "edit" ? "🔒 UPDATE TRAIN MANAGER" : isShift ? "🔄 SHIFT TRAIN MANAGER ROLE" : "👤 ADD TRAIN MANAGER"}
-            </button>
-            <button className="sdom-btn-ghost" style={{ flex: 1 }} onClick={() => setTmModal(null)}>Cancel</button>
-          </div>
-        </div>
-      </div>
+      <SAStaffModal
+        modal={tmModal}
+        setModal={setTmModal}
+        stations={stations}
+        staff={users}
+        saveModal={saveTmModal}
+      />
     );
   };
 
@@ -6133,41 +5423,7 @@ export function useAomState(user, onLogout) {
                             View
                           </button>
 
-                          {roleKey === "ss" && (
-                            <button
-                              className="sdom-btn-outline"
-                              style={{
-                                padding: "5px 10px",
-                                fontSize: "0.8rem",
-                                borderColor: localStorage.getItem(`ss_test_activated_${s.hrmsId}`) === "true" ? "#dc2626" : "#16a34a",
-                                color: localStorage.getItem(`ss_test_activated_${s.hrmsId}`) === "true" ? "#dc2626" : "#15803d",
-                                background: localStorage.getItem(`ss_test_activated_${s.hrmsId}`) === "true" ? "#fee2e2" : "#f0fdf4",
-                                fontWeight: "700"
-                              }}
-                              onClick={async () => {
-                                const isActivated = localStorage.getItem(`ss_test_activated_${s.hrmsId}`) === "true";
-                                const nextVal = !isActivated;
-                                localStorage.setItem(`ss_test_activated_${s.hrmsId}`, nextVal ? "true" : "false");
-                                window.dispatchEvent(new Event("storage"));
-                                
-                                if (isSupabaseConfigured) {
-                                  try {
-                                    await supabase.from("AUDIT_LOG").insert([{
-                                      user_id: user?.userId || null,
-                                      action: nextVal ? "ACTIVATE_SS_EXAM" : "DEACTIVATE_SS_EXAM",
-                                      table_name: "STATION_SUPERINTENDENT",
-                                      record_id: s.hrmsId
-                                    }]);
-                                  } catch (auditErr) {
-                                    console.error("Failed to write activation to AUDIT_LOG:", auditErr);
-                                  }
-                                }
-                                setSsActivationTrigger(p => p + 1);
-                              }}
-                            >
-                              {localStorage.getItem(`ss_test_activated_${s.hrmsId}`) === "true" ? "Deactivate Exam" : "Activate Exam"}
-                            </button>
-                          )}
+
 
                           {/* Edit */}
                           {roleKey === "ti" ? (
@@ -6305,51 +5561,60 @@ export function useAomState(user, onLogout) {
       contact: u.contactNumber || "+91 99000 11000",
       email: u.emailId || `${u.hrmsId?.toLowerCase()}@rail.in`,
       lastDate: u.lastAssessedDate || "2026-03-10",
-      reportingAom: "P. K. Verma (Sr. DOM)"
+      reportingAom: "P. K. Verma (Sr. DOM)",
+      jurisdiction: u.jurisdiction,
+      linkedStations: u.linkedStations
     }));
   }, [allEmployees]);
 
   const unifiedStations = useMemo(() => {
-    return DASHBOARD_96_STATIONS.map(st => {
-      const stStaff = unifiedStaff.filter(s => isStationMatch(s.station, st.stationName || st.name));
+    const dataSource = (stations && stations.length > 0) ? stations : DASHBOARD_96_STATIONS;
+    return dataSource.map(st => {
+      const stName = st.name || st.stationName;
+      const stCode = st.code || st.stationCode;
+      const stStaff = unifiedStaff.filter(s => isStationMatch(s.station, stName));
       const pmCount = stStaff.filter(s => s.role === "pointsmen").length;
       const smCount = stStaff.filter(s => s.role === "sm").length;
-      const safety = Math.min(100, Math.max(60, 95 - st.pending));
+      const safety = st.safety != null ? st.safety : Math.min(100, Math.max(60, 95 - (st.pending || 0)));
       const highRisk = stStaff.filter(s => s.risk === "High").length;
       return {
-        id: st.id,
-        name: st.stationName,
-        code: st.stationCode,
-        ti: st.division === "Nagpur" ? "TI NGP" : st.division === "Pune" ? "TI PAR" : "TI AMLA",
-        smCount: smCount || 5,
-        pmCount: pmCount || 20,
-        score: st.avgScore,
+        id: st.id || st.stationId,
+        name: stName,
+        code: stCode,
+        ti: st.ti || "Not Assigned",
+        smCount: smCount || st.smCount || 5,
+        pmCount: pmCount || st.pmCount || 20,
+        score: st.score || st.avgScore || 80,
         safety,
-        highRisk: highRisk || (st.riskLevel === "High" ? 4 : st.riskLevel === "Medium" ? 2 : 0),
-        pending: st.pending,
-        stationName: st.stationName,
-        stationCode: st.stationCode,
-        division: st.division,
+        highRisk: highRisk || st.highRisk || (st.riskLevel === "High" ? 4 : st.riskLevel === "Medium" ? 2 : 0),
+        pending: st.pending || 0,
+        stationName: stName,
+        stationCode: stCode,
+        division: st.division || "Nagpur",
         zone: st.zone || "CR",
-        category: st.category,
-        riskLevel: st.riskLevel,
-        assessmentStatus: st.assessmentStatus,
-        lastUpdatedDate: st.lastUpdatedDate,
+        category: st.category || "A",
+        riskLevel: st.riskLevel || (highRisk > 3 ? "High" : highRisk > 1 ? "Medium" : "Low"),
+        assessmentStatus: st.assessmentStatus || (st.pending > 0 ? "Pending" : "Completed"),
+        lastUpdatedDate: st.lastUpdatedDate || new Date().toISOString().split('T')[0],
         stationClass: st.stationClass || "Class B",
         stationType: st.stationType || "Junction",
         signalingType: st.signalingType || "Route Relay Interlocking (RRI)",
         platforms: st.platforms || 3,
-        tracks: st.tracks || 5,
+        tracks: st.runningLines || st.tracks || 5,
         dailyFootfall: st.dailyFootfall || 15000,
         latitude: st.latitude || "21.1500° N",
         longitude: st.longitude || "79.0900° E",
         contactNumber: st.contactNumber || "+91-712-2560158",
-        emailId: st.emailId || `station.${(st.stationCode || st.id || "NGP").toLowerCase().split('_')[0]}@cr.railnet.gov.in`,
+        emailId: st.emailId || `station.${(stCode || st.id || "NGP").toLowerCase().split('_')[0]}@cr.railnet.gov.in`,
         lineConfig: st.lineConfig || "Double Line",
-        electrified: st.electrified || "Electrified AC 25kV"
+        electrified: st.electrified || "Electrified AC 25kV",
+        address: st.address || "",
+        district: st.district || "",
+        state: st.state || "",
+        status: st.status || "Active"
       };
     });
-  }, [DASHBOARD_96_STATIONS, unifiedStaff]);
+  }, [stations, DASHBOARD_96_STATIONS, unifiedStaff]);
 
   const ROLE_MAP = {
     pointsmen: "Pointsman",
@@ -6494,306 +5759,49 @@ export function useAomState(user, onLogout) {
   }
 
   function renderStationDetail(st) {
-    const stStaff = unifiedStaff.filter(s => isStationMatch(s.station, st.name));
-    const pmList = stStaff.filter(s => s.role === "pointsmen");
-    const smList = stStaff.filter(s => s.role === "sm");
-    const tiPerson = stStaff.find(s => s.role === "ti") || { name: st.ti, id: "—", contact: "—", cat: "—" };
-
-    const catCount = ["A", "B", "C", "D"].map(c => ({ cat: `Cat ${c}`, count: stStaff.filter(s => s.cat === c).length, fill: CAT_COLORS[c] }));
-    const riskCount = [
-      { name: "Low", value: stStaff.filter(s => s.risk === "Low").length, fill: "#16a34a" },
-      { name: "Medium", value: stStaff.filter(s => s.risk === "Medium").length, fill: "#f59e0b" },
-      { name: "High", value: stStaff.filter(s => s.risk === "High").length, fill: "#ef4444" },
-    ].filter(r => r.value > 0);
-
-    const trend = MONTHLY_TREND.map(m => ({ ...m, score: Math.max(60, st.score - 8 + MONTHLY_TREND.indexOf(m) * 2) }));
-
     return (
-      <div className="sdom-fade">
-        <div style={{ marginBottom: 20 }}>
-          <button className="sdom-back-btn" onClick={() => setView(null)}><ArrowLeft size={16} /> Back to Stations</button>
-        </div>
-
-        <div className="sdom-station-header">
-          <div className="sdom-station-header-meta">
-            <div style={{ fontSize: "0.78rem", color: "rgba(255,255,255,0.6)", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.06em" }}>Station Analytics Dashboard</div>
-            <div style={{ fontSize: "1.9rem", fontWeight: 800, marginBottom: 4 }}>{st.name}</div>
-            <div style={{ fontSize: "0.9rem", color: "rgba(255,255,255,0.7)" }}>Code: <b>{st.code}</b> &bull; Assigned TI: <b>{st.ti}</b></div>
-            <div style={{ marginTop: 12, display: "flex", gap: 10 }}>
-              <span className="sdom-badge" style={{ background: "rgba(255,255,255,0.15)", color: "#fff" }}>{st.smCount} Station Masters</span>
-              <span className="sdom-badge" style={{ background: "rgba(255,255,255,0.15)", color: "#fff" }}>{st.pmCount} Pointsmen</span>
-              <span className={`sdom-badge ${st.highRisk > 4 ? "sdom-badge-red" : "sdom-badge-green"}`}>{st.highRisk} High-Risk</span>
-            </div>
-          </div>
-          <div className="sdom-station-header-stats">
-            <div className="sdom-station-header-stat">
-              <span className="val">{st.score}</span>
-              <span className="lbl">Avg Score</span>
-            </div>
-            <div style={{ width: 1, height: 60, background: "rgba(255,255,255,0.15)" }} />
-            <div className="sdom-station-header-stat">
-              <span className="val">{st.safety}%</span>
-              <span className="lbl">Safety</span>
-            </div>
-            <div style={{ width: 1, height: 60, background: "rgba(255,255,255,0.15)" }} />
-            <div className="sdom-station-header-stat">
-              <span className="val">{st.pending}</span>
-              <span className="lbl">Pending</span>
-            </div>
-            <div style={{ width: 1, height: 60, background: "rgba(255,255,255,0.15)" }} />
-            <div className="sdom-station-header-stat">
-              <span className="val">{stStaff.length}</span>
-              <span className="lbl">Total Staff</span>
-            </div>
-          </div>
-        </div>
-
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(5,1fr)", gap: 16, marginBottom: 24 }}>
-          {[
-            { label: "Total Staff", val: stStaff.length },
-            { label: "Pending Assessments", val: st.pending },
-            { label: "Completed", val: stStaff.filter(s => s.status === "Approved").length },
-            { label: "High-Risk Pointsmen", val: pmList.filter(s => s.risk === "High").length },
-            { label: "Safety Compliance", val: `${st.safety}%` },
-          ].map(c => (
-            <div key={c.label} className="sdom-stat-card">
-              <div className="sdom-stat-value">{c.val}</div>
-              <div className="sdom-stat-label">{c.label}</div>
-            </div>
-          ))}
-        </div>
-
-        {/* STATION OPERATIONAL INFRASTRUCTURE & TECHNICAL PROFILE */}
-        <div className="sdom-chart-card" style={{ marginBottom: 24, padding: "20px", borderRadius: "12px", border: "1px solid #e2e8f0", boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)" }}>
-          <div className="sdom-chart-title" style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "1.1rem", fontWeight: 700, color: "#0B1F3A", marginBottom: "4px" }}>
-            <Building2 size={20} style={{ color: "#2563eb" }} />
-            Station Operational Infrastructure & Technical Profile
-          </div>
-          <div className="sdom-chart-subtitle" style={{ marginBottom: "18px", color: "#64748b", fontSize: "0.85rem" }}>
-            Official configuration, signaling details, geographical references, and logistics profile of the station.
-          </div>
-
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: "16px" }}>
-            {[
-              { label: "Operating Division", val: st.division || "Nagpur", icon: <Layers size={16} /> },
-              { label: "Railway Zone", val: st.zone || "CR", icon: <Globe size={16} /> },
-              { label: "Station Category", val: `Category ${st.category || "A"}`, icon: <Tag size={16} /> },
-              { label: "Operating Class", val: st.stationClass || "Class B", icon: <Award size={16} /> },
-              { label: "Station Type", val: st.stationType || "Junction", icon: <GitBranch size={16} /> },
-              { label: "Signaling System", val: st.signalingType || "Electronic Interlocking (EI)", icon: <Cpu size={16} /> },
-              { label: "Platforms", val: `${st.platforms || 3} Platforms`, icon: <AlignJustify size={16} /> },
-              { label: "Operational Tracks", val: `${st.tracks || 5} Tracks/Lines`, icon: <TrendingUp size={16} /> },
-              { label: "Line Configuration", val: st.lineConfig || "Double Line", icon: <AlignJustify size={16} /> },
-              { label: "Electrification", val: st.electrified || "Electrified AC 25kV", icon: <Zap size={16} /> },
-              { label: "Daily Avg Footfall", val: `${(st.dailyFootfall || 15000).toLocaleString()} Passengers`, icon: <Users size={16} /> },
-              { label: "Latitude & Longitude", val: `${st.latitude || "21.1500° N"} / ${st.longitude || "79.0900° E"}`, icon: <MapPin size={16} /> },
-              { label: "Official Contact", val: st.contactNumber || "+91-712-2560158", icon: <Phone size={16} /> },
-              { label: "Official Email ID", val: st.emailId || `station.${(st.code || "NGP").toLowerCase().split('_')[0]}@cr.railnet.gov.in`, icon: <Mail size={16} /> },
-            ].map((item, idx) => (
-              <div key={idx} style={{
-                background: "#f8fafc",
-                border: "1px solid #e2e8f0",
-                borderRadius: "8px",
-                padding: "12px 16px",
-                display: "flex",
-                alignItems: "center",
-                gap: "12px"
-              }}>
-                <div style={{
-                  background: "#eff6ff",
-                  color: "#2563eb",
-                  borderRadius: "6px",
-                  width: "36px",
-                  height: "36px",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  flexShrink: 0
-                }}>
-                  {item.icon}
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: "0.72rem", fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                    {item.label}
-                  </div>
-                  <div style={{ fontSize: "0.85rem", fontWeight: 700, color: "#1e293b", textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap" }} title={item.val}>
-                    {item.val}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="sdom-row-2">
-          <div className="sdom-chart-card">
-            <div className="sdom-chart-title">Category Distribution</div>
-            <div className="sdom-chart-subtitle">A/B/C/D breakdown of staff at this station</div>
-            <div style={{ height: 260 }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={catCount} barSize={46} margin={{ top: 16, right: 24, left: 0, bottom: 8 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#D9E2EC" />
-                  <XAxis dataKey="cat" fontSize={12} tick={{ fill: "#102A43", fontWeight: 600 }} axisLine={false} tickLine={false} />
-                  <YAxis fontSize={11} tick={{ fill: "#627D98" }} axisLine={false} tickLine={false} />
-                  <Tooltip contentStyle={{ fontSize: "0.85rem", borderRadius: 6, border: "1px solid #D9E2EC" }} cursor={{ fill: "rgba(0,0,0,0.03)" }} />
-                  <Bar dataKey="count" radius={[5, 5, 0, 0]}>
-                    {catCount.map((d, i) => <Cell key={i} fill={CAT_COLORS[Object.keys(CAT_COLORS)[i]]} />)}
-                    <LabelList dataKey="count" position="top" style={{ fontSize: 12, fontWeight: 700, fill: "#102A43" }} />
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-
-          <div className="sdom-chart-card">
-            <div className="sdom-chart-title">Risk Distribution</div>
-            <div className="sdom-chart-subtitle">Staff risk level breakdown at this station</div>
-            <div style={{ height: 260 }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie data={riskCount} cx="50%" cy="50%" innerRadius={70} outerRadius={105}
-                    dataKey="value" paddingAngle={4}
-                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                    labelLine={false}>
-                    {riskCount.map((d, i) => <Cell key={i} fill={RISK_COLORS[d.name]} />)}
-                  </Pie>
-                  <Legend wrapperStyle={{ fontSize: "0.82rem" }} />
-                  <Tooltip contentStyle={{ fontSize: "0.85rem", borderRadius: 6, border: "1px solid #D9E2EC" }} />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-        </div>
-
-        <div className="sdom-row-1">
-          <div className="sdom-chart-card">
-            <div className="sdom-chart-title" style={{ marginBottom: 16 }}>Station Masters</div>
-            <div className="sdom-table-wrap">
-              <table className="sdom-table">
-                <thead><tr><th>Name</th><th>HRMS ID</th><th>Category</th><th>Last Score</th><th>Last Assessment</th><th>Status</th><th>Action</th></tr></thead>
-                <tbody>
-                  {smList.length === 0 && <tr><td colSpan={7} style={{ textAlign: "center", color: "#94a3b8", padding: 24 }}>No Station Masters assigned</td></tr>}
-                  {smList.map(s => (
-                    <tr key={s.id}>
-                      <td style={{ fontWeight: 700 }}>{s.name}</td>
-                      <td style={{ color: "#64748b", fontSize: "0.85rem" }}>{s.id}</td>
-                      <td>{catBadge(s.cat)}</td>
-                      <td style={{ fontWeight: 700 }}>{s.score}</td>
-                      <td>{s.lastDate}</td>
-                      <td>{statusBadge(s.status)}</td>
-                      <td><button className="sdom-btn-ghost" onClick={() => setView({ type: "staffDetail", data: s, returnTo: "stationDetail", stationData: st })}>View Details</button></td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-
-        <div className="sdom-row-1">
-          <div className="sdom-chart-card">
-            <div className="sdom-chart-title" style={{ marginBottom: 16 }}>Pointsmen</div>
-            <div className="sdom-table-wrap">
-              <table className="sdom-table">
-                <thead><tr><th>Name</th><th>HRMS ID</th><th>Category</th><th>Risk Level</th><th>Latest Score</th><th>Status</th><th>Action</th></tr></thead>
-                <tbody>
-                  {pmList.length === 0 && <tr><td colSpan={7} style={{ textAlign: "center", color: "#94a3b8", padding: 24 }}>No Pointsmen assigned</td></tr>}
-                  {pmList.map(s => (
-                    <tr key={s.id}>
-                      <td style={{ fontWeight: 700 }}>{s.name}</td>
-                      <td style={{ color: "#64748b", fontSize: "0.85rem" }}>{s.id}</td>
-                      <td>{catBadge(s.cat)}</td>
-                      <td>{riskBadge(s.risk)}</td>
-                      <td style={{ fontWeight: 700 }}>{s.score}</td>
-                      <td>{statusBadge(s.status)}</td>
-                      <td><button className="sdom-btn-ghost" onClick={() => setView({ type: "staffDetail", data: s, returnTo: "stationDetail", stationData: st })}>View Details</button></td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      </div>
+      <SAStationDetail
+        st={st}
+        staff={unifiedStaff}
+        closeView={() => setView(null)}
+        setView={setView}
+      />
     );
   }
 
   const renderStations = () => {
     if (view?.type === "staffDetail") return renderStaffDetail(view.data);
     if (view?.type === "stationDetail") return renderStationDetail(view.data);
-    const filtered = unifiedStations.filter(st =>
-      !stF.name || st.name.toLowerCase().includes(stF.name.toLowerCase()) || st.code.toLowerCase().includes(stF.name.toLowerCase())
-    );
-
     return (
-      <div className="sdom-fade">
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 }}>
-          <div>
-            <h1 className="sdom-page-title">Stations</h1>
-            <p className="sdom-page-subtitle">Full list of stations in Nagpur Division. Click a station to open its complete analytics dashboard.</p>
-          </div>
-          <button className="sdom-btn-primary" onClick={() => {
-            setNewStName("");
-            setNewStCode("");
-            setNewStTi("TI NGP");
-            setNewStDivision("Nagpur");
-            setNewStZone("CR");
-            setNewStCategory("A");
-            setNewStClass("Class B");
-            setNewStType("Junction");
-            setNewStSignaling("Electronic Interlocking (EI)");
-            setNewStPlatforms(3);
-            setNewStTracks(5);
-            setNewStDailyFootfall(15000);
-            setNewStLatitude("21.1500° N");
-            setNewStLongitude("79.0900° E");
-            setNewStContactNumber("+91-712-2560158");
-            setNewStEmailId("");
-            setNewStLineConfig("Double Line");
-            setNewStElectrified("Electrified AC 25kV");
-            setShowAddStation(true);
-          }}>
-            <Plus size={16} /> Add New Station
-          </button>
-        </div>
-
-        <div className="sdom-filter-bar" style={{ flexWrap: "nowrap" }}>
-          <div className="sdom-filter-field" style={{ flex: 1 }}>
-            <label>Search Station</label>
-            <input value={stF.name} onChange={e => setStF({ name: e.target.value })} placeholder="Station name or code..." />
-          </div>
-        </div>
-
-        <div className="sdom-chart-card">
-          <div className="sdom-table-wrap">
-            <table className="sdom-table">
-              <thead>
-                <tr><th>Station Name</th><th>Code</th><th>Assigned TI</th><th>SMs</th><th>Pointsmen</th><th>Avg Score</th><th>Safety %</th><th>High Risk</th><th>Pending</th><th>Dashboard</th></tr>
-              </thead>
-              <tbody>
-                {filtered.map(st => (
-                  <tr key={st.id}>
-                    <td style={{ fontWeight: 700 }}>{st.name}</td>
-                    <td><span className="sdom-badge sdom-badge-blue">{st.code}</span></td>
-                    <td>{st.ti}</td>
-                    <td>{st.smCount}</td>
-                    <td>{st.pmCount}</td>
-                    <td style={{ fontWeight: 700, color: st.score >= 85 ? "#16a34a" : st.score >= 75 ? "#d97706" : "#dc2626" }}>{st.score}</td>
-                    <td>{st.safety}%</td>
-                    <td>{st.highRisk > 3 ? <span style={{ color: "#dc2626", fontWeight: 700 }}>{st.highRisk}</span> : st.highRisk}</td>
-                    <td>{st.pending}</td>
-                    <td>
-                      <button className="sdom-btn-primary" style={{ padding: "7px 14px", fontSize: "0.82rem" }} onClick={() => setView({ type: "stationDetail", data: st })}>
-                        Open Station Dashboard
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
+      <SAStationDirectory
+        stations={unifiedStations}
+        staff={unifiedStaff}
+        addStation={async (station) => {
+          try {
+            await saDataService.addStation(station);
+            await fetchLiveDatabaseData();
+          } catch (err) {
+            alert("Error adding station: " + err.message);
+          }
+        }}
+        updateStation={async (station) => {
+          try {
+            await saDataService.saveStation(station, "edit");
+            await fetchLiveDatabaseData();
+          } catch (err) {
+            alert("Error updating station: " + err.message);
+          }
+        }}
+        deleteStation={async (id, name) => {
+          try {
+            await saDataService.deleteStation(id, name);
+            await fetchLiveDatabaseData();
+          } catch (err) {
+            alert("Error deleting station: " + err.message);
+          }
+        }}
+        openView={(type, data) => setView({ type, data })}
+      />
     );
   };
 
@@ -6873,6 +5881,7 @@ export function useAomState(user, onLogout) {
         .order("created_at", { ascending: false });
 
       if (!assessError && assessList) {
+        setAllDbAssessments(assessList);
         // Map SM assessments
         const sms = (assessList || []).filter(a => a.assessment_type === "Station Master Assessment");
         const smMapped = sms.map(a => {
@@ -6880,7 +5889,7 @@ export function useAomState(user, onLogout) {
           const answers = a.TEST_ATTEMPT?.[0]?.answers || {};
           let parsedAnswers = answers;
           if (typeof parsedAnswers === "string") {
-            try { parsedAnswers = JSON.parse(parsedAnswers); } catch (e) {}
+            try { parsedAnswers = JSON.parse(parsedAnswers); } catch (e) { }
           }
           const subDate = a.assessment_date ? new Date(a.assessment_date).toISOString().slice(0, 10) : "";
           const storedSections = parsedAnswers.sections || [];
@@ -6911,10 +5920,9 @@ export function useAomState(user, onLogout) {
             // Fallback proportional
             sections = [
               { title: "Knowledge of Rules (MCQ)", score: Math.round(score * 0.25), max: 25, marks: Math.round(score * 0.25), outOf: 25 },
-              { title: "Knowledge of Rules", score: Math.round(score * 0.15), max: 15, marks: Math.round(score * 0.15), outOf: 15 },
-              { title: "Alertness and Observance of Rules", score: Math.round(score * 0.15), max: 15, marks: Math.round(score * 0.15), outOf: 15 },
+              { title: "Alertness and Observation of Rules", score: Math.round(score * 0.25), max: 25, marks: Math.round(score * 0.25), outOf: 25 },
               { title: "Safety Record", score: Math.round(score * 0.15), max: 15, marks: Math.round(score * 0.15), outOf: 15 },
-              { title: "Leadership and Management", score: Math.round(score * 0.10), max: 10, marks: Math.round(score * 0.10), outOf: 10 },
+              { title: "Leadership and Management", score: Math.round(score * 0.15), max: 15, marks: Math.round(score * 0.15), outOf: 15 },
               { title: "Discipline", score: Math.round(score * 0.10), max: 10, marks: Math.round(score * 0.10), outOf: 10 },
               { title: "Appearance and Neatness", score: Math.round(score * 0.10), max: 10, marks: Math.round(score * 0.10), outOf: 10 }
             ];
@@ -6958,7 +5966,7 @@ export function useAomState(user, onLogout) {
 
           let parsedAnswers = answers;
           if (typeof parsedAnswers === "string") {
-            try { parsedAnswers = JSON.parse(parsedAnswers); } catch (e) {}
+            try { parsedAnswers = JSON.parse(parsedAnswers); } catch (e) { }
           }
 
           const isOnlineExam = Array.isArray(parsedAnswers) || a.TEST_ATTEMPT?.[0]?.total_marks === 25 || (parsedAnswers && !parsedAnswers.trainSafety && !parsedAnswers.alcoholicStatus);
@@ -7050,7 +6058,7 @@ export function useAomState(user, onLogout) {
 
           let parsedAnswers = answers;
           if (typeof parsedAnswers === "string") {
-            try { parsedAnswers = JSON.parse(parsedAnswers); } catch (e) {}
+            try { parsedAnswers = JSON.parse(parsedAnswers); } catch (e) { }
           }
 
           const isAlc = parsedAnswers.alcoholicStatus === "Alcoholic";
@@ -7068,7 +6076,7 @@ export function useAomState(user, onLogout) {
           } else {
             // Compute YN Yes counts
             const countYes = arr => (arr || []).filter(v => v === "Yes").length;
-            
+
             const s1 = countYes(parsedAnswers.stationOps) * 5;
             const s2 = countYes(parsedAnswers.staffMgmt) * 4;
             const s3 = countYes(parsedAnswers.records) * 3;
@@ -7616,6 +6624,15 @@ export function useAomState(user, onLogout) {
     aomSSList,
     aomTMList,
     aomGetCat,
-    logAomPmeRecord
+    logAomPmeRecord,
+    allDbAssessments,
+    selectedCategory,
+    setSelectedCategory,
+    selectedHrmsIds,
+    setSelectedHrmsIds,
+    viewUpcomingOnly,
+    setViewUpcomingOnly,
+    sendBatchExamAccessAOM,
+    updateEmployeeScheduleAOM
   };
 }

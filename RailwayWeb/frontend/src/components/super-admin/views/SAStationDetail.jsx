@@ -5,12 +5,28 @@ import { CAT_COLORS, RISK_COLORS } from "../../../utils/saConstants";
 import { catBadge, riskBadge, statusBadge } from "../../../utils/saUtils";
 
 export function SAStationDetail({ st, staff, closeView, setView }) {
-  const stStaff    = staff.filter(s => s.station === st.name);
-  const pmList     = stStaff.filter(s=>s.role==="pointsmen");
-  const smList     = stStaff.filter(s=>s.role==="sm");
-  const tiPerson   = stStaff.find(s=>s.role==="ti") || { name:st.ti, id:"—", contact:"—", cat:"—" };
+  const isStationMatch = (stationA, stationB) => {
+    if (!stationA || !stationB) return false;
+    const a = stationA.toLowerCase().trim();
+    const b = stationB.toLowerCase().trim();
+    if (a === b) return true;
+    const clean = s => s.replace(/\s+/g, '').replace(/junction|central|main|town|jn|station/gi, '');
+    return clean(a) === clean(b) || clean(a).includes(clean(b)) || clean(b).includes(clean(a));
+  };
 
-  const catCount = ["A","B","C","D"].map(c => ({ cat:`Cat ${c}`, count: stStaff.filter(s=>s.cat===c).length, fill:CAT_COLORS[c] }));
+  const stStaff    = staff.filter(s => isStationMatch(s.station, st.name));
+  const pmList     = stStaff.filter(s => s.role === "pointsmen" || s.role === "Pointsman");
+  const smList     = stStaff.filter(s => s.role === "sm" || s.role === "Station Master");
+  const tiPerson = staff.find(s => 
+    (s.role === "ti" || s.role === "Traffic Inspector") && 
+    ((s.linkedStations || s.jurisdiction || "")
+      .split(",")
+      .map(x => x.trim().toLowerCase())
+      .includes(st.name.toLowerCase()) || 
+     (st.assignedTi && (s.id === st.assignedTi || s.user_id === st.assignedTi)))
+  ) || { name: st.ti, id: "—", contact: "—", cat: "—" };
+
+  const catCount = ["A","B","C","D"].map(c => ({ cat:`Cat ${c}`, count: stStaff.filter(s=> (s.cat || s.category) === c).length, fill:CAT_COLORS[c] }));
   const riskCount = [
     { name:"Low",    value: stStaff.filter(s=>s.risk==="Low").length,    fill:"#16a34a" },
     { name:"Medium", value: stStaff.filter(s=>s.risk==="Medium").length, fill:"#f59e0b" },
@@ -205,7 +221,14 @@ export function SAStationDetail({ st, staff, closeView, setView }) {
                 <span style={{fontSize:"0.85rem",color:"#64748b"}}><b>Contact:</b> {tiPerson.contact}</span>
               </div>
             </div>
-            <button className="sdom-btn-outline" onClick={()=>tiPerson.role && setView({ type: "staffDetail", data: tiPerson, returnTo: "stationDetail", stationData: st })}>View Profile</button>
+            <button 
+              className="sdom-btn-outline" 
+              disabled={!tiPerson.role}
+              style={!tiPerson.role ? { opacity: 0.5, cursor: "not-allowed" } : {}}
+              onClick={() => tiPerson.role && setView({ type: "staffDetail", data: tiPerson, returnTo: "stationDetail", stationData: st })}
+            >
+              View Profile
+            </button>
           </div>
         </div>
       </div>

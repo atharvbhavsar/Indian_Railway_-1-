@@ -34,14 +34,21 @@ export function AuthProvider({ children }) {
     if (currentUser) {
       logger.audit("LOGOUT", currentUser.hrmsId, "SUCCESS", "User requested logout");
     }
-    setIsLoggedIn(true); // wait, let's keep it set to false
     setIsLoggedIn(false);
     setCurrentUser(null);
     sessionStorage.removeItem("rses_session");
   };
 
+  const updateUserLanguage = (lang) => {
+    if (currentUser) {
+      const updated = { ...currentUser, preferredLanguage: lang };
+      setCurrentUser(updated);
+      sessionStorage.setItem("rses_session", JSON.stringify(updated));
+    }
+  };
+
   return (
-    <AuthContext.Provider value={{ currentUser, isLoggedIn, login, logout, isLoading }}>
+    <AuthContext.Provider value={{ currentUser, isLoggedIn, login, logout, isLoading, updateUserLanguage }}>
       {children}
     </AuthContext.Provider>
   );

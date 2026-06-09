@@ -3,6 +3,7 @@ import { Target, Gauge, ShieldCheck, Award, TrendingUp, BarChart2 } from "lucide
 import { getCategoryBg, getCategoryColor } from "../../../constants";
 import { PerformanceTrendChart } from "../../../components/charts/PerformanceTrendChart";
 import { CategoryDistributionChart } from "../../../components/charts/CategoryDistributionChart";
+import { useLanguage } from "../../../contexts/LanguageContext";
 
 export function PointsmanDashboard({ 
   latestScore, 
@@ -13,6 +14,8 @@ export function PointsmanDashboard({
   trendData, 
   pieData 
 }) {
+  const { t } = useLanguage();
+
   return (
     <div className="pm-dashboard-layout">
       {/* Summary cards */}
@@ -22,7 +25,7 @@ export function PointsmanDashboard({
             <Target size={20} color="#2563eb" />
           </div>
           <div>
-            <label>Latest Score</label>
+            <label>{t("Latest Score")}</label>
             <strong>{latestScore !== null ? `${latestScore}/${latestOutOf}` : "—"}</strong>
           </div>
         </article>
@@ -32,7 +35,7 @@ export function PointsmanDashboard({
             <Gauge size={20} color="#16a34a" />
           </div>
           <div>
-            <label>Average Score</label>
+            <label>{t("Average Score")}</label>
             <strong>{Math.round(averageScore)}%</strong>
           </div>
         </article>
@@ -42,9 +45,9 @@ export function PointsmanDashboard({
             <ShieldCheck size={20} color={getCategoryColor(latestCategory)} />
           </div>
           <div>
-            <label>Current Category</label>
+            <label>{t("Current Category")}</label>
             <strong style={{ color: latestCategory === "Pending" ? "#d97706" : getCategoryColor(latestCategory) }}>
-              {latestCategory === "Pending" ? "Eval Pending" : (latestCategory !== "—" ? `Category ${latestCategory}` : "—")}
+              {latestCategory === "Pending" ? t("Eval Pending") : (latestCategory !== "—" ? `${t("Category")} ${latestCategory}` : "—")}
             </strong>
           </div>
         </article>
@@ -54,7 +57,7 @@ export function PointsmanDashboard({
             <Award size={20} color="#9333ea" />
           </div>
           <div>
-            <label>Total Attempts</label>
+            <label>{t("Total Attempts")}</label>
             <strong>{historyLength}</strong>
           </div>
         </article>
@@ -65,10 +68,10 @@ export function PointsmanDashboard({
         <div className="pm-chart-card">
           <div className="pm-chart-header">
             <TrendingUp size={16} />
-            <h3>Assessment Performance Trend</h3>
+            <h3>{t("Assessment Performance Trend")}</h3>
           </div>
           {trendData.length === 0 ? (
-            <p className="pm-empty-state">No assessment history available yet.</p>
+            <p className="pm-empty-state">{t("No assessment history available yet.")}</p>
           ) : (
             <PerformanceTrendChart 
               data={trendData} 
@@ -82,10 +85,10 @@ export function PointsmanDashboard({
         <div className="pm-chart-card">
           <div className="pm-chart-header">
             <BarChart2 size={16} />
-            <h3>Category Grade Distribution</h3>
+            <h3>{t("Category Grade Distribution")}</h3>
           </div>
           {pieData.length === 0 ? (
-            <p className="pm-empty-state">No data.</p>
+            <p className="pm-empty-state">{t("No data.")}</p>
           ) : (
             <CategoryDistributionChart 
               data={pieData} 

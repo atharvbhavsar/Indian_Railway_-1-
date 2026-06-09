@@ -20,6 +20,7 @@ import {
 } from "./utils/saConstants";
 import { riskBadge, catBadge, statusBadge, SectionTitle } from "./utils/saUtils";
 import { useSAData } from "./hooks/useSAData";
+import { useLanguage } from "./contexts/LanguageContext";
 
 import { SummaryCard, ComplianceCard } from "./components/super-admin/SACards";
 import { StationTable, EmployeeTable } from "./components/super-admin/SATables";
@@ -42,7 +43,8 @@ import { SAProfile } from "./components/super-admin/views/SAProfile";
    MAIN COMPONENT
    ═══════════════════════════════════════════ */
 export default function SuperAdminModule({ user, onLogout }) {
-  const { staff, stations, isLoadingLive, addStation, saveUser, removeUser } = useSAData();
+  const { t } = useLanguage();
+  const { staff, stations, isLoadingLive, addStation, updateStation, deleteStation, saveUser, removeUser } = useSAData();
   const [page, setPage] = useState("dashboard");
   const [view, setView] = useState(null); // { type, data } for drill-down pages
   const [showAddStation, setShowAddStation] = useState(false);
@@ -273,7 +275,7 @@ export default function SuperAdminModule({ user, onLogout }) {
         />
       );
     }
-    return <SAStationDirectory stations={stations} addStation={addStation} openView={openView} />;
+    return <SAStationDirectory stations={stations} staff={staff} addStation={addStation} updateStation={updateStation} deleteStation={deleteStation} openView={openView} />;
   }
 
   function renderRecords() {
@@ -316,20 +318,20 @@ export default function SuperAdminModule({ user, onLogout }) {
         <div className="sdom-topbar-brand">
           <div className="sdom-topbar-logo"><img src="/logo.webp" alt="IR Logo" style={{ width: "100%", height: "100%", borderRadius: "inherit", objectFit: "cover" }} /></div>
           <div>
-            <div className="sdom-topbar-title">Indian Railway Evaluation System</div>
-            <div className="sdom-topbar-sub"><span className="desktop-only-txt">Nagpur Division — </span>Sr. DOM Command Center</div>
+            <div className="sdom-topbar-title">{t("Indian Railway Evaluation System")}</div>
+            <div className="sdom-topbar-sub"><span className="desktop-only-txt">{t("Nagpur Division")} — </span>Sr. DOM Command Center</div>
           </div>
         </div>
-        <div className="sdom-topbar-right">
+        <div className="sdom-topbar-right" style={{ gap: "16px" }}>
           <div className="sdom-topbar-user">
             <div className="sdom-topbar-avatar">SD</div>
             <div>
               <div className="sdom-topbar-user-name">Sr. DOM</div>
-              <div className="sdom-topbar-user-role">Super Admin</div>
+              <div className="sdom-topbar-user-role">{t("Super Admin")}</div>
             </div>
           </div>
           <button onClick={onLogout} className="sdom-logout-btn">
-            <LogOut size={14} /> Logout
+            <LogOut size={14} /> {t("Logout")}
           </button>
         </div>
       </header>
@@ -337,13 +339,13 @@ export default function SuperAdminModule({ user, onLogout }) {
       <div className="sdom-body-layout">
         {/* Sidebar */}
         <aside className="sdom-sidebar-fixed">
-          <div className="sdom-sidebar-section-label">Navigation</div>
+          <div className="sdom-sidebar-section-label">{t("Navigation")}</div>
           {NAV.map(item => {
             const Icon = item.icon;
             return (
               <button key={item.key} className={`sdom-nav-btn ${page === item.key ? "active" : ""}`}
                 onClick={() => navigate(item.key)}>
-                <Icon size={17} /> <span>{item.label}</span>
+                <Icon size={17} /> <span>{t(item.label)}</span>
               </button>
             );
           })}

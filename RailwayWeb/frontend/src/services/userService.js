@@ -498,6 +498,22 @@ export const userService = {
     }
   },
 
+  async updatePreferredLanguage(userId, language) {
+    if (!isSupabaseConfigured) return { success: false };
+    try {
+      const { data, error } = await supabase
+        .from("USERS")
+        .update({ preferred_language: language })
+        .eq("user_id", userId)
+        .select();
+      if (error) throw error;
+      return { success: true, user: data[0] };
+    } catch (err) {
+      logger.error("Error updating preferred language in DB:", err);
+      return { success: false, error: err.message };
+    }
+  },
+
   getSubtypeTable(roleName) {
     switch (roleName) {
       case "Super Admin": return "SUPER_ADMIN";

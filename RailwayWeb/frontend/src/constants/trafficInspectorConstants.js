@@ -86,18 +86,16 @@ export const MONTHLY = [];
 export const INIT_PM_ASSESSMENTS = [];
 
 export const TI_SM_CRITERIA = [
-  { key: "knowledgeOfRules",  label: "Knowledge of Rules",              weight: 3, count: 5,
-    criteria: ["Block section working rules", "Signal aspect interpretations", "Station working rules (SWR) knowledge", "Emergency rule provisions", "Special instructions awareness"] },
-  { key: "alertness",         label: "Alertness and Observance of Rules", weight: 3, count: 5,
-    criteria: ["Active monitoring of train movements", "Platform and yard vigilance", "Timely signal observations", "Point position verification before movements", "Quick response to deviations"] },
+  { key: "alertness",         label: "Alertness and Observation of Rules", weight: 5, count: 5,
+    criteria: ["Alert while on duty", "Observe rules during normal/abnormal working", "Do not use shortcuts during duty", "Clear written/verbal instructions given during duty", "Prompt action during abnormal situations"] },
   { key: "safetyRecord",      label: "Safety Record",                   weight: 3, count: 5,
-    criteria: ["No accidents or incidents in period", "Safety-related complaints addressed", "Compliance with safety circulars", "Near-miss incidents reported", "Safety drills conducted"] },
-  { key: "leadership",        label: "Leadership and Management",       weight: 2, count: 5,
-    criteria: ["Staff motivation and team leadership", "Effective duty roster management", "Training and guidance of subordinates", "Conflict resolution capability", "Decision-making under pressure"] },
+    criteria: ["Awards", "No Chargesheet", "PME Done on Time", "REF Done on Time", "Record incident immediately and inform supervisor without delay"] },
+  { key: "leadership",        label: "Leadership and Management",       weight: 3, count: 5,
+    criteria: ["Take decisions on time", "Give clear instructions", "Coordinate with fellow staff", "Coordinate with other departments", "Create a safe working environment"] },
   { key: "discipline",        label: "Discipline",                      weight: 2, count: 5,
-    criteria: ["Punctuality and attendance record", "Adherence to uniform and conduct norms", "Compliance with official communication channels", "Respect for hierarchy and chain of command", "Absence of disciplinary proceedings"] },
+    criteria: ["Appears on duty on time", "Regular attendance", "Polite with staff and passengers", "Strictly follows rules and procedures", "Maintains discipline during high workload or pressure"] },
   { key: "appearance",        label: "Appearance and Neatness",         weight: 2, count: 5,
-    criteria: ["Proper uniform worn at all times", "Station cleanliness maintained", "Registers and records kept neatly", "Notice boards updated and presentable", "Office area well-organized"] },
+    criteria: ["Wears uniform neatly and cleanly", "Displays identity card properly during duty", "Uses safety gear (helmet, shoes, reflective jacket, etc.)", "Maintains records neatly", "Maintains workplace/premises cleanliness"] },
 ];
 
 export const TI_TM_CRITERIA = [
@@ -161,7 +159,6 @@ export const TI_QUIZ = [
 export const INIT_TI_ASSESS_HISTORY = [];
 
 export const defaultSMForm = () => ({
-  knowledgeOfRules: Array(5).fill(null),
   alertness:        Array(5).fill(null),
   safetyRecord:     Array(5).fill(null),
   leadership:       Array(5).fill(null),

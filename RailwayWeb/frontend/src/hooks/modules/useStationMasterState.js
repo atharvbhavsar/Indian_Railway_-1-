@@ -34,6 +34,12 @@ export function useStationMasterState(user, onLogout) {
   const [repF, setRepF] = useState({ search: "", cat: "All", risk: "All" });
   const [viewingStaff, setViewingStaff] = useState(null);
 
+  const [showCategoriesPanel, setShowCategoriesPanel] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState(null);
+  const [searchHrms, setSearchHrms] = useState("");
+  const [selectedHrmsIds, setSelectedHrmsIds] = useState([]);
+  const [allDbAssessments, setAllDbAssessments] = useState([]);
+
   // Pointsman Replicated Dashboard States & Helpers
   const [pmModal, setPmModal] = useState(null);
   const [pmF, setPmF] = useState({ name: "", station: "All", cat: "All", risk: "All" });
@@ -95,7 +101,7 @@ export function useStationMasterState(user, onLogout) {
       });
       setAssignedTi(ti || null);
 
-      // Fetch submitted assessments from Supabase
+      // Fetch all assessments from Supabase
       let dbSubmitted = [];
       if (isSupabaseConfigured) {
         try {
@@ -105,12 +111,13 @@ export function useStationMasterState(user, onLogout) {
               *,
               employee:USERS!employee_id (hrms_id),
               TEST_ATTEMPT (obtained_marks, total_marks)
-            `)
-            .in("status", ["Submitted", "Approved", "Completed", "EVALUATED"]);
+            `);
           
           if (assessList) {
+            setAllDbAssessments(assessList);
             dbSubmitted = assessList
-              .filter(a => a.employee?.hrms_id && (a.assessment_type === "Pointsman Checklist" || a.assessment_type === "Pointsman Evaluation" || a.assessment_type === "Checklist Evaluation"))
+              .filter(a => ["Submitted", "Approved", "Completed", "EVALUATED"].includes(a.status))
+              .filter(a => a.employee?.hrms_id && ((a.assessment_type || "").includes("Checklist Evaluation") || (a.assessment_type || "").includes("Pointsman Checklist") || (a.assessment_type || "").includes("Pointsman Evaluation") || (a.assessment_type || "").includes("Competency Assessment")))
               .filter(a => filtered.some(p => p.hrmsId === a.employee.hrms_id))
               .map(a => ({
                 pmId: a.employee.hrms_id,
@@ -881,6 +888,206 @@ export function useStationMasterState(user, onLogout) {
     setPageMode("default");
   };
 
+  const sendBatchAssessmentAccess = async (hrmsIds) => {
+    if (!hrmsIds || hrmsIds.length === 0) return;
+    setStatusMsg("Sending assessment access...");
+    
+    try {
+      const today = new Date().toISOString().slice(0, 10);
+      
+      // Resolve Station Master UUID
+      let smUserUuid = user?.userId;
+      if (isSupabaseConfigured && (!smUserUuid || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(smUserUuid))) {
+        const { data: smUser } = await supabase
+          .from("USERS")
+          .select("user_id")
+          .eq("hrms_id", smId)
+          .single();
+        smUserUuid = smUser?.user_id || user?.userId;
+      }
+
+      for (const hrmsId of hrmsIds) {
+        // Find pointsman details
+        const pm = pointsmen.find(p => p.hrmsId === hrmsId);
+        if (!pm) continue;
+
+        // Set activation state in local storage
+        localStorage.setItem(`pm_test_activated_${hrmsId}`, "true");
+        localStorage.setItem(`pm_test_activated_time_${hrmsId}`, Date.now().toString());
+        localStorage.setItem(`pm_test_assigned_${hrmsId}`, "Assigned");
+        localStorage.removeItem(`pm_mcq_test_${hrmsId}`);
+
+        if (isSupabaseConfigured) {
+          // Resolve Pointsman UUID from USERS table
+          const { data: pmUser, error: pmErr } = await supabase
+            .from("USERS")
+            .select("user_id")
+            .eq("hrms_id", hrmsId)
+            .single();
+
+          if (!pmErr && pmUser?.user_id) {
+            const pmUserUuid = pmUser.user_id;
+
+            // Check if there is a LOCKED assessment record
+            const { data: lockedAssessments } = await supabase
+              .from("ASSESSMENT")
+              .select("assessment_id")
+              .eq("employee_id", pmUserUuid)
+              .eq("status", "LOCKED")
+              .limit(1);
+
+            if (lockedAssessments && lockedAssessments.length > 0) {
+              await supabase
+                .from("ASSESSMENT")
+                .update({
+                  status: "AVAILABLE",
+                  conducted_by: smUserUuid,
+                  assessment_date: today,
+                  assessment_type: "Checklist Evaluation"
+                })
+                .eq("assessment_id", lockedAssessments[0].assessment_id);
+            } else {
+              // Insert a new AVAILABLE assessment record
+              await supabase.from("ASSESSMENT").insert([{
+                employee_id: pmUserUuid,
+                conducted_by: smUserUuid,
+                assessment_type: "Checklist Evaluation",
+                status: "AVAILABLE",
+                assessment_date: today
+              }]);
+            }
+
+            // Create notification for the Pointsman
+            await supabase.from("NOTIFICATION").insert([{
+              user_id: pmUserUuid,
+              title: "Assessment Access Granted",
+              message: `Your safety competency assessment has been activated by Station Master ${smName}. You can now attempt the safety exam in your portal.`,
+              is_read: false
+            }]);
+          }
+        }
+      }
+
+      // Dispatch storage event to sync browser tabs
+      window.dispatchEvent(new Event("storage"));
+      
+      // Clear selection
+      setSelectedHrmsIds([]);
+      
+      // Refresh DB data
+      await fetchLiveDatabaseData();
+      
+      setStatusMsg(`Successfully activated assessment access for ${hrmsIds.length} employee(s).`);
+    } catch (err) {
+      console.error("Error in batch activation:", err);
+      alert("Error sending batch assessment access: " + err.message);
+      setStatusMsg("Batch assessment access failed.");
+    }
+  };
+
+  const updateEmployeeSchedule = async (hrmsId, date, time, reason) => {
+    if (!hrmsId || !date) return { success: false, error: "Missing required fields" };
+    try {
+      const pm = pointsmen.find(p => p.hrmsId === hrmsId);
+      if (!pm) throw new Error("Employee not found.");
+
+      const today = new Date().toISOString().slice(0, 10);
+      
+      // Resolve SM UUID
+      let smUserUuid = user?.userId;
+      if (isSupabaseConfigured && (!smUserUuid || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(smUserUuid))) {
+        const { data: smUser } = await supabase
+          .from("USERS")
+          .select("user_id")
+          .eq("hrms_id", smId)
+          .single();
+        smUserUuid = smUser?.user_id || user?.userId;
+      }
+
+      if (isSupabaseConfigured) {
+        // Resolve Pointsman UUID
+        const { data: pmUser, error: pmErr } = await supabase
+          .from("USERS")
+          .select("user_id")
+          .eq("hrms_id", hrmsId)
+          .single();
+
+        if (pmErr || !pmUser?.user_id) throw new Error("Could not resolve Pointsman UUID.");
+        const pmUserUuid = pmUser.user_id;
+
+        // Check if there is an active assessment
+        const { data: activeAssess } = await supabase
+          .from("ASSESSMENT")
+          .select("assessment_id, due_date, assessment_type")
+          .eq("employee_id", pmUserUuid)
+          .in("status", ["LOCKED", "AVAILABLE", "IN_PROGRESS", "Pending"])
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        let prevDate = "None";
+        let assessmentId = null;
+
+        const assessmentType = `Checklist Evaluation | Time: ${time || "10:00 AM"}`;
+
+        if (activeAssess) {
+          prevDate = activeAssess.due_date || "None";
+          assessmentId = activeAssess.assessment_id;
+
+          // Update active assessment
+          await supabase
+            .from("ASSESSMENT")
+            .update({
+              due_date: date,
+              assessment_type: assessmentType
+            })
+            .eq("assessment_id", assessmentId);
+        } else {
+          // Create a new LOCKED assessment
+          const { data: newAssess, error: newAssessErr } = await supabase
+            .from("ASSESSMENT")
+            .insert([{
+              employee_id: pmUserUuid,
+              conducted_by: smUserUuid,
+              assessment_type: assessmentType,
+              status: "LOCKED",
+              due_date: date,
+              assessment_date: today
+            }])
+            .select()
+            .single();
+
+          if (newAssessErr) throw newAssessErr;
+          assessmentId = newAssess.assessment_id;
+        }
+
+        // Insert into AUDIT_LOG
+        await supabase.from("AUDIT_LOG").insert([{
+          user_id: smUserUuid,
+          action: `Prev: ${prevDate} | New: ${date} ${time || "10:00 AM"} | Reason: ${reason} | Emp: ${hrmsId}`,
+          table_name: "ASSESSMENT",
+          record_id: assessmentId
+        }]);
+
+        // Insert Notification for Pointsman
+        await supabase.from("NOTIFICATION").insert([{
+          user_id: pmUserUuid,
+          title: "Assessment Schedule Modified",
+          message: `Your competency assessment schedule has been modified by Station Master ${smName}. New Due Date: ${date} ${time || "10:00 AM"}.`,
+          is_read: false
+        }]);
+      }
+
+      // Refresh DB data
+      await fetchLiveDatabaseData();
+      return { success: true };
+    } catch (err) {
+      console.error("Error updating schedule:", err);
+      alert("Error updating schedule: " + err.message);
+      return { success: false, error: err.message };
+    }
+  };
+
   const logSmPmeRecord = async (employeeHrmsId, pmeData) => {
     try {
       const { data: uData, error: uErr } = await supabase
@@ -1058,7 +1265,14 @@ export function useStationMasterState(user, onLogout) {
     counsellingQueue,
     scheduleCounselling,
     submitCounsellingResult,
-    submitMonitoringReview
+    submitMonitoringReview,
+    showCategoriesPanel, setShowCategoriesPanel,
+    selectedCategory, setSelectedCategory,
+    searchHrms, setSearchHrms,
+    selectedHrmsIds, setSelectedHrmsIds,
+    sendBatchAssessmentAccess,
+    allDbAssessments, setAllDbAssessments,
+    updateEmployeeSchedule
   };
 }
 

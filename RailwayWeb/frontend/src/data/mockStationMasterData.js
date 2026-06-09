@@ -49,58 +49,58 @@ export const initialDrafts = [
 /* ─── YES/NO CRITERIA LABELS ─── */
 export const YN_SECTIONS = [
   {
-    key: "alertness", title: "Alertness & Observation",
+    key: "alertness", title: "Alertness and Observation of Rules",
     weight: 5, outOf: 25,
     criteria: [
-      "Observes track and signals diligently",
-      "Responds promptly to train movements",
-      "Maintains vigilance during duty hours",
-      "Reports anomalies immediately",
-      "Demonstrates situational awareness"
+      "Alert while on duty",
+      "Observe rules during normal/abnormal working",
+      "Do not use shortcuts during duty",
+      "Clear written/verbal instructions given during duty",
+      "Prompt action during abnormal situations"
     ]
   },
   {
     key: "safety", title: "Safety Record",
     weight: 3, outOf: 15,
     criteria: [
-      "Follows all safety protocols consistently",
-      "No safety violations in review period",
-      "Wears required PPE at all times",
-      "Participates in safety drills",
-      "Maintains incident-free record"
+      "Awards",
+      "No Chargesheet",
+      "PME Done on Time",
+      "REF Done on Time",
+      "Record incident immediately and inform supervisor without delay"
     ]
   },
   {
-    key: "leadership", title: "Leadership & Management",
+    key: "leadership", title: "Leadership and Management",
     weight: 3, outOf: 15,
     criteria: [
-      "Guides junior staff effectively",
-      "Handles peak hours without disruption",
-      "Communicates clearly with team",
-      "Resolves operational issues promptly",
-      "Maintains duty log accurately"
+      "Take decisions on time",
+      "Give clear instructions",
+      "Coordinate with fellow staff",
+      "Coordinate with other departments",
+      "Create a safe working environment"
     ]
   },
   {
     key: "discipline", title: "Discipline",
     weight: 2, outOf: 10,
     criteria: [
-      "Reports to duty on time",
-      "Follows uniform and grooming standards",
-      "Complies with supervisory instructions",
-      "No disciplinary action in review period",
-      "Maintains respectful conduct"
+      "Appears on duty on time",
+      "Regular attendance",
+      "Polite with staff and passengers",
+      "Strictly follows rules and procedures",
+      "Maintains discipline during high workload or pressure"
     ]
   },
   {
-    key: "appearance", title: "Appearance & Neatness",
+    key: "appearance", title: "Appearance and Neatness",
     weight: 2, outOf: 10,
     criteria: [
-      "Uniform worn correctly and is clean",
-      "Identification badge displayed",
-      "Footwear as per regulation",
-      "Grooming standards maintained",
-      "Duty area kept tidy"
+      "Wears uniform neatly and cleanly",
+      "Displays identity card properly during duty",
+      "Uses safety gear (helmet, shoes, reflective jacket, etc.)",
+      "Maintains records neatly",
+      "Maintains workplace/premises cleanliness"
     ]
   }
 ];
@@ -309,11 +309,12 @@ export const smAssessmentHistory = [
     totalScore: 86, category: "A", approvalStatus: "Approved",
     tiRemarks: "Station demonstrates strong operational discipline and safety culture.",
     sections: [
-      { title:"Station Management",         marks:17, outOf:20 },
-      { title:"Safety Records",             marks:18, outOf:20 },
-      { title:"Staff Supervision",          marks:16, outOf:20 },
-      { title:"Emergency Handling",         marks:17, outOf:20 },
-      { title:"Documentation & Compliance", marks:18, outOf:20 }
+      { title: "Knowledge of Rules (MCQ)",         marks: 22, outOf: 25 },
+      { title: "Alertness and Observation of Rules", marks: 22, outOf: 25 },
+      { title: "Safety Record",                     marks: 13, outOf: 15 },
+      { title: "Leadership and Management",         marks: 13, outOf: 15 },
+      { title: "Discipline",                        marks: 8, outOf: 10 },
+      { title: "Appearance and Neatness",           marks: 8, outOf: 10 }
     ],
     mcqResponses: [1, 2, 2, 2, 1, 1, 2, 2, 2, 0, 0, 0, 0, 3, 1, 0, 0, 0, 0, 2, 0, 1, 1, 0, 0]
   },
@@ -323,11 +324,12 @@ export const smAssessmentHistory = [
     totalScore: 79, category: "B", approvalStatus: "Approved",
     tiRemarks: "Good performance. Minor gaps in documentation — addressed in training.",
     sections: [
-      { title:"Station Management",         marks:16, outOf:20 },
-      { title:"Safety Records",             marks:15, outOf:20 },
-      { title:"Staff Supervision",          marks:15, outOf:20 },
-      { title:"Emergency Handling",         marks:16, outOf:20 },
-      { title:"Documentation & Compliance", marks:17, outOf:20 }
+      { title: "Knowledge of Rules (MCQ)",         marks: 20, outOf: 25 },
+      { title: "Alertness and Observation of Rules", marks: 20, outOf: 25 },
+      { title: "Safety Record",                     marks: 12, outOf: 15 },
+      { title: "Leadership and Management",         marks: 11, outOf: 15 },
+      { title: "Discipline",                        marks: 8, outOf: 10 },
+      { title: "Appearance and Neatness",           marks: 8, outOf: 10 }
     ],
     mcqResponses: [1, 2, 3, 2, 1, 1, 2, 2, 2, 1, 0, 0, 0, 2, 1, 0, 0, 2, 0, 2, 0, 1, 1, 1, 0]
   },
@@ -337,11 +339,12 @@ export const smAssessmentHistory = [
     totalScore: 91, category: "A", approvalStatus: "Approved",
     tiRemarks: "Excellent quarter. Exceptional handling of monsoon disruptions.",
     sections: [
-      { title:"Station Management",         marks:19, outOf:20 },
-      { title:"Safety Records",             marks:18, outOf:20 },
-      { title:"Staff Supervision",          marks:18, outOf:20 },
-      { title:"Emergency Handling",         marks:19, outOf:20 },
-      { title:"Documentation & Compliance", marks:17, outOf:20 }
+      { title: "Knowledge of Rules (MCQ)",         marks: 23, outOf: 25 },
+      { title: "Alertness and Observation of Rules", marks: 23, outOf: 25 },
+      { title: "Safety Record",                     marks: 14, outOf: 15 },
+      { title: "Leadership and Management",         marks: 13, outOf: 15 },
+      { title: "Discipline",                        marks: 9, outOf: 10 },
+      { title: "Appearance and Neatness",           marks: 9, outOf: 10 }
     ],
     mcqResponses: [1, 2, 2, 2, 1, 1, 2, 2, 2, 0, 0, 0, 0, 3, 1, 0, 0, 0, 0, 2, 0, 1, 1, 0, 0]
   },
@@ -351,11 +354,12 @@ export const smAssessmentHistory = [
     totalScore: 74, category: "B", approvalStatus: "Approved",
     tiRemarks: "Satisfactory. Focus needed on staff supervision logs.",
     sections: [
-      { title:"Station Management",         marks:15, outOf:20 },
-      { title:"Safety Records",             marks:14, outOf:20 },
-      { title:"Staff Supervision",          marks:14, outOf:20 },
-      { title:"Emergency Handling",         marks:15, outOf:20 },
-      { title:"Documentation & Compliance", marks:16, outOf:20 }
+      { title: "Knowledge of Rules (MCQ)",         marks: 18, outOf: 25 },
+      { title: "Alertness and Observation of Rules", marks: 18, outOf: 25 },
+      { title: "Safety Record",                     marks: 11, outOf: 15 },
+      { title: "Leadership and Management",         marks: 11, outOf: 15 },
+      { title: "Discipline",                        marks: 8, outOf: 10 },
+      { title: "Appearance and Neatness",           marks: 8, outOf: 10 }
     ],
     mcqResponses: [1, 2, 3, 2, 1, 2, 2, 1, 2, 1, 0, 1, 0, 2, 1, 0, 0, 2, 0, 2, 1, 1, 1, 1, 0]
   }
@@ -371,11 +375,12 @@ export const smSelfAssessment = {
   approvalStatus: "Approved",
   tiRemarks: "Station demonstrates strong operational discipline and safety culture.",
   sections: [
-    { title:"Station Management",         marks:17, outOf:20 },
-    { title:"Safety Records",             marks:18, outOf:20 },
-    { title:"Staff Supervision",          marks:16, outOf:20 },
-    { title:"Emergency Handling",         marks:17, outOf:20 },
-    { title:"Documentation & Compliance", marks:18, outOf:20 }
+    { title: "Knowledge of Rules (MCQ)",         marks: 22, outOf: 25 },
+    { title: "Alertness and Observation of Rules", marks: 22, outOf: 25 },
+    { title: "Safety Record",                     marks: 13, outOf: 15 },
+    { title: "Leadership and Management",         marks: 13, outOf: 15 },
+    { title: "Discipline",                        marks: 8, outOf: 10 },
+    { title: "Appearance and Neatness",           marks: 8, outOf: 10 }
   ]
 };
 

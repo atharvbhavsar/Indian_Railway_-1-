@@ -93,11 +93,42 @@ export function useSAData() {
     }
   };
 
+  const updateStation = async (updatedStation) => {
+    try {
+      await saDataService.saveStation(updatedStation, "edit");
+      alert("Station updated successfully!");
+      fetchLiveDatabaseData();
+    } catch (err) {
+      alert("Failed to update station: " + (err.message || err));
+      fetchLiveDatabaseData();
+    }
+  };
+
+  const deleteStation = async (stationId, stationName) => {
+    try {
+      const res = await saDataService.deleteStation(stationId, stationName);
+      if (res && res.success) {
+        alert("Station deleted successfully!");
+        fetchLiveDatabaseData();
+        return true;
+      } else {
+        alert("Failed to delete station: " + (res?.error || "Unknown error"));
+        return false;
+      }
+    } catch (err) {
+      alert("Failed to delete station: " + (err.message || err));
+      fetchLiveDatabaseData();
+      return false;
+    }
+  };
+
   return {
     staff,
     stations,
     isLoadingLive,
     addStation,
+    updateStation,
+    deleteStation,
     saveUser,
     removeUser
   };

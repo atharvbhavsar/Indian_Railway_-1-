@@ -1,4 +1,6 @@
 import { useMemo, useState, useEffect } from "react";
+import { useLanguage } from "./contexts/LanguageContext";
+import { LanguageSelector } from "./components/LanguageSelector";
 import {
   Award,
   BarChart2,
@@ -46,7 +48,7 @@ import {
   Legend
 } from "recharts";
 import "./sdom.css";
-import { dbService, isSupabaseConfigured } from "./supabaseClient";
+import { dbService, isSupabaseConfigured, supabase } from "./supabaseClient";
 import { monitoringService } from "./services/monitoringService";
 import { assessmentService } from "./services/assessmentService";
 import { getCategory, getCategoryColor, getCategoryBg } from "./constants";
@@ -165,6 +167,7 @@ function stopAlarmSound() {
 
 /* ─── Main component ─── */
 function PointsmanModule({ user, onLogout }) {
+  const { t } = useLanguage();
   const [profile, setProfile] = useState(() => pointsmanProfile);
   const [dbUserRecordId, setDbUserRecordId] = useState(user?.userId || null);
 
@@ -404,6 +407,69 @@ function PointsmanModule({ user, onLogout }) {
       return () => clearInterval(intervalId);
     }
   }, [employeeId]);
+
+  /* ─── EFFECT: Sync Test Activation from Supabase Database ─── */
+  useEffect(() => {
+    async function checkDatabaseAssessment() {
+      if (!employeeId || !isSupabaseConfigured) return;
+      try {
+        let resolvedEmployeeId = employeeId;
+        const { data: uData } = await supabase
+          .from('USERS')
+          .select('user_id')
+          .eq('hrms_id', employeeId)
+          .single();
+        if (uData?.user_id) {
+          resolvedEmployeeId = uData.user_id;
+        }
+
+        // Fetch active/pending assessments for this user
+        const { data: assessments, error } = await supabase
+          .from('ASSESSMENT')
+          .select('assessment_id, status, assessment_type')
+          .eq('employee_id', resolvedEmployeeId)
+          .in('assessment_type', ['Checklist Evaluation', 'Pointsman Evaluation', 'Pointsman Periodic Assessment', 'Competency Assessment'])
+          .in('status', ['Pending', 'AVAILABLE', 'LOCKED', 'IN_PROGRESS'])
+          .order('created_at', { ascending: false })
+          .limit(1);
+
+        if (!error && assessments && assessments.length > 0) {
+          const activeAssess = assessments[0];
+          if (activeAssess.status === 'Pending' || activeAssess.status === 'AVAILABLE' || activeAssess.status === 'IN_PROGRESS') {
+            const currentActivated = localStorage.getItem(`pm_test_activated_${employeeId}`);
+            if (currentActivated !== "true") {
+              localStorage.setItem(`pm_test_activated_${employeeId}`, "true");
+              window.dispatchEvent(new Event("storage"));
+            }
+            if (testAssigned !== "Assigned") {
+              setTestAssigned("Assigned");
+              localStorage.setItem(`pm_test_assigned_${employeeId}`, "Assigned");
+            }
+          } else {
+            const currentActivated = localStorage.getItem(`pm_test_activated_${employeeId}`);
+            if (currentActivated !== "false") {
+              localStorage.setItem(`pm_test_activated_${employeeId}`, "false");
+              window.dispatchEvent(new Event("storage"));
+            }
+          }
+        } else {
+          if (!error && assessments && assessments.length === 0) {
+            const currentActivated = localStorage.getItem(`pm_test_activated_${employeeId}`);
+            if (currentActivated !== "false") {
+              localStorage.setItem(`pm_test_activated_${employeeId}`, "false");
+              window.dispatchEvent(new Event("storage"));
+            }
+          }
+        }
+      } catch (err) {
+        console.error("Error checking database assessment for PM:", err);
+      }
+    }
+
+    checkDatabaseAssessment();
+    const dbInterval = setInterval(checkDatabaseAssessment, 4000);
+    return () => clearInterval(dbInterval);
+  }, [employeeId, testAssigned]);
 
   /* ─── EFFECT: Secure Session CountDown ─── */
   useEffect(() => {
@@ -1025,30 +1091,30 @@ function PointsmanModule({ user, onLogout }) {
         Scheduled: "sdom-badge-warning", "In Progress": "sdom-badge-warning", Pending: "sdom-badge-warning",
         Expired: "sdom-badge-danger", Cancelled: "sdom-badge-danger"
       };
-      return <span className={`sdom-badge ${map[s] || "sdom-badge-neutral"}`}>{s || "N/A"}</span>;
+      return <span className={`sdom-badge ${map[s] || "sdom-badge-neutral"}`}>{t(s) || t("N/A")}</span>;
     };
 
     return (
       <div className="sdom-fade" style={{ background: "#f8fafc", padding: "24px", borderRadius: "16px" }}>
         {/* Header */}
         <div style={{ marginBottom: "24px" }}>
-          <h1 className="sdom-page-title" style={{ fontSize: "28px", fontWeight: "800", color: "#0f172a", margin: "0 0 4px" }}>My REF Course Details</h1>
-          <p className="sdom-page-subtitle" style={{ fontSize: "14px", color: "#64748b", margin: 0 }}>View your Refresher Course (REF) training history and scheduling details.</p>
+          <h1 className="sdom-page-title" style={{ fontSize: "28px", fontWeight: "800", color: "#0f172a", margin: "0 0 4px" }}>{t("My REF Course Details")}</h1>
+          <p className="sdom-page-subtitle" style={{ fontSize: "14px", color: "#64748b", margin: 0 }}>{t("View your Refresher Course (REF) training history and scheduling details.")}</p>
         </div>
 
         {/* Dashboard stats strip */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "16px", marginBottom: "24px" }}>
           <div style={{ background: "white", border: "1px solid #e2e8f0", padding: "20px", borderRadius: "12px", boxShadow: "0 1px 3px rgba(0,0,0,0.05)", borderLeft: "4px solid #16a34a" }}>
             <div style={{ fontSize: "24px", fontWeight: "800", color: "#16a34a" }}>{latestRef.trainingDate || "—"}</div>
-            <div style={{ fontSize: "12px", color: "#64748b", marginTop: "4px", fontWeight: "600", textTransform: "uppercase" }}>Last REF Date</div>
+            <div style={{ fontSize: "12px", color: "#64748b", marginTop: "4px", fontWeight: "600", textTransform: "uppercase" }}>{t("Last REF Date")}</div>
           </div>
           <div style={{ background: "white", border: "1px solid #e2e8f0", padding: "20px", borderRadius: "12px", boxShadow: "0 1px 3px rgba(0,0,0,0.05)", borderLeft: "4px solid #dc2626" }}>
             <div style={{ fontSize: "24px", fontWeight: "800", color: "#dc2626" }}>{latestRef.nextDueDate || "—"}</div>
-            <div style={{ fontSize: "12px", color: "#64748b", marginTop: "4px", fontWeight: "600", textTransform: "uppercase" }}>Next REF Due Date</div>
+            <div style={{ fontSize: "12px", color: "#64748b", marginTop: "4px", fontWeight: "600", textTransform: "uppercase" }}>{t("Next REF Due Date")}</div>
           </div>
           <div style={{ background: "white", border: "1px solid #e2e8f0", padding: "20px", borderRadius: "12px", boxShadow: "0 1px 3px rgba(0,0,0,0.05)", borderLeft: "4px solid #7c3aed" }}>
-            <div style={{ fontSize: "24px", fontWeight: "800", color: "#7c3aed" }}>{refStatus}</div>
-            <div style={{ fontSize: "12px", color: "#64748b", marginTop: "4px", fontWeight: "600", textTransform: "uppercase" }}>Current REF Status</div>
+            <div style={{ fontSize: "24px", fontWeight: "800", color: "#7c3aed" }}>{t(refStatus)}</div>
+            <div style={{ fontSize: "12px", color: "#64748b", marginTop: "4px", fontWeight: "600", textTransform: "uppercase" }}>{t("Current REF Status")}</div>
           </div>
         </div>
 
@@ -1056,15 +1122,15 @@ function PointsmanModule({ user, onLogout }) {
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "16px", marginBottom: "24px" }}>
           <div style={{ background: "white", border: "1px solid #e2e8f0", padding: "16px", borderRadius: "12px", textAlign: "center" }}>
             <div style={{ fontSize: "20px", fontWeight: "800", color: "#334155" }}>{totalCompleted}</div>
-            <div style={{ fontSize: "11px", color: "#64748b", fontWeight: "600", textTransform: "uppercase" }}>Total Completed</div>
+            <div style={{ fontSize: "11px", color: "#64748b", fontWeight: "600", textTransform: "uppercase" }}>{t("Total Completed")}</div>
           </div>
           <div style={{ background: "white", border: "1px solid #e2e8f0", padding: "16px", borderRadius: "12px", textAlign: "center" }}>
             <div style={{ fontSize: "20px", fontWeight: "800", color: "#334155" }}>{totalPending}</div>
-            <div style={{ fontSize: "11px", color: "#64748b", fontWeight: "600", textTransform: "uppercase" }}>Pending / Scheduled</div>
+            <div style={{ fontSize: "11px", color: "#64748b", fontWeight: "600", textTransform: "uppercase" }}>{t("Pending / Scheduled")}</div>
           </div>
           <div style={{ background: "white", border: "1px solid #e2e8f0", padding: "16px", borderRadius: "12px", textAlign: "center" }}>
             <div style={{ fontSize: "20px", fontWeight: "800", color: "#334155" }}>{totalExpired}</div>
-            <div style={{ fontSize: "11px", color: "#64748b", fontWeight: "600", textTransform: "uppercase" }}>Expired / Cancelled</div>
+            <div style={{ fontSize: "11px", color: "#64748b", fontWeight: "600", textTransform: "uppercase" }}>{t("Expired / Cancelled")}</div>
           </div>
         </div>
 
@@ -1074,7 +1140,7 @@ function PointsmanModule({ user, onLogout }) {
             <thead>
               <tr style={{ borderBottom: "1.5px solid #e2e8f0", background: "#f8fafc", textAlign: "left" }}>
                 {["Training Date", "REF Status", "Conducted By", "Next Due Date", "Remarks"].map(h => (
-                  <th key={h} style={{ padding: "12px 16px", fontSize: "12px", color: "#475569", fontWeight: "700" }}>{h}</th>
+                  <th key={h} style={{ padding: "12px 16px", fontSize: "12px", color: "#475569", fontWeight: "700" }}>{t(h)}</th>
                 ))}
               </tr>
             </thead>
@@ -1083,13 +1149,13 @@ function PointsmanModule({ user, onLogout }) {
                 <tr key={row.training_id} style={{ borderBottom: "1px solid #e8edf2" }}>
                   <td style={{ padding: "12px 16px", fontSize: "13px", fontWeight: "700", color: "#1e293b" }}>{row.trainingDate || "—"}</td>
                   <td style={{ padding: "12px 16px", fontSize: "13px" }}>{refBadge(row.refStatus)}</td>
-                  <td style={{ padding: "12px 16px", fontSize: "13px", color: "#475569", fontWeight: "600" }}>{row.conductedBy || "—"}</td>
+                  <td style={{ padding: "12px 16px", fontSize: "13px", color: "#475569", fontWeight: "600" }}>{t(row.conductedBy) || "—"}</td>
                   <td style={{ padding: "12px 16px", fontSize: "13px", color: "#dc2626", fontWeight: "700" }}>{row.nextDueDate || "—"}</td>
-                  <td style={{ padding: "12px 16px", fontSize: "13px", color: "#475569" }}>{row.remarks || "—"}</td>
+                  <td style={{ padding: "12px 16px", fontSize: "13px", color: "#475569" }}>{t(row.remarks) || "—"}</td>
                 </tr>
               ))}
               {refHistory.length === 0 && (
-                <tr><td colSpan={5} style={{ padding: "30px", textAlign: "center", color: "#64748b", fontSize: "14px" }}>No refresher training history available.</td></tr>
+                <tr><td colSpan={5} style={{ padding: "30px", textAlign: "center", color: "#64748b", fontSize: "14px" }}>{t("No refresher training history available.")}</td></tr>
               )}
             </tbody>
           </table>
@@ -1135,7 +1201,7 @@ function PointsmanModule({ user, onLogout }) {
         Completed: "sdom-badge-success",
         Absent: "sdom-badge-danger"
       };
-      return <span className={`sdom-badge ${map[s] || "sdom-badge-neutral"}`}>{s}</span>;
+      return <span className={`sdom-badge ${map[s] || "sdom-badge-neutral"}`}>{t(s)}</span>;
     };
 
     // Helper for Risk Level badge
@@ -1145,15 +1211,15 @@ function PointsmanModule({ user, onLogout }) {
         Medium: "sdom-badge-warning",
         Low: "sdom-badge-success"
       };
-      return <span className={`sdom-badge ${map[r] || "sdom-badge-neutral"}`}>{r} Risk</span>;
+      return <span className={`sdom-badge ${map[r] || "sdom-badge-neutral"}`}>{t(r + " Risk")}</span>;
     };
 
     return (
       <div className="sdom-fade" style={{ background: "#f8fafc", padding: "24px", borderRadius: "16px" }}>
         {/* Header */}
         <div style={{ marginBottom: "24px" }}>
-          <h1 className="sdom-page-title" style={{ fontSize: "28px", fontWeight: "800", color: "#0f172a", margin: "0 0 4px" }}>Counselling & Monitoring Workspace</h1>
-          <p className="sdom-page-subtitle" style={{ fontSize: "14px", color: "#64748b", margin: 0 }}>View scheduled sessions, assessment feedback, and active monitoring status.</p>
+          <h1 className="sdom-page-title" style={{ fontSize: "28px", fontWeight: "800", color: "#0f172a", margin: "0 0 4px" }}>{t("Counselling & Monitoring Workspace")}</h1>
+          <p className="sdom-page-subtitle" style={{ fontSize: "14px", color: "#64748b", margin: 0 }}>{t("View scheduled sessions, assessment feedback, and active monitoring status.")}</p>
         </div>
 
         {/* Top Cards Grid */}
@@ -1161,30 +1227,30 @@ function PointsmanModule({ user, onLogout }) {
           {/* Active Monitoring Status */}
           <div style={{ background: "white", border: "1px solid #e2e8f0", padding: "20px", borderRadius: "12px", boxShadow: "0 1px 3px rgba(0,0,0,0.05)", borderLeft: "4px solid #3b82f6" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <div style={{ fontSize: "12px", color: "#64748b", fontWeight: "600", textTransform: "uppercase" }}>Monitoring Status</div>
+              <div style={{ fontSize: "12px", color: "#64748b", fontWeight: "600", textTransform: "uppercase" }}>{t("Monitoring Status")}</div>
               {riskBadge(riskLevel)}
             </div>
-            <div style={{ fontSize: "20px", fontWeight: "800", color: "#0f172a", marginTop: "12px" }}>{monitoringStatus}</div>
-            <div style={{ fontSize: "12px", color: "#64748b", marginTop: "6px" }}>Next Safety Review Due: <span style={{ fontWeight: "700", color: "#dc2626" }}>{nextReviewDate}</span></div>
+            <div style={{ fontSize: "20px", fontWeight: "800", color: "#0f172a", marginTop: "12px" }}>{t(monitoringStatus)}</div>
+            <div style={{ fontSize: "12px", color: "#64748b", marginTop: "6px" }}>{t("Next Safety Review Due:")} <span style={{ fontWeight: "700", color: "#dc2626" }}>{nextReviewDate}</span></div>
           </div>
 
           {/* Active Session Card */}
           <div style={{ background: "white", border: "1px solid #e2e8f0", padding: "20px", borderRadius: "12px", boxShadow: "0 1px 3px rgba(0,0,0,0.05)", borderLeft: `4px solid ${activeSession ? "#eab308" : "#10b981"}` }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <div style={{ fontSize: "12px", color: "#64748b", fontWeight: "600", textTransform: "uppercase" }}>Active Counselling Session</div>
-              {activeSession ? statusBadge(activeSession.status) : <span className="sdom-badge sdom-badge-success">Clear</span>}
+              <div style={{ fontSize: "12px", color: "#64748b", fontWeight: "600", textTransform: "uppercase" }}>{t("Active Counselling Session")}</div>
+              {activeSession ? statusBadge(activeSession.status) : <span className="sdom-badge sdom-badge-success">{t("Clear")}</span>}
             </div>
             {activeSession ? (
               <>
                 <div style={{ fontSize: "16px", fontWeight: "700", color: "#1e293b", marginTop: "12px" }}>
-                  Scheduled: {parseRemarks(activeSession.remarks).scheduledDate || "—"} at {parseRemarks(activeSession.remarks).scheduledTime || "—"}
+                  {t("Scheduled:")} {parseRemarks(activeSession.remarks).scheduledDate || "—"} @ {parseRemarks(activeSession.remarks).scheduledTime || "—"}
                 </div>
                 <div style={{ fontSize: "12px", color: "#64748b", marginTop: "6px" }}>
-                  Counsellor: <span style={{ fontWeight: "600" }}>{activeSession.counsellorName} ({activeSession.counsellorHrmsId})</span>
+                  {t("Counsellor:")} <span style={{ fontWeight: "600" }}>{activeSession.counsellorName} ({activeSession.counsellorHrmsId})</span>
                 </div>
               </>
             ) : (
-              <div style={{ fontSize: "14px", color: "#64748b", marginTop: "16px" }}>No counselling sessions currently pending or scheduled.</div>
+              <div style={{ fontSize: "14px", color: "#64748b", marginTop: "16px" }}>{t("No counselling sessions currently pending or scheduled.")}</div>
             )}
           </div>
         </div>
@@ -1194,26 +1260,26 @@ function PointsmanModule({ user, onLogout }) {
           <div style={{ background: "white", border: "1px solid #e2e8f0", padding: "24px", borderRadius: "12px", boxShadow: "0 1px 3px rgba(0,0,0,0.05)", marginBottom: "24px" }}>
             <div style={{ borderBottom: "1.5px solid #f1f5f9", paddingBottom: "12px", marginBottom: "16px", display: "flex", alignItems: "center", gap: "8px" }}>
               <ShieldAlert style={{ color: "#eab308" }} size={20} />
-              <h3 style={{ margin: 0, fontSize: "18px", fontWeight: "700", color: "#0f172a" }}>Upcoming Session details</h3>
+              <h3 style={{ margin: 0, fontSize: "18px", fontWeight: "700", color: "#0f172a" }}>{t("Upcoming Session details")}</h3>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
               <div>
-                <div style={{ fontSize: "12px", color: "#64748b", fontWeight: "600" }}>DATE & TIME</div>
+                <div style={{ fontSize: "12px", color: "#64748b", fontWeight: "600" }}>{t("DATE & TIME")}</div>
                 <div style={{ fontSize: "14px", color: "#1e293b", fontWeight: "700", marginTop: "4px" }}>
                   {parseRemarks(activeSession.remarks).scheduledDate} @ {parseRemarks(activeSession.remarks).scheduledTime}
                 </div>
               </div>
               <div>
-                <div style={{ fontSize: "12px", color: "#64748b", fontWeight: "600" }}>ASSIGNED COUNSELLOR</div>
+                <div style={{ fontSize: "12px", color: "#64748b", fontWeight: "600" }}>{t("ASSIGNED COUNSELLOR")}</div>
                 <div style={{ fontSize: "14px", color: "#1e293b", fontWeight: "700", marginTop: "4px" }}>
-                  {activeSession.counsellorName} (HRMS: {activeSession.counsellorHrmsId})
+                  {activeSession.counsellorName} ({t("HRMS")}: {activeSession.counsellorHrmsId})
                 </div>
               </div>
             </div>
             <div style={{ marginTop: "16px" }}>
-              <div style={{ fontSize: "12px", color: "#64748b", fontWeight: "600" }}>INSTRUCTIONS / SCHEDULING REMARKS</div>
+              <div style={{ fontSize: "12px", color: "#64748b", fontWeight: "600" }}>{t("INSTRUCTIONS / SCHEDULING REMARKS")}</div>
               <div style={{ fontSize: "14px", color: "#334155", background: "#f8fafc", padding: "12px", borderRadius: "8px", border: "1px solid #e2e8f0", marginTop: "6px" }}>
-                {parseRemarks(activeSession.remarks).schedulingRemarks || "No instructions provided."}
+                {t(parseRemarks(activeSession.remarks).schedulingRemarks) || t("No instructions provided.")}
               </div>
             </div>
           </div>
@@ -1223,20 +1289,20 @@ function PointsmanModule({ user, onLogout }) {
         {monitoringReviews.length > 0 && (
           <div style={{ background: "white", border: "1px solid #e2e8f0", padding: "24px", borderRadius: "12px", boxShadow: "0 1px 3px rgba(0,0,0,0.05)", marginBottom: "24px" }}>
             <div style={{ borderBottom: "1.5px solid #f1f5f9", paddingBottom: "12px", marginBottom: "16px" }}>
-              <h3 style={{ margin: 0, fontSize: "18px", fontWeight: "700", color: "#0f172a" }}>Safety Monitoring Review Logs</h3>
+              <h3 style={{ margin: 0, fontSize: "18px", fontWeight: "700", color: "#0f172a" }}>{t("Safety Monitoring Review Logs")}</h3>
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
               {monitoringReviews.map((rev, idx) => (
                 <div key={idx} style={{ padding: "16px", borderRadius: "8px", background: "#f8fafc", border: "1px solid #e2e8f0" }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
-                    <span style={{ fontSize: "13px", fontWeight: "700", color: "#0f172a" }}>Review by: {rev.reviewer}</span>
+                    <span style={{ fontSize: "13px", fontWeight: "700", color: "#0f172a" }}>{t("Review by:")} {rev.reviewer}</span>
                     <span style={{ fontSize: "12px", color: "#64748b", fontWeight: "600" }}>{rev.reviewDate}</span>
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
-                    <span style={{ fontSize: "12px", color: "#64748b" }}>Risk Level Assigned:</span>
+                    <span style={{ fontSize: "12px", color: "#64748b" }}>{t("Risk Level Assigned:")}</span>
                     {riskBadge(rev.riskLevel)}
                   </div>
-                  <p style={{ margin: 0, fontSize: "13px", color: "#334155", lineHeight: "1.5" }}>{rev.remarks}</p>
+                  <p style={{ margin: 0, fontSize: "13px", color: "#334155", lineHeight: "1.5" }}>{t(rev.remarks)}</p>
                 </div>
               ))}
             </div>
@@ -1246,14 +1312,14 @@ function PointsmanModule({ user, onLogout }) {
         {/* Counselling History Table */}
         <div style={{ background: "white", border: "1px solid #e2e8f0", padding: "24px", borderRadius: "12px", boxShadow: "0 1px 3px rgba(0,0,0,0.05)" }}>
           <div style={{ borderBottom: "1.5px solid #f1f5f9", paddingBottom: "12px", marginBottom: "16px" }}>
-            <h3 style={{ margin: 0, fontSize: "18px", fontWeight: "700", color: "#0f172a" }}>Counselling History Logs</h3>
+            <h3 style={{ margin: 0, fontSize: "18px", fontWeight: "700", color: "#0f172a" }}>{t("Counselling History Logs")}</h3>
           </div>
           <div style={{ overflowX: "auto" }}>
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead>
                 <tr style={{ borderBottom: "1.5px solid #e2e8f0", background: "#f8fafc", textAlign: "left" }}>
                   {["Date", "Counsellor", "Status", "Remarks & Observations"].map(h => (
-                    <th key={h} style={{ padding: "12px 16px", fontSize: "12px", color: "#475569", fontWeight: "700" }}>{h}</th>
+                    <th key={h} style={{ padding: "12px 16px", fontSize: "12px", color: "#475569", fontWeight: "700" }}>{t(h)}</th>
                   ))}
                 </tr>
               </thead>
@@ -1266,7 +1332,7 @@ function PointsmanModule({ user, onLogout }) {
                         {rem.scheduledDate || "—"}
                       </td>
                       <td style={{ padding: "12px 16px", fontSize: "13px", color: "#475569", fontWeight: "600" }}>
-                        {row.counsellorName} (HRMS: {row.counsellorHrmsId})
+                        {row.counsellorName} ({t("HRMS")}: {row.counsellorHrmsId})
                       </td>
                       <td style={{ padding: "12px 16px", fontSize: "13px" }}>
                         {statusBadge(row.status)}
@@ -1274,25 +1340,25 @@ function PointsmanModule({ user, onLogout }) {
                       <td style={{ padding: "12px 16px", fontSize: "13px", color: "#334155" }}>
                         {row.status === "Completed" && (
                           <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-                            <div><strong>Safety Concerns:</strong> {rem.safetyConcerns || "None noted."}</div>
-                            <div><strong>Behavioral Observations:</strong> {rem.observations || rem.behaviouralConcerns || "—"}</div>
-                            <div><strong>Recommendations:</strong> {rem.recommendations || "—"}</div>
-                            <div><strong>Follow-up Actions:</strong> {rem.followUpActions || "—"}</div>
+                            <div><strong>{t("Safety Concerns:")}</strong> {t(rem.safetyConcerns) || t("None noted.")}</div>
+                            <div><strong>{t("Behavioral Observations:")}</strong> {t(rem.observations || rem.behaviouralConcerns) || "—"}</div>
+                            <div><strong>{t("Recommendations:")}</strong> {t(rem.recommendations) || "—"}</div>
+                            <div><strong>{t("Follow-up Actions:")}</strong> {t(rem.followUpActions) || "—"}</div>
                           </div>
                         )}
                         {row.status === "Absent" && (
                           <div style={{ color: "#dc2626" }}>
-                            <strong>Absence Reason:</strong> {rem.absenceRemarks || "Unexcused absence."}
+                            <strong>{t("Absence Reason:")}</strong> {t(rem.absenceRemarks) || t("Unexcused absence.")}
                           </div>
                         )}
                         {row.status === "Scheduled" && (
                           <div style={{ color: "#64748b", fontStyle: "italic" }}>
-                            Session is scheduled. Instructions: {rem.schedulingRemarks || "—"}
+                            {t("Session is scheduled. Instructions:")} {t(rem.schedulingRemarks) || "—"}
                           </div>
                         )}
                         {row.status === "Pending" && (
                           <div style={{ color: "#64748b" }}>
-                            Pending scheduling by Station Master.
+                            {t("Pending scheduling by Station Master.")}
                           </div>
                         )}
                       </td>
@@ -1302,7 +1368,7 @@ function PointsmanModule({ user, onLogout }) {
                 {counsellingHistory.length === 0 && (
                   <tr>
                     <td colSpan={4} style={{ padding: "30px", textAlign: "center", color: "#64748b", fontSize: "14px" }}>
-                      No counselling records available.
+                      {t("No counselling records available.")}
                     </td>
                   </tr>
                 )}
@@ -1341,16 +1407,16 @@ function PointsmanModule({ user, onLogout }) {
       {emergencyActive && (
         <div className="pm-emergency-siren-banner">
           <div className="siren-message">
-            <span className="siren-light animate-flash">🚨 ALERT</span>
-            <strong>MANDATORY EMERGENCY BROADCAST ACTIVE: {emergencyType} detected at {emergencyLocation}! All train & siding movements are frozen immediately.</strong>
+            <span className="siren-light animate-flash">🚨 {t("Security Alert")}</span>
+            <strong>{t("MANDATORY EMERGENCY BROADCAST ACTIVE:")} {t(emergencyType)} {t("detected at")} {emergencyLocation}! {t("All train & siding movements are frozen immediately.")}</strong>
           </div>
           <div className="siren-controls">
             <button className="pm-siren-mute-btn" onClick={toggleAlarmMute}>
               {alarmMuted ? <VolumeX size={15} /> : <Volume2 size={15} />}
-              {alarmMuted ? "Unmute Alarm" : "Mute Sound"}
+              {alarmMuted ? t("Unmute Alarm") : t("Mute Sound")}
             </button>
             <button className="pm-siren-clear-btn" onClick={clearEmergencyState}>
-              Clear & Safe Return
+              {t("Clear & Safe Return")}
             </button>
           </div>
         </div>
@@ -1363,14 +1429,14 @@ function PointsmanModule({ user, onLogout }) {
         <div className="pm-topbar-brand">
           <div className="pm-topbar-logo"><img src="/logo.webp" alt="IR Logo" style={{ width: "100%", height: "100%", borderRadius: "inherit", objectFit: "cover" }} /></div>
           <div>
-            <h1>Indian Railway Evaluation Command</h1>
-            <p><span className="desktop-only-txt">Operations Workspace: </span>Pointsman<span className="desktop-only-txt"> Module</span></p>
+            <h1>{t("Indian Railway Evaluation System")}</h1>
+            <p><span className="desktop-only-txt">Operations Workspace: </span>{t("Pointsman")}<span className="desktop-only-txt"> Module</span></p>
           </div>
         </div>
 
-
-
-        <div className="pm-user-strip">
+        <div className="pm-user-strip" style={{ gap: "12px", alignItems: "center" }}>
+          <LanguageSelector />
+          
           {/* ── Real-Time Notifications Bell Dropdown ── */}
           <div className="pm-notification-bell-container">
             <button className="pm-bell-btn" onClick={() => setBellDropdownOpen(!bellDropdownOpen)}>
@@ -1383,9 +1449,9 @@ function PointsmanModule({ user, onLogout }) {
             {bellDropdownOpen && (
               <div className="pm-bell-dropdown">
                 <div className="pm-bell-header">
-                  <h4>Operations Notifications</h4>
+                  <h4>{t("Operations Notifications")}</h4>
                   {unreadNotificationsCount > 0 && (
-                    <button onClick={markAllNotificationsRead}>Mark read</button>
+                    <button onClick={markAllNotificationsRead}>{t("Mark read")}</button>
                   )}
                 </div>
                 <div className="pm-bell-list">
@@ -1393,13 +1459,13 @@ function PointsmanModule({ user, onLogout }) {
                     <div key={n.id} className={`pm-bell-item ${n.read ? 'read' : 'unread'} type-${n.type}`}>
                       <div className="pm-bell-item-dot"></div>
                       <div className="pm-bell-item-content">
-                        <p>{n.message}</p>
-                        <span>{n.time}</span>
+                        <p>{t(n.message)}</p>
+                        <span>{t(n.time)}</span>
                       </div>
                     </div>
                   ))}
                   {notifications.length === 0 && (
-                    <p className="pm-bell-empty">No alerts received today.</p>
+                    <p className="pm-bell-empty">{t("No alerts received today.")}</p>
                   )}
                 </div>
               </div>
@@ -1409,10 +1475,10 @@ function PointsmanModule({ user, onLogout }) {
           <div className="pm-user-avatar">{fullName.charAt(0)}</div>
           <div>
             <strong>{fullName}</strong>
-            <span>HRMS ID: {employeeId}</span>
+            <span>{t("HRMS ID")}: {employeeId}</span>
           </div>
           <button className="pm-logout-btn" onClick={() => { stopAlarmSound(); onLogout(); }}>
-            <LogOut size={15} /> Logout
+            <LogOut size={15} /> {t("Log Out")}
           </button>
         </div>
       </header>
@@ -1429,37 +1495,35 @@ function PointsmanModule({ user, onLogout }) {
                 onClick={() => { goToNavPage(item.key); setBellDropdownOpen(false); }}
               >
                 <Icon size={18} />
-                <span>{item.label}</span>
+                <span>{t(item.label)}</span>
               </button>
             );
           })}
-          
-
         </aside>
 
         <main className="pm-main-panel">
           <div className="pm-main-header-band">
             <div>
-              <p className="pm-hero-eyebrow">Nagpur Junction Operations</p>
+              <p className="pm-hero-eyebrow">{t("Nagpur Junction Operations")}</p>
               <h2 className="pm-main-title">
-                {screenMode === "scorecard" ? "Detailed Evaluation scorecard"
-                  : screenMode === "attempt" ? "Competency Examination Attempt"
-                  : navItems.find(i => i.key === activeNav)?.label || "Workspace"}
+                {screenMode === "scorecard" ? t("Detailed Evaluation Scorecard")
+                  : screenMode === "attempt" ? t("Competency Examination Attempt")
+                  : t(navItems.find(i => i.key === activeNav)?.label || "Workspace")}
               </h2>
             </div>
             <div className="pm-header-kpis">
               <div className="pm-hkpi">
                 <Award size={14} />
-                <span>{history.length} Assessments</span>
+                <span>{history.length} {t("Assessments")}</span>
               </div>
               <div className="pm-hkpi">
                 <Gauge size={14} />
-                <span>Avg {Math.round(averageScore)}%</span>
+                <span>{t("Avg")} {Math.round(averageScore)}%</span>
               </div>
               {latestCategory !== "Untested" && (
                 <div className="pm-hkpi" style={{ color: getCategoryColor(latestCategory) }}>
                   <ShieldCheck size={14} />
-                  <span>Cat. {latestCategory}</span>
+                  <span>{t("Cat.")} {latestCategory}</span>
                 </div>
               )}
             </div>
@@ -1480,36 +1544,36 @@ function PointsmanModule({ user, onLogout }) {
         <div className="pm-emergency-modal-overlay">
           <div className="pm-emergency-modal">
             <div className="modal-header">
-              <h2>🚨 CONFIRM URGENT DIVISION-WIDE BROADCAST</h2>
+              <h2>{t("🚨 CONFIRM URGENT DIVISION-WIDE BROADCAST")}</h2>
               <button onClick={() => setEmergencyModalOpen(false)}>×</button>
             </div>
             <div className="modal-body">
               <p className="danger-notice">
-                WARNING: Triggering this broadcast sends an audio warning signal and locks shunting/movement panels on all active Station Master & Superintendent terminals! Use for genuine safety emergencies only.
+                {t("WARNING: Triggering this broadcast sends an audio warning signal and locks shunting/movement panels on all active Station Master & Superintendent terminals! Use for genuine safety emergencies only.")}
               </p>
               <div className="modal-fields">
-                <label>Emergency Category</label>
+                <label>{t("Emergency Category")}</label>
                 <select value={emergencyType} onChange={e => setEmergencyType(e.target.value)}>
-                  <option value="Obstruction on Track">Obstruction on Siding (Fouling Clearance)</option>
-                  <option value="Derailment Danger">Visible Rail Crack / Splitting Point</option>
-                  <option value="Signal Failure">Critical Signal Lock Failure</option>
-                  <option value="Hot Axle Fire Spark">Hot Axle / Spark Smoke in Incoming train</option>
-                  <option value="Other Danger">Other Major Track Danger</option>
+                  <option value="Obstruction on Track">{t("Obstruction on Siding (Fouling Clearance)")}</option>
+                  <option value="Derailment Danger">{t("Visible Rail Crack / Splitting Point")}</option>
+                  <option value="Signal Failure">{t("Critical Signal Lock Failure")}</option>
+                  <option value="Hot Axle Fire Spark">{t("Hot Axle / Spark Smoke in Incoming train")}</option>
+                  <option value="Other Danger">{t("Other Major Track Danger")}</option>
                 </select>
                 
-                <label>Vulnerable Location / Track</label>
+                <label>{t("Vulnerable Location / Track")}</label>
                 <input 
                   type="text" 
                   value={emergencyLocation} 
                   onChange={e => setEmergencyLocation(e.target.value)} 
-                  placeholder="e.g. Line 2 Loop Siding, KM 102/4" 
+                  placeholder={t("e.g. Line 2 Loop Siding, KM 102/4")} 
                 />
               </div>
             </div>
             <div className="modal-footer">
-              <button className="cancel-btn" onClick={() => setEmergencyModalOpen(false)}>Cancel</button>
+              <button className="cancel-btn" onClick={() => setEmergencyModalOpen(false)}>{t("Cancel")}</button>
               <button className="confirm-btn" onClick={triggerEmergencyBroadcast}>
-                CONFIRM & BROADCAST ALARM
+                {t("CONFIRM & BROADCAST ALARM")}
               </button>
             </div>
           </div>

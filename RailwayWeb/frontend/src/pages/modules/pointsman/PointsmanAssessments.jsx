@@ -3,6 +3,7 @@ import { ShieldCheck, Clock } from "lucide-react";
 import { getCategory, getCategoryBg, getCategoryColor } from "../../../constants";
 import { testQuestions } from "../../../data/mockPointsmanData";
 import { PointsmanScorecardPage } from "./PointsmanScorecardPage";
+import { useLanguage } from "../../../contexts/LanguageContext";
 
 export function PointsmanAssessments({
   myAssessSelected,
@@ -15,6 +16,8 @@ export function PointsmanAssessments({
   formatQuarterPeriod,
   employeeId
 }) {
+  const { t } = useLanguage();
+
   /* Scorecard detail view */
   if (myAssessSelected) {
     return (
@@ -60,10 +63,10 @@ export function PointsmanAssessments({
             </div>
             <div style={{flex:1}}>
               <h3 style={{margin:"0 0 6px", fontSize:16, fontWeight:700, color:"#475569"}}>
-                Competency Exam Locked
+                {t("Competency Exam Locked")}
               </h3>
               <p style={{margin:0, fontSize:13, color:"#64748b", lineHeight:1.4}}>
-                Your periodic safety and competency evaluation is locked. Please request your Station Master to activate your test so you can attempt it.
+                {t("Your periodic safety and competency evaluation is locked. Please request your Station Master to activate your test so you can attempt it.")}
               </p>
             </div>
           </div>
@@ -91,10 +94,10 @@ export function PointsmanAssessments({
               </div>
               <div style={{flex:1}}>
                 <h3 style={{margin:"0 0 6px", fontSize:16, fontWeight:700, color:"#ea580c"}}>
-                  ⚠️ Pending Competency Assessment
+                  ⚠️ {t("Pending Competency Assessment")}
                 </h3>
                 <p style={{margin:"0 0 14px", fontSize:13, color:"#9a3412", lineHeight:1.4}}>
-                  Your supervisor (Station Master) has scheduled a periodic safety &amp; competency assessment for you. You must complete the 25-question MCQ exam.
+                  {t("Your supervisor (Station Master) has scheduled a periodic safety & competency assessment for you. You must complete the 25-question MCQ exam.")}
                 </p>
                 <button
                   onClick={startTestAttempt}
@@ -113,7 +116,7 @@ export function PointsmanAssessments({
                     gap:8
                   }}
                 >
-                  Start 25 MCQ Online Assessment
+                  {t("Start 25 MCQ Online Assessment")}
                 </button>
               </div>
             </div>
@@ -133,23 +136,23 @@ export function PointsmanAssessments({
           <ShieldCheck size={24} color="#16a34a"/>
           <div style={{flex:1}}>
             <h3 style={{margin:"0 0 2px", fontSize:14.5, fontWeight:700, color:"#14532d"}}>
-              All assessments are up to date. No pending test available.
+              {t("All assessments are up to date. No pending test available.")}
             </h3>
             <p style={{margin:0, fontSize:12, color:"#166534"}}>
-              Your periodic safety and competency evaluation is currently active and compliant.
+              {t("Your periodic safety and competency evaluation is currently active and compliant.")}
             </p>
           </div>
           <div style={{display:"flex", gap:16, fontSize:12, textAlign:"right"}}>
             <div>
-              <span style={{color:"#166534", display:"block"}}>Last Exam Score</span>
+              <span style={{color:"#166534", display:"block"}}>{t("Last Exam Score")}</span>
               <strong style={{color:"#14532d", fontSize:13}}>{pmMcqTest ? `${pmMcqTest.correctCount}/25 (${pmMcqTest.percentage}%)` : `${history[0]?.totalScore || 84}/100`}</strong>
             </div>
             <div style={{borderLeft:"1px solid #bbf7d0", paddingLeft:16}}>
-              <span style={{color:"#166534", display:"block"}}>Next Due Date</span>
+              <span style={{color:"#166534", display:"block"}}>{t("Next Due Date")}</span>
               <strong style={{color:"#14532d", fontSize:13}}>
                 {(() => {
                   const latest = history.find(h => !h.approvalStatus || ["Approved", "Completed", "EVALUATED"].includes(h.approvalStatus));
-                  if (!latest) return "Pending Evaluation";
+                  if (!latest) return t("Pending Evaluation");
                   const pct = latest.isOnlineExam ? (latest.totalScore / 25) * 100 : latest.totalScore;
                   const cat = latest.category || getCategory(pct);
                   let m = 6;
@@ -165,21 +168,21 @@ export function PointsmanAssessments({
         </div>
       )}
 
-      <div className="sm2-card-hdr"><h2>My Assessment History (by SM)</h2></div>
-      <p className="sm2-subtitle">All assessments conducted by the Station Master for your record. Click any row to view the detailed scorecard.</p>
+      <div className="sm2-card-hdr"><h2>{t("My Assessment History (by SM)")}</h2></div>
+      <p className="sm2-subtitle">{t("All assessments conducted by the Station Master for your record. Click any row to view the detailed scorecard.")}</p>
 
       {/* Summary strip */}
       <div className="sm2-myassess-summary">
         <div className="sm2-report-mini">
-          <label>Total Assessments</label>
+          <label>{t("Total Assessments")}</label>
           <strong>{history.length}</strong>
         </div>
         <div className="sm2-report-mini">
-          <label>Latest Score</label>
+          <label>{t("Latest Score")}</label>
           <strong>{history[0]?.totalScore ?? "—"}/{history[0]?.isOnlineExam ? 25 : 100}</strong>
         </div>
         <div className="sm2-report-mini">
-          <label>Average SM Score</label>
+          <label>{t("Average SM Score")}</label>
           <strong>{
             (() => {
               const regs = history.filter(h => !h.isOnlineExam);
@@ -188,9 +191,9 @@ export function PointsmanAssessments({
           }</strong>
         </div>
         <div className="sm2-report-mini">
-          <label>Latest Assessment</label>
+          <label>{t("Latest Assessment")}</label>
           <strong style={{color: getCategoryColor(history[0]?.category || getCategory(history[0]?.totalScore || 0))}}>
-            {history[0]?.isOnlineExam ? "Online CBT" : `Category ${history[0]?.category || getCategory(history[0]?.totalScore || 0)}`}
+            {history[0]?.isOnlineExam ? t("Online CBT") : `${t("Category")} ${history[0]?.category || getCategory(history[0]?.totalScore || 0)}`}
           </strong>
         </div>
       </div>
@@ -199,7 +202,7 @@ export function PointsmanAssessments({
       <div className="sm2-myassess-list">
         <div className="sm2-myassess-head">
           {["Period","Date","Score Scale","Category","Assessed By","Status",""].map(h =>
-            <span key={h}>{h}</span>)}
+            <span key={h}>{t(h)}</span>)}
         </div>
         {history.map(sc => {
           const cat = sc.category || getCategory(sc.totalScore);
@@ -212,18 +215,18 @@ export function PointsmanAssessments({
               <span><strong>{sc.totalScore}/{sc.isOnlineExam ? 25 : 100}</strong></span>
               <span>
                 {sc.approvalStatus === "Pending" ? (
-                  <span className="sm2-badge" style={{background: "#fef3c7", color: "#d97706"}}>Evaluation Pending</span>
+                  <span className="sm2-badge" style={{background: "#fef3c7", color: "#d97706"}}>{t("Evaluation Pending")}</span>
                 ) : (
                   <span className="sm2-badge" style={{background:getCategoryBg(cat),color:getCategoryColor(cat)}}>
-                    {sc.isOnlineExam ? "CBT Exam" : `Category ${cat}`}
+                    {sc.isOnlineExam ? t("CBT Exam") : `${t("Category")} ${cat}`}
                   </span>
                 )}
               </span>
               <span style={{fontSize:11,color:"#64748b"}}>{sc.assessedBy || "S. Deshmukh (SM)"}</span>
               <span>
-                <span className={`sm2-status-pill sm2-status-${(sc.approvalStatus || "approved").toLowerCase()}`}>{sc.approvalStatus || "Approved"}</span>
+                <span className={`sm2-status-pill sm2-status-${(sc.approvalStatus || "approved").toLowerCase()}`}>{t(sc.approvalStatus || "Approved")}</span>
               </span>
-              <span style={{color:"#2563eb",fontSize:12,fontWeight:600}}>View Form</span>
+              <span style={{color:"#2563eb",fontSize:12,fontWeight:600}}>{t("View Form")}</span>
             </button>
           );
         })}

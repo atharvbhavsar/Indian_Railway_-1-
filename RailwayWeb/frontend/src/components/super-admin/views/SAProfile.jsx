@@ -1,7 +1,10 @@
 import React, { useMemo } from "react";
 import { ResponsiveContainer, BarChart, CartesianGrid, XAxis, YAxis, Tooltip as RTooltip, Bar, Cell } from "recharts";
+import { useLanguage } from "../../../contexts/LanguageContext";
 
 export function SAProfile({ user, staff = [] }) {
+  const { language, changeLanguage, t } = useLanguage();
+
   const { avgScore, realChartData } = useMemo(() => {
     const validStaff = staff.filter(s => typeof s.score === 'number');
     const avg = validStaff.length ? Math.round(validStaff.reduce((acc, s) => acc + s.score, 0) / validStaff.length) : 0;
@@ -28,28 +31,28 @@ export function SAProfile({ user, staff = [] }) {
       {/* Hero header */}
       <div className="sdom-station-header" style={{ marginBottom: 24 }}>
         <div className="sdom-station-header-meta">
-          <div style={{ fontSize: "0.8rem", color: "rgba(255,255,255,0.6)", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.06em" }}>Staff Profile</div>
+          <div style={{ fontSize: "0.8rem", color: "rgba(255,255,255,0.6)", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.06em" }}>{t("Staff Profile")}</div>
           <div style={{ fontSize: "1.8rem", fontWeight: 800, marginBottom: 4 }}>{user?.name || "Super Admin User"}</div>
-          <div style={{ fontSize: "0.9rem", color: "rgba(255,255,255,0.7)" }}>Senior Divisional Operations Manager (Sr. DOM) &bull; Nagpur Division &bull; Central Railway</div>
+          <div style={{ fontSize: "0.9rem", color: "rgba(255,255,255,0.7)" }}>{t("Senior Divisional Operations Manager (Sr. DOM)")} &bull; {t("Nagpur Division")} &bull; {t("Central Railway")}</div>
           <div style={{ marginTop: 12, display: "flex", gap: 10 }}>
-            <span className="sdom-badge sdom-badge-success">Zonal HQ</span>
-            <span className="sdom-badge sdom-badge-success">Active</span>
+            <span className="sdom-badge sdom-badge-success">{t("Zonal HQ")}</span>
+            <span className="sdom-badge sdom-badge-success">{t("Active")}</span>
           </div>
         </div>
         <div className="sdom-station-header-stats">
           <div className="sdom-station-header-stat">
             <span className="val">{avgScore}%</span>
-            <span className="lbl">Division Avg</span>
+            <span className="lbl">{t("Division Avg")}</span>
           </div>
           <div style={{ width: 1, height: 60, background: "rgba(255,255,255,0.15)" }} />
           <div className="sdom-station-header-stat">
             <span className="val">+91 98220 99001</span>
-            <span className="lbl">Contact</span>
+            <span className="lbl">{t("Contact")}</span>
           </div>
           <div style={{ width: 1, height: 60, background: "rgba(255,255,255,0.15)" }} />
           <div className="sdom-station-header-stat">
             <span className="val">2026-05-27</span>
-            <span className="lbl">Last Audit</span>
+            <span className="lbl">{t("Last Audit")}</span>
           </div>
         </div>
       </div>
@@ -57,19 +60,19 @@ export function SAProfile({ user, staff = [] }) {
       {/* Info grid */}
       <div className="sdom-row-2" style={{ marginBottom: "24px" }}>
         <div className="sdom-chart-card">
-          <div className="sdom-chart-title" style={{ marginBottom: "16px" }}>Personal & Professional Details</div>
+          <div className="sdom-chart-title" style={{ marginBottom: "16px" }}>{t("Personal & Professional Details")}</div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '15px', paddingBottom: '20px' }}>
             {[
-              ["Employee ID / HRMS ID", user?.hrmsId || "SA_1001"],
-              ["Designation", user?.role === "Super Admin" ? "Senior Divisional Operations Manager (Sr. DOM)" : "Operations Officer"],
-              ["Mobile Number", user?.mobile || "+91 98220 99001"],
-              ["Email ID", user?.email || "srdom.ngp@rail.in"],
-              ["Account Status", user?.status || "Active"],
-              ["Current Zone", "Central Railway"],
-              ["Current Division", "Nagpur"],
-              ["Current Placement", "Nagpur Division HQ"],
-              ["Reporting Officer", "Zonal Chief Operations Manager (COM)"]
+              [t("Employee ID / HRMS ID"), user?.hrmsId || "SA_1001"],
+              [t("Designation"), user?.role === "Super Admin" ? t("Senior Divisional Operations Manager (Sr. DOM)") : t("Operations Officer")],
+              [t("Mobile Number"), user?.mobile || "+91 98220 99001"],
+              [t("Email ID"), user?.email || "srdom.ngp@rail.in"],
+              [t("Account Status"), t(user?.status || "Active")],
+              [t("Current Zone"), t("Central Railway")],
+              [t("Current Division"), t("Nagpur")],
+              [t("Current Placement"), t("Nagpur Division HQ")],
+              [t("Reporting Officer"), t("Zonal Chief Operations Manager (COM)")]
             ].map(([lbl, val]) => (
               <div key={lbl} style={{ background: "#f8fafc", borderRadius: 8, padding: "12px 16px", border: "1px solid #e2e8f0" }}>
                 <div style={{ fontSize: "0.75rem", color: "#64748b", fontWeight: 700, marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.04em" }}>{lbl}</div>
@@ -81,21 +84,23 @@ export function SAProfile({ user, staff = [] }) {
           {/* Operational Specifications */}
           <div style={{ background: '#f8fafc', padding: '16px', borderRadius: '10px', border: '1px solid #e2e8f0', marginTop: '10px' }}>
             <h4 style={{ margin: '0 0 12px', fontSize: '14px', color: '#0f172a', fontWeight: '800', borderBottom: '1px solid #cbd5e1', paddingBottom: '6px' }}>
-              Operational & Safety Dates
+              {t("Operational & Safety Dates")}
             </h4>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '15px', fontSize: '13px' }}>
-              <div><strong>Last Division Audit Done:</strong><div style={{ fontWeight: 700, color: "#065f46", marginTop: 4 }}>2026-05-20</div></div>
-              <div><strong>Next Audit Due:</strong><div style={{ fontWeight: 700, color: "#991b1b", marginTop: 4 }}>2026-06-20</div></div>
-              <div><strong>Executive Safety Training:</strong><div style={{ fontWeight: 700, color: "#0d2c4d", marginTop: 4 }}>2025-10-12</div></div>
-              <div><strong>Safety Summit Attended:</strong><div style={{ fontWeight: 700, color: "#0d2c4d", marginTop: 4 }}>2026-03-15</div></div>
-              <div style={{ gridColumn: "span 2" }}><strong>Zonal Operations Review:</strong><div style={{ fontWeight: 700, color: "#d97706", marginTop: 4 }}>2026-04-18</div></div>
+              <div><strong>{t("Last Division Audit Done")}:</strong><div style={{ fontWeight: 700, color: "#065f46", marginTop: 4 }}>2026-05-20</div></div>
+              <div><strong>{t("Next Audit Due")}:</strong><div style={{ fontWeight: 700, color: "#991b1b", marginTop: 4 }}>2026-06-20</div></div>
+              <div><strong>{t("Executive Safety Training")}:</strong><div style={{ fontWeight: 700, color: "#0d2c4d", marginTop: 4 }}>2025-10-12</div></div>
+              <div><strong>{t("Safety Summit Attended")}:</strong><div style={{ fontWeight: 700, color: "#0d2c4d", marginTop: 4 }}>2026-03-15</div></div>
+              <div style={{ gridColumn: "span 2" }}><strong>{t("Zonal Operations Review")}:</strong><div style={{ fontWeight: 700, color: "#d97706", marginTop: 4 }}>2026-04-18</div></div>
             </div>
           </div>
+
+
         </div>
 
         <div className="sdom-chart-card">
-          <div className="sdom-chart-title">Real-Time Division Score Distribution</div>
-          <div className="sdom-chart-subtitle">Current staff performance breakdown across Nagpur Division</div>
+          <div className="sdom-chart-title">{t("Real-Time Division Score Distribution")}</div>
+          <div className="sdom-chart-subtitle">{t("Current staff performance breakdown across Nagpur Division")}</div>
           <div style={{ height: 300 }}>
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={realChartData} margin={{ top: 20, right: 30, left: 0, bottom: 5 }}>

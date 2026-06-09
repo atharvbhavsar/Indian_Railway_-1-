@@ -1,6 +1,7 @@
 import React from "react";
 import { Search, ArrowUpDown, ClipboardList, Award, TrendingUp, ShieldCheck } from "lucide-react";
 import { getCategory, getCategoryBg, getCategoryColor } from "../../../constants";
+import { useLanguage } from "../../../contexts/LanguageContext";
 
 export function PointsmanHistoryPage({
   history,
@@ -10,6 +11,8 @@ export function PointsmanHistoryPage({
   historySortOrder, setHistorySortOrder,
   openScorecard
 }) {
+  const { t } = useLanguage();
+
   // Top summary statistics calculated reactively:
   const totalAssessments = history.length;
   const latestScore = history.length ? history[0].totalScore : null;
@@ -29,9 +32,9 @@ export function PointsmanHistoryPage({
   return (
     <section className="pm-page-card animate-fade-in">
       <div className="pm-page-header">
-        <h2>Periodic Evaluation Archive</h2>
+        <h2>{t("Periodic Evaluation Archive")}</h2>
       </div>
-      <p className="pm-subtitle">Historical ledger of standard Pointsman CBT safety competency trials.</p>
+      <p className="pm-subtitle">{t("Historical ledger of standard Pointsman CBT safety competency trials.")}</p>
 
       {/* 4 Premium High-Fidelity Analytics Cards (Station Master Alignment) */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "16px", marginBottom: "24px" }}>
@@ -40,8 +43,8 @@ export function PointsmanHistoryPage({
             <ClipboardList size={20} />
           </div>
           <div>
-            <div style={{ fontSize: "10.5px", color: "#64748b", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.4px" }}>Total Assessments</div>
-            <div style={{ fontSize: "18px", fontWeight: "800", color: "#0f172a", marginTop: "2px" }}>{totalAssessments} Attempts</div>
+            <div style={{ fontSize: "10.5px", color: "#64748b", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.4px" }}>{t("Total Assessments")}</div>
+            <div style={{ fontSize: "18px", fontWeight: "800", color: "#0f172a", marginTop: "2px" }}>{totalAssessments} {t("Attempts")}</div>
           </div>
         </div>
 
@@ -50,7 +53,7 @@ export function PointsmanHistoryPage({
             <Award size={20} />
           </div>
           <div>
-            <div style={{ fontSize: "10.5px", color: "#64748b", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.4px" }}>Latest Score</div>
+            <div style={{ fontSize: "10.5px", color: "#64748b", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.4px" }}>{t("Latest Score")}</div>
             <div style={{ fontSize: "18px", fontWeight: "800", color: "#0f172a", marginTop: "2px" }}>{latestScore !== null ? `${latestScore}/${history[0]?.isOnlineExam ? 25 : 100}` : "—"}</div>
           </div>
         </div>
@@ -60,7 +63,7 @@ export function PointsmanHistoryPage({
             <TrendingUp size={20} />
           </div>
           <div>
-            <div style={{ fontSize: "10.5px", color: "#64748b", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.4px" }}>Average Score</div>
+            <div style={{ fontSize: "10.5px", color: "#64748b", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.4px" }}>{t("Average Score")}</div>
             <div style={{ fontSize: "18px", fontWeight: "800", color: "#0f172a", marginTop: "2px" }}>{averageScore}%</div>
           </div>
         </div>
@@ -70,9 +73,9 @@ export function PointsmanHistoryPage({
             <ShieldCheck size={20} />
           </div>
           <div>
-            <div style={{ fontSize: "10.5px", color: "#64748b", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.4px" }}>Latest Category</div>
+            <div style={{ fontSize: "10.5px", color: "#64748b", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.4px" }}>{t("Latest Category")}</div>
             <div style={{ fontSize: "18px", fontWeight: "800", color: getCategoryColor(latestCategory), marginTop: "2px" }}>
-              {latestCategory !== "—" ? `Cat. ${latestCategory}` : "—"}
+              {latestCategory !== "—" ? `${t("Cat.")} ${latestCategory}` : "—"}
             </div>
           </div>
         </div>
@@ -84,7 +87,7 @@ export function PointsmanHistoryPage({
           <Search size={15} color="#64748b" />
           <input
             type="text"
-            placeholder="Search by period (e.g. April 2026)"
+            placeholder={t("Search by period (e.g. April 2026)")}
             value={historyDateSearch}
             onChange={e => { setHistoryDateSearch(e.target.value); setHistoryPage(1); }}
             style={{ border: "none", outline: "none", fontSize: "13px", width: "100%", color: "#334155" }}
@@ -97,10 +100,10 @@ export function PointsmanHistoryPage({
             onChange={e => { setHistorySortOrder(e.target.value); setHistoryPage(1); }}
             style={{ border: "none", outline: "none", fontSize: "13px", color: "#334155", fontWeight: "600", cursor: "pointer" }}
           >
-            <option value="date-desc">Newest Attempt First</option>
-            <option value="date-asc">Oldest Attempt First</option>
-            <option value="score-desc">Highest Score First</option>
-            <option value="score-asc">Lowest Score First</option>
+            <option value="date-desc">{t("Newest Attempt First")}</option>
+            <option value="date-asc">{t("Oldest Attempt First")}</option>
+            <option value="score-desc">{t("Highest Score First")}</option>
+            <option value="score-asc">{t("Lowest Score First")}</option>
           </select>
         </div>
       </div>
@@ -109,22 +112,22 @@ export function PointsmanHistoryPage({
       {filteredHistory.length === 0 ? (
         <div style={{ textAlign: "center", padding: "48px 16px", background: "#ffffff", borderRadius: "12px", border: "1px dashed #cbd5e1" }}>
           <Search size={36} color="#94a3b8" style={{ marginBottom: "12px" }} />
-          <h3 style={{ fontSize: "15px", fontWeight: "700", color: "#475569", margin: "0 0 6px" }}>No attempts found</h3>
-          <p style={{ fontSize: "13px", color: "#64748b", margin: 0 }}>Try clearing your search query or sorting filters.</p>
+          <h3 style={{ fontSize: "15px", fontWeight: "700", color: "#475569", margin: "0 0 6px" }}>{t("No attempts found")}</h3>
+          <p style={{ fontSize: "13px", color: "#64748b", margin: 0 }}>{t("Try clearing your search query or sorting filters.")}</p>
         </div>
       ) : (
         <div style={{ background: "#ffffff", border: "1px solid #e2e8f0", borderRadius: "12px", overflow: "hidden", boxShadow: "0 4px 6px -1px rgba(0,0,0,0.02)" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13.5px" }}>
             <thead>
               <tr style={{ background: "#f8fafc", borderBottom: "1.5px solid #e2e8f0" }}>
-                <th style={{ padding: "14px 18px", textAlign: "left", fontWeight: "700", color: "#475569" }}>Attempt No.</th>
-                <th style={{ padding: "14px 18px", textAlign: "left", fontWeight: "700", color: "#475569" }}>Period</th>
-                <th style={{ padding: "14px 18px", textAlign: "left", fontWeight: "700", color: "#475569" }}>Assessment Date</th>
-                <th style={{ padding: "14px 18px", textAlign: "left", fontWeight: "700", color: "#475569" }}>Score</th>
-                <th style={{ padding: "14px 18px", textAlign: "left", fontWeight: "700", color: "#475569" }}>Category</th>
-                <th style={{ padding: "14px 18px", textAlign: "left", fontWeight: "700", color: "#475569" }}>Assessed By</th>
-                <th style={{ padding: "14px 18px", textAlign: "left", fontWeight: "700", color: "#475569" }}>Status</th>
-                <th style={{ padding: "14px 18px", textAlign: "right", fontWeight: "700", color: "#475569" }}>Actions</th>
+                <th style={{ padding: "14px 18px", textAlign: "left", fontWeight: "700", color: "#475569" }}>{t("Attempt No.")}</th>
+                <th style={{ padding: "14px 18px", textAlign: "left", fontWeight: "700", color: "#475569" }}>{t("Period")}</th>
+                <th style={{ padding: "14px 18px", textAlign: "left", fontWeight: "700", color: "#475569" }}>{t("Assessment Date")}</th>
+                <th style={{ padding: "14px 18px", textAlign: "left", fontWeight: "700", color: "#475569" }}>{t("Score")}</th>
+                <th style={{ padding: "14px 18px", textAlign: "left", fontWeight: "700", color: "#475569" }}>{t("Category")}</th>
+                <th style={{ padding: "14px 18px", textAlign: "left", fontWeight: "700", color: "#475569" }}>{t("Assessed By")}</th>
+                <th style={{ padding: "14px 18px", textAlign: "left", fontWeight: "700", color: "#475569" }}>{t("Status")}</th>
+                <th style={{ padding: "14px 18px", textAlign: "right", fontWeight: "700", color: "#475569" }}>{t("Actions")}</th>
               </tr>
             </thead>
             <tbody>
@@ -134,20 +137,20 @@ export function PointsmanHistoryPage({
                 return (
                   <tr key={record.id} className="sdom-table-row-hover" style={{ borderBottom: "1px solid #f1f5f9", transition: "background 0.15s ease" }}>
                     <td style={{ padding: "14px 18px", fontWeight: "700", color: "#1e3a8a" }}>#{absoluteIdx}</td>
-                    <td style={{ padding: "14px 18px", fontWeight: "600", color: "#334155" }}>{record.assessmentPeriod}</td>
+                    <td style={{ padding: "14px 18px", fontWeight: "600", color: "#334155" }}>{t(record.assessmentPeriod)}</td>
                     <td style={{ padding: "14px 18px", color: "#64748b" }}>{record.date}</td>
                     <td style={{ padding: "14px 18px", fontWeight: "800", color: "#0f172a" }}>{record.totalScore} / {record.isOnlineExam ? 25 : 100}</td>
                     <td style={{ padding: "14px 18px" }}>
                       {record.approvalStatus === "Pending" ? (
-                        <span style={{ background: "#fef3c7", color: "#d97706", fontWeight: "800", fontSize: "12px", padding: "4px 10px", borderRadius: "6px", textTransform: "uppercase" }}>Eval Pending</span>
+                        <span style={{ background: "#fef3c7", color: "#d97706", fontWeight: "800", fontSize: "12px", padding: "4px 10px", borderRadius: "6px", textTransform: "uppercase" }}>{t("Eval Pending")}</span>
                       ) : (
-                        <span style={{ background: getCategoryBg(cat), color: getCategoryColor(cat), fontWeight: "800", fontSize: "12px", padding: "4px 10px", borderRadius: "6px", textTransform: "uppercase" }}>Cat. {cat}</span>
+                        <span style={{ background: getCategoryBg(cat), color: getCategoryColor(cat), fontWeight: "800", fontSize: "12px", padding: "4px 10px", borderRadius: "6px", textTransform: "uppercase" }}>{t("Cat.")} {cat}</span>
                       )}
                     </td>
-                    <td style={{ padding: "14px 18px", color: "#334155", fontWeight: "500" }}>{record.assessedBy || "S. Deshmukh (SM)"}</td>
+                    <td style={{ padding: "14px 18px", color: "#334155", fontWeight: "500" }}>{t(record.assessedBy || "S. Deshmukh (SM)")}</td>
                     <td style={{ padding: "14px 18px" }}>
                       <span style={{ background: record.approvalStatus === "Pending" ? "#fef3c7" : "#dcfce7", color: record.approvalStatus === "Pending" ? "#d97706" : "#15803d", fontWeight: "700", fontSize: "11px", padding: "4px 8px", borderRadius: "20px", textTransform: "uppercase" }}>
-                        {record.approvalStatus || "Approved"}
+                        {t(record.approvalStatus || "Approved")}
                       </span>
                     </td>
                     <td style={{ padding: "14px 18px", textAlign: "right" }}>
@@ -165,7 +168,7 @@ export function PointsmanHistoryPage({
                           transition: "all 0.15s ease" 
                         }}
                       >
-                        View Form
+                        {t("View Form")}
                       </button>
                     </td>
                   </tr>
@@ -178,7 +181,7 @@ export function PointsmanHistoryPage({
           {totalPages > 1 && (
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px 18px", background: "#f8fafc", borderTop: "1px solid #e2e8f0" }}>
               <span style={{ fontSize: "13px", color: "#64748b" }}>
-                Showing <b>{startIndex + 1}</b> to <b>{Math.min(startIndex + itemsPerPage, filteredHistory.length)}</b> of <b>{filteredHistory.length}</b> attempts
+                {t("Showing")} <b>{startIndex + 1}</b> {t("to")} <b>{Math.min(startIndex + itemsPerPage, filteredHistory.length)}</b> {t("of")} <b>{filteredHistory.length}</b> {t("attempts")}
               </span>
               <div style={{ display: "flex", gap: "8px" }}>
                 <button
@@ -186,14 +189,14 @@ export function PointsmanHistoryPage({
                   onClick={() => setHistoryPage(p => Math.max(1, p - 1))}
                   style={{ padding: "6px 12px", border: "1px solid #cbd5e1", borderRadius: "6px", background: "#ffffff", color: currentPage === 1 ? "#94a3b8" : "#334155", fontWeight: "600", cursor: currentPage === 1 ? "not-allowed" : "pointer", fontSize: "12.5px" }}
                 >
-                  Previous
+                  {t("Previous")}
                 </button>
                 <button
                   disabled={currentPage === totalPages}
                   onClick={() => setHistoryPage(p => Math.min(totalPages, p + 1))}
                   style={{ padding: "6px 12px", border: "1px solid #cbd5e1", borderRadius: "6px", background: "#ffffff", color: currentPage === totalPages ? "#94a3b8" : "#334155", fontWeight: "600", cursor: currentPage === totalPages ? "not-allowed" : "pointer", fontSize: "12.5px" }}
                 >
-                  Next
+                  {t("Next")}
                 </button>
               </div>
             </div>

@@ -13,7 +13,7 @@ import {
   TI_QUIZ, INIT_TI_ASSESS_HISTORY, defaultSMForm, defaultTMForm, defaultSSForm
 } from "../../constants/trafficInspectorConstants";
 import { saDataService } from "../../services/saDataService";
-import { supabase } from "../../supabaseClient";
+import { supabase, isSupabaseConfigured } from "../../supabaseClient";
 import { assessmentService } from "../../services/assessmentService";
 
 export function useTrafficInspectorState(user, onLogout) {
@@ -24,7 +24,23 @@ export function useTrafficInspectorState(user, onLogout) {
 
   // Layout modals
   const [showAddStationModal, setShowAddStationModal] = useState(false);
-  const [newStationData, setNewStationData] = useState({ name: "", code: "" });
+  const defaultStationForm = {
+    stationName: "",
+    stationCode: "",
+    division: "Nagpur",
+    category: "A",
+    status: "Active",
+    platforms: "3",
+    runningLines: "5",
+    address: "",
+    district: "Nagpur",
+    state: "Maharashtra",
+    stationType: "Junction"
+  };
+  const [newStationData, setNewStationData] = useState(defaultStationForm);
+  const [stationFormErrors, setStationFormErrors] = useState({});
+  const [editingStationId, setEditingStationId] = useState(null);
+  const [stationModalMode, setStationModalMode] = useState("add"); // "add" | "edit"
   const [showAddUserModal, setShowAddUserModal] = useState(false);
   const [newUserData, setNewUserData] = useState({
     id: "", name: "", role: "Station Master", designation: "Station Master",
@@ -56,12 +72,12 @@ export function useTrafficInspectorState(user, onLogout) {
       ];
     } else if (role === "SM") {
       return [
-        { title: "Station Management", score: Math.round(total * 0.25), max: 25 },
-        { title: "Safety & Compliance", score: Math.round(total * 0.20), max: 20 },
-        { title: "Staff Supervision", score: Math.round(total * 0.15), max: 15 },
-        { title: "Documentation & Reporting", score: Math.round(total * 0.15), max: 15 },
-        { title: "Emergency Handling", score: Math.round(total * 0.25), max: 25 },
-        { title: "Written Exam (Knowledge)", score: Math.round(total * 0.20), max: 25 }
+        { title: "Knowledge of Rules (MCQ)", score: Math.round(total * 0.25), max: 25 },
+        { title: "Alertness and Observation of Rules", score: Math.round(total * 0.25), max: 25 },
+        { title: "Safety Record", score: Math.round(total * 0.15), max: 15 },
+        { title: "Leadership and Management", score: Math.round(total * 0.15), max: 15 },
+        { title: "Discipline", score: Math.round(total * 0.10), max: 10 },
+        { title: "Appearance and Neatness", score: Math.round(total * 0.10), max: 10 },
       ];
     } else if (role === "TM") {
       return [
@@ -126,9 +142,11 @@ export function useTrafficInspectorState(user, onLogout) {
         };
       });
 
-      const filteredMapped = tiStations.length > 0
-        ? mapped.filter(x => x.stationName && tiStations.includes(x.stationName.toLowerCase()))
-        : [];
+      const filteredMapped = mapped.filter(u => {
+        if (tiStations.length === 0) return false;
+        return tiStations.includes((u.stationName || u.station || "").toLowerCase());
+      });
+
       setUsers(filteredMapped);
 
       // Now query assessments from database
@@ -163,6 +181,7 @@ export function useTrafficInspectorState(user, onLogout) {
         .order("created_at", { ascending: false });
 
       if (!assessError && assessList) {
+        setAllDbAssessments(assessList);
         // 1. Pointsmen Assessments (pmList)
         const pms = assessList.filter(a => a.assessment_type === "Pointsman Checklist" || a.assessment_type === "Pointsman Evaluation" || a.assessment_type === "Checklist Evaluation");
         const pmMapped = pms
@@ -199,7 +218,7 @@ export function useTrafficInspectorState(user, onLogout) {
         const smMapped = sms.map(u => {
           const latest = assessList.find(a => a.employee_id === u.user_id && (a.assessment_type === "Station Master Assessment" || a.assessment_type === "SM Assessment"));
           const score = (latest?.TEST_ATTEMPT?.[0]?.obtained_marks !== undefined && latest?.TEST_ATTEMPT?.[0]?.obtained_marks !== null) ? latest.TEST_ATTEMPT[0].obtained_marks : null;
-          
+
           const isLocalActive = localStorage.getItem(`sm_test_activated_${u.hrmsId}`) === "true";
           let statusVal = 'Pending';
           if (latest) {
@@ -235,7 +254,7 @@ export function useTrafficInspectorState(user, onLogout) {
         const tmMapped = tms.map(u => {
           const latest = assessList.find(a => a.employee_id === u.user_id && (a.assessment_type === "Train Manager Assessment" || a.assessment_type === "TM Assessment"));
           const score = (latest?.TEST_ATTEMPT?.[0]?.obtained_marks !== undefined && latest?.TEST_ATTEMPT?.[0]?.obtained_marks !== null) ? latest.TEST_ATTEMPT[0].obtained_marks : null;
-          
+
           const isLocalActive = localStorage.getItem(`tm_test_activated_${u.hrmsId}`) === "true";
           let statusVal = 'Pending';
           if (latest) {
@@ -271,7 +290,7 @@ export function useTrafficInspectorState(user, onLogout) {
         const ssMapped = sss.map(u => {
           const latest = assessList.find(a => a.employee_id === u.user_id && (a.assessment_type === "Station Superintendent Assessment" || a.assessment_type === "SS Assessment"));
           const score = (latest?.TEST_ATTEMPT?.[0]?.obtained_marks !== undefined && latest?.TEST_ATTEMPT?.[0]?.obtained_marks !== null) ? latest.TEST_ATTEMPT[0].obtained_marks : null;
-          
+
           const isLocalActive = localStorage.getItem(`ss_test_activated_${u.hrmsId}`) === "true";
           let statusVal = 'Pending';
           if (latest) {
@@ -320,12 +339,12 @@ export function useTrafficInspectorState(user, onLogout) {
             approvalDate: approval?.approval_date ? new Date(approval.approval_date).toISOString().slice(0, 10) : "",
             approvedBy: approval?.USERS?.full_name || "",
             sections: [
-              { title: "Knowledge of Rules", marks: Math.round(score * 0.25), outOf: 25 },
-              { title: "Alertness & Observation", marks: Math.round(score * 0.25), outOf: 25 },
+              { title: "Knowledge of Rules (MCQ)", marks: Math.round(score * 0.25), outOf: 25 },
+              { title: "Alertness and Observation of Rules", marks: Math.round(score * 0.25), outOf: 25 },
               { title: "Safety Record", marks: Math.round(score * 0.15), outOf: 15 },
-              { title: "Leadership & Management", marks: Math.round(score * 0.15), outOf: 15 },
+              { title: "Leadership and Management", marks: Math.round(score * 0.15), outOf: 15 },
               { title: "Discipline", marks: Math.round(score * 0.10), outOf: 10 },
-              { title: "Appearance & Neatness", marks: Math.round(score * 0.10), outOf: 10 }
+              { title: "Appearance and Neatness", marks: Math.round(score * 0.10), outOf: 10 }
             ],
             userAnswers: []
           };
@@ -336,7 +355,7 @@ export function useTrafficInspectorState(user, onLogout) {
         const recentAssessmentsMapped = assessList
           .filter(a => {
             const sName = a.employee?.EMPLOYEE_PROFILE?.STATION?.station_name || "";
-            return tiStations.includes(sName.toLowerCase()) || a.conducted_by === effectiveUserId;
+            return tiStations.includes(sName.toLowerCase());
           })
           .slice(0, 5)
           .map(a => ({
@@ -369,31 +388,56 @@ export function useTrafficInspectorState(user, onLogout) {
           employee:USERS!user_id (
             full_name,
             hrms_id,
-            EMPLOYEE_PROFILE (STATION (station_name))
+            EMPLOYEE_PROFILE (STATION (station_name, station_code))
           )
         `);
       if (!safetyError && safetyRecords) {
-        const inspects = safetyRecords.filter(r => r.incident_type === 'Inspection').map(r => ({
-          id: r.safety_id,
-          date: r.incident_date,
-          station: r.employee?.EMPLOYEE_PROFILE?.STATION?.station_name || "Nagpur Junction",
-          officer: "TI " + (user?.name || "R. Khan"),
-          observations: r.description,
-          risk: r.action_taken || "Low",
-          status: "Active"
-        }));
+        const inspects = safetyRecords
+          .filter(r => {
+            if (r.incident_type !== 'Inspection') return false;
+            return r.user_id === effectiveUserId;
+          })
+          .map(r => {
+            let stationName = tiStations[0] || "Nagpur Junction";
+            let obs = r.description || "";
+            if (obs.startsWith("Station: ")) {
+              const parts = obs.split(" | Observations: ");
+              if (parts.length >= 2) {
+                stationName = parts[0].replace("Station: ", "");
+                obs = parts[1];
+              }
+            }
+            return {
+              id: r.safety_id,
+              date: r.incident_date,
+              station: stationName,
+              officer: "TI " + (user?.name || "R. Khan"),
+              observations: obs,
+              risk: r.action_taken || "Low",
+              status: "Active"
+            };
+          })
+          .filter(ins => {
+            return tiStations.includes(ins.station.toLowerCase());
+          });
         setInspections(inspects);
 
-        const couns = safetyRecords.filter(r => r.incident_type === 'Counseling').map(r => ({
-          id: r.safety_id,
-          date: r.incident_date,
-          staffName: r.employee?.full_name || "Pointsman",
-          designation: "Pointsman Grade I",
-          station: r.employee?.EMPLOYEE_PROFILE?.STATION?.station_name || "Nagpur Junction",
-          topics: r.description,
-          duration: "30 mins",
-          progress: r.action_taken || "Under Monitor"
-        }));
+        const couns = safetyRecords
+          .filter(r => {
+            if (r.incident_type !== 'Counseling') return false;
+            const sName = r.employee?.EMPLOYEE_PROFILE?.STATION?.station_name || "";
+            return tiStations.includes(sName.toLowerCase());
+          })
+          .map(r => ({
+            id: r.safety_id,
+            date: r.incident_date,
+            staffName: r.employee?.full_name || "Pointsman",
+            designation: r.employee?.EMPLOYEE_PROFILE?.designation || "Pointsman Grade I",
+            station: r.employee?.EMPLOYEE_PROFILE?.STATION?.station_name || "Nagpur Junction",
+            topics: r.description,
+            duration: "30 mins",
+            progress: r.action_taken || "Under Monitor"
+          }));
         setCounsellings(couns);
       }
     } catch (err) {
@@ -465,6 +509,10 @@ export function useTrafficInspectorState(user, onLogout) {
   const [rosterStation, setRosterStation] = useState("All");
   const [rosterStatus, setRosterStatus] = useState("All");
   const [rosterDate, setRosterDate] = useState("");
+  const [allDbAssessments, setAllDbAssessments] = useState([]);
+  const [selectedCategory, setSelectedCategory] = useState(null);
+  const [selectedHrmsIds, setSelectedHrmsIds] = useState([]);
+  const [viewUpcomingOnly, setViewUpcomingOnly] = useState(false);
 
   const [repApplied, setRepApplied] = useState(false);
 
@@ -525,8 +573,8 @@ export function useTrafficInspectorState(user, onLogout) {
 
   // Reactive memo filters
   const myStations = useMemo(() => {
-    return stations.filter(st => !st.assignedTi || st.assignedTi === tiId);
-  }, [stations, tiId]);
+    return stations;
+  }, [stations]);
 
   const myUsers = useMemo(() => {
     return users.filter(u => myStations.some(st => st.name === u.station));
@@ -786,7 +834,7 @@ export function useTrafficInspectorState(user, onLogout) {
       setView({
         type: "stationDetail",
         data: {
-          ...matched, ti: tiName, smCount, pmCount,
+          ...matched, ti: matched.ti || "Not Assigned", smCount, pmCount,
           score: matched.avgScore || matched.score,
           safety: matched.safetyPct || matched.safety,
           highRisk: matched.highRisk, pending: pendingCount
@@ -855,29 +903,127 @@ export function useTrafficInspectorState(user, onLogout) {
     setView(null);
   };
 
-  /* ── Operational / Admin Actions ── */
+  const handleOpenEditStation = (station) => {
+    setStationModalMode("edit");
+    setEditingStationId(station.id);
+    setNewStationData({
+      stationName: station.name || station.stationName || "",
+      stationCode: station.code || station.stationCode || "",
+      division: station.division || "Nagpur",
+      category: station.category || "A",
+      status: station.status || "Active",
+      platforms: String(station.platforms || "3"),
+      runningLines: String(station.runningLines || "5"),
+      address: station.address || "",
+      district: station.district || "Nagpur",
+      state: station.state || "Maharashtra",
+      stationType: station.stationType || "Junction"
+    });
+    setStationFormErrors({});
+    setShowAddStationModal(true);
+  };
+
+  const handleOpenAddStation = () => {
+    setStationModalMode("add");
+    setEditingStationId(null);
+    setNewStationData(defaultStationForm);
+    setStationFormErrors({});
+    setShowAddStationModal(true);
+  };
+
+  const handleDeleteStation = async (stationId, stationName) => {
+    if (!window.confirm(`Are you sure you want to permanently delete station ${stationName}?`)) {
+      return;
+    }
+
+    const assignedStaff = users.filter((u) => u.station === stationName);
+    if (assignedStaff.length > 0) {
+      const staffNames = assignedStaff.map(u => `${u.name} (${u.id})`).join(", ");
+      alert(`Cannot delete station. Operational staff are currently assigned to this station: ${staffNames}. Please reassign or delete these staff members first.`);
+      return;
+    }
+
+    try {
+      await saDataService.deleteStation(stationId, stationName);
+      await fetchLiveDatabaseData();
+      addAuditLog("Deleted Station", `Station: ${stationName}`);
+      triggerNotification("danger", `Station ${stationName} deleted.`);
+    } catch (err) {
+      alert("Error deleting station: " + err.message);
+    }
+  };
+
   const handleAddStationSubmit = async (e) => {
     e.preventDefault();
-    if (!newStationData.name || !newStationData.code) return;
+
+    // Validate fields
+    const errors = {};
+    const cleanName = newStationData.stationName.trim();
+    const cleanCode = newStationData.stationCode.trim().toUpperCase();
+
+    const nameExists = stations.some(
+      (st) => (st.name || st.stationName || "").toLowerCase() === cleanName.toLowerCase() && st.id !== editingStationId
+    );
+    const codeExists = stations.some(
+      (st) => (st.code || st.stationCode || "").toUpperCase() === cleanCode && st.id !== editingStationId
+    );
+
+    if (!cleanName) {
+      errors.stationName = "Station Name is required";
+    } else if (nameExists) {
+      errors.stationName = "Station Name must be unique";
+    }
+
+    if (!cleanCode) {
+      errors.stationCode = "Station Code is required";
+    } else if (codeExists) {
+      errors.stationCode = "Station Code must be unique";
+    }
+
+    if (!newStationData.platforms) errors.platforms = "Platforms count is required";
+    if (!newStationData.runningLines) errors.runningLines = "Running Lines count is required";
+    if (!newStationData.address.trim()) errors.address = "Address is required";
+    if (!newStationData.district.trim()) errors.district = "District is required";
+    if (!newStationData.state.trim()) errors.state = "State is required";
+
+    if (Object.keys(errors).length > 0) {
+      setStationFormErrors(errors);
+      return;
+    }
+
     const newSt = {
-      id: Date.now().toString(),
-      stationName: newStationData.name,
-      stationCode: newStationData.code.toUpperCase(),
-      division: "Parbhani-Amla Section",
-      zone: "Central Railway",
-      category: "B",
-      riskLevel: "Medium",
-      lastUpdatedDate: new Date().toISOString().slice(0, 10)
+      id: editingStationId,
+      stationName: cleanName,
+      stationCode: cleanCode,
+      division: "Nagpur",
+      zone: "",
+      category: newStationData.category || "A",
+      platforms: Number(newStationData.platforms),
+      runningLines: Number(newStationData.runningLines),
+      stationType: newStationData.stationType || "Junction",
+      status: newStationData.status || "Active",
+      address: newStationData.address.trim(),
+      district: newStationData.district.trim(),
+      state: newStationData.state.trim(),
+      section: "",
+      assignedTi: ""
     };
+
     try {
-      await saDataService.saveStation(newSt, "add");
+      await saDataService.saveStation(newSt, stationModalMode === "edit" ? "edit" : "add");
       await fetchLiveDatabaseData();
-      addAuditLog("Added New Station", `Station: ${newSt.stationName} (${newSt.stationCode})`);
-      triggerNotification("success", `Station ${newSt.stationName} added to division.`);
-      setNewStationData({ name: "", code: "" });
+      if (stationModalMode === "edit") {
+        addAuditLog("Updated Station Details", `Station: ${newSt.stationName} (${newSt.stationCode})`);
+        triggerNotification("success", `Station ${newSt.stationName} details modified.`);
+      } else {
+        addAuditLog("Added New Station", `Station: ${newSt.stationName} (${newSt.stationCode})`);
+        triggerNotification("success", `Station ${newSt.stationName} added to division.`);
+      }
+      setNewStationData(defaultStationForm);
+      setStationFormErrors({});
       setShowAddStationModal(false);
     } catch (err) {
-      alert("Error adding station: " + err.message);
+      alert("Error saving station: " + err.message);
     }
   };
 
@@ -1078,6 +1224,55 @@ export function useTrafficInspectorState(user, onLogout) {
                 category: finalCat
               })
               .eq("user_id", emp.user_id);
+          }
+        }
+
+        // Auto schedule next assessment for Category A, B, C
+        if (finalCat === "A" || finalCat === "B" || finalCat === "C") {
+          try {
+            const monthsToAdd = finalCat === "C" ? 3 : 6;
+            const nextDate = new Date();
+            nextDate.setMonth(nextDate.getMonth() + monthsToAdd);
+            const nextDateStr = nextDate.toISOString().split('T')[0];
+
+            const emp = users.find(u => u.hrmsId === targetAssess.hrmsId);
+            if (emp?.user_id) {
+              let condBy = user.userId;
+              if (!condBy || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(condBy)) {
+                const tiHrms = user.hrmsId || user.hrms_id;
+                if (tiHrms) {
+                  const { data: tiData } = await supabase
+                    .from("USERS")
+                    .select("user_id")
+                    .eq("hrms_id", tiHrms)
+                    .single();
+                  if (tiData?.user_id) {
+                    condBy = tiData.user_id;
+                  }
+                }
+              }
+
+              // Check if there is already an upcoming scheduled/locked/available assessment to avoid duplicates
+              const { data: upcomingAssess } = await supabase
+                .from("ASSESSMENT")
+                .select("assessment_id")
+                .eq("employee_id", emp.user_id)
+                .in("status", ["LOCKED", "AVAILABLE", "IN_PROGRESS", "Pending", "Scheduled"])
+                .order("created_at", { ascending: false })
+                .limit(1);
+
+              if (!upcomingAssess || upcomingAssess.length === 0) {
+                await supabase.from("ASSESSMENT").insert([{
+                  employee_id: emp.user_id,
+                  conducted_by: condBy || emp.user_id,
+                  assessment_type: "Checklist Evaluation",
+                  due_date: nextDateStr,
+                  status: "LOCKED"
+                }]);
+              }
+            }
+          } catch (schedErr) {
+            console.error("Failed to automatically schedule next assessment for Cat A/B/C:", schedErr);
           }
         }
 
@@ -1365,7 +1560,7 @@ export function useTrafficInspectorState(user, onLogout) {
       if (existingAttempt) {
         let prevAnswers = existingAttempt.answers || {};
         if (typeof prevAnswers === "string") {
-          try { prevAnswers = JSON.parse(prevAnswers); } catch (e) {}
+          try { prevAnswers = JSON.parse(prevAnswers); } catch (e) { }
         }
         let mergedAnswers = Array.isArray(prevAnswers)
           ? { questions: prevAnswers, ...newAnswers }
@@ -1548,22 +1743,23 @@ export function useTrafficInspectorState(user, onLogout) {
     setTmForms(p => ({ ...p, [id]: { ...(p[id] || defaultTMForm()), [key]: val } }));
   };
 
-  const submitTMAssessment = async id => {
-    const f = tmForms[id];
-    if (!f?.alcoholicStatus) {
+  const submitTMAssessment = async (id, knowledgeMarksOverride) => {
+    const fRaw = tmForms[id];
+    if (!fRaw?.alcoholicStatus) {
       setStatusMsg("Alcoholic/Non-Alcoholic status is mandatory.");
       return;
     }
 
     // Validate all 5 TI sections are fully answered
     const unanswered = TI_TM_CRITERIA.filter(sec =>
-      !(f[sec.key] && f[sec.key].length === sec.count && f[sec.key].every(v => v === "Yes" || v === "No"))
+      !(fRaw[sec.key] && fRaw[sec.key].length === sec.count && fRaw[sec.key].every(v => v === "Yes" || v === "No"))
     ).map(sec => sec.label);
     if (unanswered.length > 0) {
       setStatusMsg(`Please answer all questions in: ${unanswered.join(", ")}`);
       return;
     }
 
+    const f = knowledgeMarksOverride !== undefined ? { ...fRaw, knowledgeMarks: knowledgeMarksOverride } : fRaw;
     const { total } = computeTMScore(f, TI_TM_CRITERIA);
 
     const isAlcoholic = f.alcoholicStatus === "Alcoholic";
@@ -1684,7 +1880,7 @@ export function useTrafficInspectorState(user, onLogout) {
       if (existingAttempt) {
         let prevAnswers = existingAttempt.answers || {};
         if (typeof prevAnswers === "string") {
-          try { prevAnswers = JSON.parse(prevAnswers); } catch (e) {}
+          try { prevAnswers = JSON.parse(prevAnswers); } catch (e) { }
         }
         let mergedAnswers = Array.isArray(prevAnswers)
           ? { questions: prevAnswers, ...newAnswers }
@@ -1860,22 +2056,23 @@ export function useTrafficInspectorState(user, onLogout) {
 
   const setSSField = (id, key, val) => { if (ssLocked[id]) return; setSsForms(p => ({ ...p, [id]: { ...(p[id] || defaultSSForm()), [key]: val } })); };
 
-  const submitSSAssessment = async id => {
-    const f = ssForms[id];
-    if (!f?.alcoholicStatus) {
+  const submitSSAssessment = async (id, knowledgeMarksOverride) => {
+    const fRaw = ssForms[id];
+    if (!fRaw?.alcoholicStatus) {
       setStatusMsg("Alcoholic/Non-Alcoholic status is mandatory.");
       return;
     }
 
     // Validate all 5 TI sections are fully answered
     const unanswered = TI_SS_CRITERIA.filter(sec =>
-      !(f[sec.key] && f[sec.key].length === sec.count && f[sec.key].every(v => v === "Yes" || v === "No"))
+      !(fRaw[sec.key] && fRaw[sec.key].length === sec.count && fRaw[sec.key].every(v => v === "Yes" || v === "No"))
     ).map(sec => sec.label);
     if (unanswered.length > 0) {
       setStatusMsg(`Please answer all questions in: ${unanswered.join(", ")}`);
       return;
     }
 
+    const f = knowledgeMarksOverride !== undefined ? { ...fRaw, knowledgeMarks: knowledgeMarksOverride } : fRaw;
     const { total } = computeSSScore(f, TI_SS_CRITERIA);
     const isAlcoholic = f.alcoholicStatus === "Alcoholic";
     const cat = isAlcoholic ? "D" : getCat(total);
@@ -1995,7 +2192,7 @@ export function useTrafficInspectorState(user, onLogout) {
       if (existingAttempt) {
         let prevAnswers = existingAttempt.answers || {};
         if (typeof prevAnswers === "string") {
-          try { prevAnswers = JSON.parse(prevAnswers); } catch (e) {}
+          try { prevAnswers = JSON.parse(prevAnswers); } catch (e) { }
         }
         let mergedAnswers = Array.isArray(prevAnswers)
           ? { questions: prevAnswers, ...newAnswers }
@@ -2089,7 +2286,7 @@ export function useTrafficInspectorState(user, onLogout) {
           user_id: tiUuid,
           incident_type: "Inspection",
           incident_date: new Date().toISOString().slice(0, 10),
-          description: newInsp.observations,
+          description: `Station: ${newInsp.station} | Observations: ${newInsp.observations}`,
           action_taken: newInsp.risk
         }]);
 
@@ -2126,7 +2323,7 @@ export function useTrafficInspectorState(user, onLogout) {
           targetUserId = user.userId;
         }
       }
-      
+
       if (targetUserId && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(targetUserId)) {
         const tiHrms = user.hrmsId || user.hrms_id;
         if (tiHrms) {
@@ -2258,6 +2455,216 @@ export function useTrafficInspectorState(user, onLogout) {
     }
   };
 
+  const sendBatchExamAccess = async (role, hrmsIds) => {
+    if (!hrmsIds || hrmsIds.length === 0) return;
+    setStatusMsg("Activating batch exam access...");
+    try {
+      const today = new Date().toISOString().slice(0, 10);
+      
+      // Resolve TI User UUID
+      let tiUserUuid = user?.userId;
+      if (isSupabaseConfigured && (!tiUserUuid || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(tiUserUuid))) {
+        const tiHrms = user.hrmsId || user.hrms_id;
+        if (tiHrms) {
+          const { data: tiUser } = await supabase
+            .from("USERS")
+            .select("user_id")
+            .eq("hrms_id", tiHrms)
+            .single();
+          tiUserUuid = tiUser?.user_id || user?.userId;
+        }
+      }
+
+      for (const hrmsId of hrmsIds) {
+        const keyPrefix = role === "SM" ? "sm" : "tm";
+        // Set local storage flags
+        localStorage.setItem(`${keyPrefix}_test_activated_${hrmsId}`, "true");
+        localStorage.setItem(`${keyPrefix}_test_activated_time_${hrmsId}`, Date.now().toString());
+        localStorage.setItem(`${keyPrefix}_test_assigned_${hrmsId}`, "Assigned");
+        localStorage.removeItem(`${keyPrefix}_mcq_test_${hrmsId}`);
+
+        if (isSupabaseConfigured) {
+          // Resolve Employee UUID
+          const { data: empUser, error: empErr } = await supabase
+            .from("USERS")
+            .select("user_id")
+            .eq("hrms_id", hrmsId)
+            .single();
+
+          if (!empErr && empUser?.user_id) {
+            const empUserUuid = empUser.user_id;
+            const assessType = role === "SM" ? "Station Master Assessment" : "Train Manager Assessment";
+
+            // Check if there is a LOCKED/pending assessment
+            const { data: lockedAssessments } = await supabase
+              .from("ASSESSMENT")
+              .select("assessment_id")
+              .eq("employee_id", empUserUuid)
+              .eq("status", "LOCKED")
+              .limit(1);
+
+            if (lockedAssessments && lockedAssessments.length > 0) {
+              await supabase
+                .from("ASSESSMENT")
+                .update({
+                  status: "AVAILABLE",
+                  conducted_by: tiUserUuid,
+                  assessment_date: today,
+                  assessment_type: assessType
+                })
+                .eq("assessment_id", lockedAssessments[0].assessment_id);
+            } else {
+              // Insert a new AVAILABLE assessment record
+              await supabase.from("ASSESSMENT").insert([{
+                employee_id: empUserUuid,
+                conducted_by: tiUserUuid,
+                assessment_type: assessType,
+                status: "AVAILABLE",
+                assessment_date: today
+              }]);
+            }
+
+            // Create notification for employee
+            await supabase.from("NOTIFICATION").insert([{
+              user_id: empUserUuid,
+              title: "Assessment Access Granted",
+              message: `Your periodic safety competency assessment has been activated by Traffic Inspector ${tiName}. You can now attempt the safety exam in your portal.`,
+              is_read: false
+            }]);
+          }
+        }
+      }
+
+      window.dispatchEvent(new Event("storage"));
+      setSelectedHrmsIds([]);
+      await fetchLiveDatabaseData();
+      setStatusMsg(`Successfully activated assessment access for ${hrmsIds.length} employee(s).`);
+    } catch (err) {
+      console.error("Error in batch activation:", err);
+      alert("Error sending batch assessment access: " + err.message);
+      setStatusMsg("Batch assessment access failed.");
+    }
+  };
+
+  const updateEmployeeScheduleTI = async (role, hrmsId, date, time, reason) => {
+    if (!hrmsId || !date) return { success: false, error: "Missing required fields" };
+    try {
+      const today = new Date().toISOString().slice(0, 10);
+      
+      // Resolve TI User UUID
+      let tiUserUuid = user?.userId;
+      if (isSupabaseConfigured && (!tiUserUuid || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(tiUserUuid))) {
+        const tiHrms = user.hrmsId || user.hrms_id;
+        if (tiHrms) {
+          const { data: tiUser } = await supabase
+            .from("USERS")
+            .select("user_id")
+            .eq("hrms_id", tiHrms)
+            .single();
+          tiUserUuid = tiUser?.user_id || user?.userId;
+        }
+      }
+
+      if (isSupabaseConfigured) {
+        // Resolve Employee UUID
+        const { data: empUser, error: empErr } = await supabase
+          .from("USERS")
+          .select("user_id")
+          .eq("hrms_id", hrmsId)
+          .single();
+
+        if (empErr || !empUser?.user_id) throw new Error("Could not resolve employee UUID.");
+        const empUserUuid = empUser.user_id;
+
+        const baseAssessType = role === "SM" ? "Station Master Assessment" : "Train Manager Assessment";
+        const assessmentType = `${baseAssessType} | Time: ${time || "10:00 AM"}`;
+
+        // Check if there is an active assessment
+        const { data: activeAssess } = await supabase
+          .from("ASSESSMENT")
+          .select("assessment_id, due_date, assessment_type")
+          .eq("employee_id", empUserUuid)
+          .eq("assessment_type", baseAssessType)
+          .in("status", ["LOCKED", "AVAILABLE", "IN_PROGRESS", "Pending", "Draft", "Scheduled"])
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        let finalActiveAssess = activeAssess;
+        if (!finalActiveAssess) {
+          const { data: activeAssessPrefix } = await supabase
+            .from("ASSESSMENT")
+            .select("assessment_id, due_date, assessment_type")
+            .eq("employee_id", empUserUuid)
+            .ilike("assessment_type", `${baseAssessType}%`)
+            .in("status", ["LOCKED", "AVAILABLE", "IN_PROGRESS", "Pending", "Draft", "Scheduled"])
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          finalActiveAssess = activeAssessPrefix;
+        }
+
+        let prevDate = "None";
+        let assessmentId = null;
+
+        if (finalActiveAssess) {
+          prevDate = finalActiveAssess.due_date || "None";
+          assessmentId = finalActiveAssess.assessment_id;
+
+          // Update active assessment
+          await supabase
+            .from("ASSESSMENT")
+            .update({
+              due_date: date,
+              assessment_type: assessmentType
+            })
+            .eq("assessment_id", assessmentId);
+        } else {
+          // Create a new LOCKED assessment
+          const { data: newAssess, error: newAssessErr } = await supabase
+            .from("ASSESSMENT")
+            .insert([{
+              employee_id: empUserUuid,
+              conducted_by: tiUserUuid,
+              assessment_type: assessmentType,
+              status: "LOCKED",
+              due_date: date,
+              assessment_date: today
+            }])
+            .select()
+            .single();
+
+          if (newAssessErr) throw newAssessErr;
+          assessmentId = newAssess.assessment_id;
+        }
+
+        // Insert into AUDIT_LOG
+        await supabase.from("AUDIT_LOG").insert([{
+          user_id: tiUserUuid,
+          action: `Prev: ${prevDate} | New: ${date} ${time || "10:00 AM"} | Reason: ${reason} | Emp: ${hrmsId}`,
+          table_name: "ASSESSMENT",
+          record_id: assessmentId
+        }]);
+
+        // Insert Notification for Employee
+        await supabase.from("NOTIFICATION").insert([{
+          user_id: empUserUuid,
+          title: "Assessment Schedule Modified",
+          message: `Your safety assessment schedule has been modified by Traffic Inspector ${tiName}. New Due Date: ${date} ${time || "10:00 AM"}.`,
+          is_read: false
+        }]);
+      }
+
+      // Refresh DB data
+      await fetchLiveDatabaseData();
+      return { success: true };
+    } catch (err) {
+      console.error("Error updating schedule:", err);
+      alert("Error updating schedule: " + err.message);
+      return { success: false, error: err.message };
+    }
+  };
+
   const markAllNotificationsRead = () => {
     setNotifications(prev => prev.map(n => ({ ...n, read: true })));
     addAuditLog("Notifications Inbox Read", "Marked all alerts read.");
@@ -2363,13 +2770,20 @@ export function useTrafficInspectorState(user, onLogout) {
     repF, setRepF,
     fullscreenChart, setFullscreenChart,
     recentAssessments,
+    allDbAssessments, setAllDbAssessments,
+    selectedCategory, setSelectedCategory,
+    selectedHrmsIds, setSelectedHrmsIds,
+    viewUpcomingOnly, setViewUpcomingOnly,
+    sendBatchExamAccess, updateEmployeeScheduleTI,
 
     // Helper functions
-    triggerNotification, addAuditLog, exportAlert,
+    triggerNotification, addAuditLog, exportAlert, fetchLiveDatabaseData,
     handleChartClick, handlePieClick, handleResetPopupFilters,
 
     // Station modal actions
-    showAddStationModal, setShowAddStationModal, newStationData, setNewStationData,
+    defaultStationForm, showAddStationModal, setShowAddStationModal, newStationData, setNewStationData, stationFormErrors, setStationFormErrors,
+    editingStationId, setEditingStationId, stationModalMode, setStationModalMode,
+    handleOpenEditStation, handleOpenAddStation, handleDeleteStation,
     showAddUserModal, setShowAddUserModal, newUserData, setNewUserData,
 
     // Operations / Admin Actions

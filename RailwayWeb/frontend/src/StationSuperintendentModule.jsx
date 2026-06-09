@@ -1,4 +1,5 @@
 import { useMemo, useState, useEffect } from "react";
+import { useLanguage } from "./contexts/LanguageContext";
 import {
   Award,
   BarChart2,
@@ -244,6 +245,7 @@ function stopAlarmSound() {
 
 /* ─── Main component ─── */
 function StationSuperintendentModule({ user, onLogout }) {
+  const { t } = useLanguage();
   const fullName = user?.name && user.name !== "Station Superintendent User" ? user.name : stationSuperintendentProfile.name;
   const employeeId = user?.hrmsId || stationSuperintendentProfile.hrmsId;
 
@@ -1423,14 +1425,13 @@ function StationSuperintendentModule({ user, onLogout }) {
         <div className="pm-topbar-brand">
           <div className="pm-topbar-logo"><img src="/logo.webp" alt="IR Logo" style={{ width: "100%", height: "100%", borderRadius: "inherit", objectFit: "cover" }} /></div>
           <div>
-            <h1>Indian Railway Evaluation Command</h1>
-            <p><span className="desktop-only-txt">Operations Workspace: </span>Station Supt.<span className="desktop-only-txt">erintendent Module</span></p>
+            <h1>{t("Indian Railway Evaluation System")}</h1>
+            <p><span className="desktop-only-txt">Operations Workspace: </span>{t("Station Superintendent")}<span className="desktop-only-txt"> Module</span></p>
           </div>
         </div>
 
-
-
-        <div className="pm-user-strip">
+        <div className="pm-user-strip" style={{ gap: "12px", alignItems: "center" }}>
+          
           {/* ── Real-Time Notifications Bell Dropdown ── */}
           <div className="pm-notification-bell-container">
             <button className="pm-bell-btn" onClick={() => setBellDropdownOpen(!bellDropdownOpen)}>
@@ -1472,7 +1473,7 @@ function StationSuperintendentModule({ user, onLogout }) {
             <span>HRMS ID: {employeeId}</span>
           </div>
           <button className="pm-logout-btn" onClick={() => { stopAlarmSound(); onLogout(); }}>
-            <LogOut size={15} /> Logout
+            <LogOut size={15} /> {t("Logout")}
           </button>
         </div>
       </header>
@@ -1489,7 +1490,7 @@ function StationSuperintendentModule({ user, onLogout }) {
                 onClick={() => { goToNavPage(item.key); setBellDropdownOpen(false); }}
               >
                 <Icon size={18} />
-                <span>{item.label}</span>
+                <span>{t(item.label)}</span>
               </button>
             );
           })}

@@ -87,6 +87,20 @@ export const authService = {
   async getUserProfile(userId) {
     if (!isSupabaseConfigured) return null;
     
+    let preferredLanguage = "en";
+    try {
+      const { data: langData, error: langError } = await supabase
+        .from("USERS")
+        .select("preferred_language")
+        .eq("user_id", userId)
+        .single();
+      if (!langError && langData && langData.preferred_language) {
+        preferredLanguage = langData.preferred_language;
+      }
+    } catch (langErr) {
+      console.warn("preferred_language column may not exist. Please run migration. Defaulting to 'en'.", langErr);
+    }
+    
     const { data, error } = await supabase
       .from("USERS")
       .select(`
@@ -138,6 +152,7 @@ export const authService = {
       email: data.email,
       mobile: data.mobile_no,
       status: data.status,
+      preferredLanguage: preferredLanguage,
       role: data.ROLE?.role_name || null,
       station: st?.station_name || "—",
       joiningDate: ep?.joining_date || "—",

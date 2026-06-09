@@ -1,8 +1,10 @@
 import { useState } from "react";
 import { LogIn, AlertCircle, Database, ShieldAlert } from "lucide-react";
 import { dbService, isSupabaseConfigured } from "../../supabaseClient";
+import { useLanguage } from "../../contexts/LanguageContext";
 
 function LoginPage({ onLogin }) {
+  const { t } = useLanguage();
   const [hrmsId, setHrmsId] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -27,6 +29,7 @@ function LoginPage({ onLogin }) {
     { hrmsId: "SS_1001", password: "password123", role: "Station Superintendent", name: "Station Superintendent User" },
     { hrmsId: "TI_1001", password: "password123", role: "Traffic Inspector", name: "Traffic Inspector User" },
     { hrmsId: "TI_1002", password: "password123", role: "Traffic Inspector", name: "TI Fresh Account" },
+    { hrmsId: "AOM_1001", password: "password123", role: "AOM/General", name: "AOM Nagpur" },
     { hrmsId: "SA_1001", password: "password123", role: "Super Admin", name: "Super Admin User" },
     { hrmsId: "admin", password: "admin123", role: "Super Admin", name: "Super Admin User" }
   ];
@@ -102,15 +105,15 @@ function LoginPage({ onLogin }) {
             <div className="login-logo">
               <div className="logo-badge" style={{ padding: "0", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}><img src="/logo.webp" alt="IR Logo" style={{ width: "100%", height: "100%", borderRadius: "inherit", objectFit: "cover" }} /></div>
             </div>
-            <h1>Indian Railway</h1>
-            <p>Staff Management System</p>
+            <h1>{t("Indian Railway")}</h1>
+            <p>{t("Staff Management System")}</p>
             {isSupabaseConfigured ? (
               <div className="sdom-badge sdom-badge-success" style={{ display: "inline-flex", alignItems: "center", gap: "6px", marginTop: "12px", background: "rgba(16, 185, 129, 0.15)", color: "#10b981", border: "1px solid rgba(16, 185, 129, 0.3)", padding: "4px 10px", borderRadius: "20px", fontSize: "0.75rem", fontWeight: "600" }}>
-                <Database size={12} /> Live Supabase Connected
+                <Database size={12} /> {t("Live Supabase Connected")}
               </div>
             ) : (
               <div className="sdom-badge" style={{ display: "inline-flex", alignItems: "center", gap: "6px", marginTop: "12px", background: "rgba(245, 158, 11, 0.15)", color: "#f59e0b", border: "1px solid rgba(245, 158, 11, 0.3)", padding: "4px 10px", borderRadius: "20px", fontSize: "0.75rem", fontWeight: "600" }}>
-                <ShieldAlert size={12} /> Local Sandbox Mode
+                <ShieldAlert size={12} /> {t("Local Sandbox Mode")}
               </div>
             )}
           </div>
@@ -119,28 +122,28 @@ function LoginPage({ onLogin }) {
             {error && (
               <div className="login-error">
                 <AlertCircle size={16} />
-                <span>{error}</span>
+                <span>{t(error)}</span>
               </div>
             )}
 
             <div className="login-field">
-              <label>HRMS ID</label>
+              <label>{t("HRMS ID")}</label>
               <input
                 type="text"
                 value={hrmsId}
                 onChange={(e) => setHrmsId(e.target.value)}
-                placeholder="Enter your HRMS ID"
+                placeholder={t("Enter your HRMS ID")}
                 disabled={loading}
               />
             </div>
 
             <div className="login-field">
-              <label>Password</label>
+              <label>{t("Password")}</label>
               <input
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="Enter your password"
+                placeholder={t("Enter your password")}
                 disabled={loading}
               />
             </div>
@@ -151,11 +154,11 @@ function LoginPage({ onLogin }) {
               disabled={loading}
             >
               {loading ? (
-                <span className="loading-spinner">Signing in...</span>
+                <span className="loading-spinner">{t("Signing in...")}</span>
               ) : (
                 <>
                   <LogIn size={16} />
-                  Sign In
+                  {t("Sign In")}
                 </>
               )}
             </button>

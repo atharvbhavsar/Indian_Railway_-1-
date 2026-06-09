@@ -1,4 +1,5 @@
 import { useMemo, useState, useEffect } from "react";
+import { useLanguage } from "./contexts/LanguageContext";
 import {
   Award,
   BarChart2,
@@ -80,6 +81,7 @@ import { useEmergencyAlarm } from "./hooks/useEmergencyAlarm";
 
 /* â”€â”€â”€ Main component â”€â”€â”€ */
 function TrainManagerModule({ user, onLogout }) {
+  const { t } = useLanguage();
   const fullName = user?.name || "Train Manager";
   const employeeId = user?.hrmsId || "TM_1001";
 
@@ -558,9 +560,9 @@ function TrainManagerModule({ user, onLogout }) {
     />
   );
 
-    /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    /* â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• 
      RENDER: MY ASSESSMENT
-  â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+  â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â•  */
   const renderMyAssessment = () => (
     <TMMyAssessment
       employeeId={employeeId}
@@ -574,11 +576,11 @@ function TrainManagerModule({ user, onLogout }) {
     />
   );
 
-  /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  /* â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• 
      RENDER: SAFETY & EMERGENCY MODULE
-  â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+  â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â•  */
 
-  /* â”€â”€â”€ Content dispatcher â”€â”€â”€ */
+  /* ——— Content dispatcher ——— */
   const renderBodyContent = () => {
     if (activeNav === "dashboard") return renderDashboardPage();
     if (activeNav === "profile") return renderProfilePage();
@@ -587,19 +589,19 @@ function TrainManagerModule({ user, onLogout }) {
     return renderDashboardPage();
   };
 
-  /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  /* ——————————————————————————————————————————— 
      SHELL LAYOUT
-  â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+  ——————————————————————————————————————————— */
   return (
     <div className={`pm-layout ${emergencyActive ? "emergency-glow-active" : ""}`}>
       <input type="checkbox" id="sdom-sidebar-toggle" className="sdom-sidebar-checkbox" style={{ display: "none" }} />
       <label htmlFor="sdom-sidebar-toggle" className="sdom-sidebar-close-backdrop"></label>
       
-      {/* â”€â”€ Flashing Emergency Alert Banner â”€â”€ */}
+      {/* — Flashing Emergency Alert Banner — */}
       {emergencyActive && (
         <div className="pm-emergency-siren-banner">
           <div className="siren-message">
-            <span className="siren-light animate-flash">ðŸš¨ ALERT</span>
+            <span className="siren-light animate-flash">🚨 ALERT</span>
             <strong>MANDATORY EMERGENCY BROADCAST ACTIVE: {emergencyType} detected at {emergencyLocation}! All train & siding movements are frozen immediately.</strong>
           </div>
           <div className="siren-controls">
@@ -621,15 +623,14 @@ function TrainManagerModule({ user, onLogout }) {
         <div className="pm-topbar-brand" style={{ flex: 1 }}>
           <div className="pm-topbar-logo"><img src="/logo.webp" alt="IR Logo" style={{ width: "100%", height: "100%", borderRadius: "inherit", objectFit: "cover" }} /></div>
           <div>
-            <h1>Indian Railway Evaluation Command</h1>
-            <p><span className="desktop-only-txt">Operations Workspace: </span>Train Manager<span className="desktop-only-txt"> Module</span></p>
+            <h1>{t("Indian Railway Evaluation System")}</h1>
+            <p><span className="desktop-only-txt">Operations Workspace: </span>{t("Train Manager")}<span className="desktop-only-txt"> Module</span></p>
           </div>
         </div>
 
-
-
-        <div className="pm-user-strip">
-          {/* â”€â”€ Real-Time Notifications Bell Dropdown â”€â”€ */}
+        <div className="pm-user-strip" style={{ gap: "12px", alignItems: "center" }}>
+          
+          {/* ── Real-Time Notifications Bell Dropdown ── */}
           <div className="pm-notification-bell-container">
             <button className="pm-bell-btn" onClick={() => setBellDropdownOpen(!bellDropdownOpen)}>
               <Bell size={20} />
@@ -641,9 +642,9 @@ function TrainManagerModule({ user, onLogout }) {
             {bellDropdownOpen && (
               <div className="pm-bell-dropdown">
                 <div className="pm-bell-header">
-                  <h4>Operations Notifications</h4>
+                  <h4>{t("Operations Notifications")}</h4>
                   {unreadNotificationsCount > 0 && (
-                    <button onClick={markAllNotificationsRead}>Mark read</button>
+                    <button onClick={markAllNotificationsRead}>{t("Mark read")}</button>
                   )}
                 </div>
                 <div className="pm-bell-list">
@@ -657,7 +658,7 @@ function TrainManagerModule({ user, onLogout }) {
                     </div>
                   ))}
                   {notifications.length === 0 && (
-                    <p className="pm-bell-empty">No alerts received today.</p>
+                    <p className="pm-bell-empty">{t("No alerts received today.")}</p>
                   )}
                 </div>
               </div>
@@ -667,10 +668,10 @@ function TrainManagerModule({ user, onLogout }) {
           <div className="pm-user-avatar">{fullName.charAt(0)}</div>
           <div>
             <strong>{fullName}</strong>
-            <span>HRMS ID: {employeeId}</span>
+            <span>{t("HRMS ID")}: {employeeId}</span>
           </div>
           <button className="pm-logout-btn" onClick={() => { stopAlarmSound(); onLogout(); }}>
-            <LogOut size={15} /> Logout
+            <LogOut size={15} /> {t("Log Out")}
           </button>
         </div>
       </header>
@@ -687,12 +688,10 @@ function TrainManagerModule({ user, onLogout }) {
                 onClick={() => { goToNavPage(item.key); setBellDropdownOpen(false); }}
               >
                 <Icon size={18} />
-                <span>{item.label}</span>
+                <span>{t(item.label)}</span>
               </button>
             );
           })}
-          
-
         </aside>
 
         <main className="pm-main-panel">

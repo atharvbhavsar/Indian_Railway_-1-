@@ -115,12 +115,12 @@ export function SAReportsAnalytics({ staff, STATION_OPTS }) {
               <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
                 {(() => {
                   const secs = [
-                    { title: "Knowledge of Rules", score: Math.round(u.score * 0.23), max: 25 },
-                    { title: "Alertness & Observation", score: Math.round(u.score * 0.22), max: 25 },
-                    { title: "Safety Record", score: Math.round(u.score * 0.14), max: 15 },
-                    { title: "Leadership & Management", score: Math.round(u.score * 0.13), max: 15 },
-                    { title: "Discipline", score: Math.round(u.score * 0.09), max: 10 },
-                    { title: "Appearance & Neatness", score: Math.round(u.score * 0.09), max: 10 },
+                    { title: "Knowledge of Rules", score: Math.round(u.score * 0.25), max: 25 },
+                    { title: "Alertness and Observation of Rules", score: Math.round(u.score * 0.25), max: 25 },
+                    { title: "Safety Record", score: Math.round(u.score * 0.15), max: 15 },
+                    { title: "Leadership and Management", score: Math.round(u.score * 0.15), max: 15 },
+                    { title: "Discipline", score: Math.round(u.score * 0.10), max: 10 },
+                    { title: "Appearance and Neatness", score: Math.round(u.score * 0.10), max: 10 },
                   ];
                   return secs.map(s => {
                     const pct = Math.round((s.score / s.max) * 100);
@@ -142,16 +142,13 @@ export function SAReportsAnalytics({ staff, STATION_OPTS }) {
               /* Station Master sections competency progress bars */
               <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
                 {(() => {
-                  let totalYes = 12;
-                  let knowledgeMarks = Math.max(0, u.score - 60);
-
                   const secs = [
-                    { title: "Station Management", score: Math.round(totalYes * 5 * 0.25), max: 25 },
-                    { title: "Safety & Compliance", score: Math.round(totalYes * 4 * 0.25), max: 20 },
-                    { title: "Staff Supervision", score: Math.round(totalYes * 3 * 0.20), max: 15 },
-                    { title: "Documentation & Reporting", score: Math.round(totalYes * 3 * 0.15), max: 15 },
-                    { title: "Emergency Handling", score: Math.round(totalYes * 5 * 0.25), max: 25 },
-                    { title: "Knowledge (Safety Exam)", score: knowledgeMarks, max: 25 }
+                    { title: "Knowledge of Rules (MCQ)", score: Math.round(u.score * 0.25), max: 25 },
+                    { title: "Alertness and Observation of Rules", score: Math.round(u.score * 0.25), max: 25 },
+                    { title: "Safety Record", score: Math.round(u.score * 0.15), max: 15 },
+                    { title: "Leadership and Management", score: Math.round(u.score * 0.15), max: 15 },
+                    { title: "Discipline", score: Math.round(u.score * 0.10), max: 10 },
+                    { title: "Appearance and Neatness", score: Math.round(u.score * 0.10), max: 10 }
                   ];
 
                   return secs.map(s => {

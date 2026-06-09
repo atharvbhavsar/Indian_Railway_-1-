@@ -14,6 +14,7 @@ import {
   PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, LabelList
 } from "recharts";
 import "./sdom.css";
+import { useLanguage } from "./contexts/LanguageContext";
 
 // ── Refactored State Hook & Modular Components ──────────────────────────────
 import { useTrafficInspectorState } from "./hooks/modules/useTrafficInspectorState";
@@ -22,6 +23,9 @@ import ZoomChartModal from "./components/charts/ZoomChartModal";
 import EditUserModal from "./components/modals/EditUserModal";
 import TransferUserModal from "./components/modals/TransferUserModal";
 import AddUserModal from "./components/modals/AddUserModal";
+import { SAStationDetail } from "./components/super-admin/views/SAStationDetail";
+import { SAStationDirectory } from "./components/super-admin/views/SAStationDirectory";
+import { saDataService } from "./services/saDataService";
 
 
 /* ═══════════════════════════════════════════
@@ -29,21 +33,21 @@ import AddUserModal from "./components/modals/AddUserModal";
    (Full 12 Sidebar Menu Items)
 ═══════════════════════════════════════════ */
 const NAV = [
-  { key: "dashboard",               label: "Dashboard",                    icon: Gauge },
-  { key: "pointsmen",               label: "Pointsmen",                    icon: Users },
-  { key: "stationMasters",          label: "Station Masters",              icon: Building2 },
-  { key: "stationSuperintendents",  label: "Station Superintendents",      icon: UserCheck },
-  { key: "trainManagers",           label: "Train Managers",               icon: BusFront },
-  { key: "stations",                label: "Stations",                     icon: Building2 },
-  { key: "approvals",               label: "Approvals",                    icon: CheckCircle },
-  { key: "assessments",             label: "Assessments",                  icon: FileCheck },
-  { key: "pmePosition",             label: "PME Position",                 icon: Activity },
-  { key: "refPosition",             label: "REF Position",                 icon: Award },
-  { key: "inspections",             label: "Inspections",                  icon: Eye },
-  { key: "counselling",             label: "Counselling",                  icon: HeartHandshake },
-  { key: "myAssessment",            label: "My Assessment",                icon: FileBarChart2 },
-  { key: "reports",                 label: "Reports and Analytics",        icon: BarChart3 },
-  { key: "profile",                 label: "My Profile",                   icon: UserCircle2 },
+  { key: "dashboard", label: "Dashboard", icon: Gauge },
+  { key: "pointsmen", label: "Pointsmen", icon: Users },
+  { key: "stationMasters", label: "Station Masters", icon: Building2 },
+  { key: "stationSuperintendents", label: "Station Superintendents", icon: UserCheck },
+  { key: "trainManagers", label: "Train Managers", icon: BusFront },
+  { key: "stations", label: "Stations", icon: Building2 },
+  { key: "approvals", label: "Approvals", icon: CheckCircle },
+  { key: "assessments", label: "Assessments", icon: FileCheck },
+  { key: "pmePosition", label: "PME Position", icon: Activity },
+  { key: "refPosition", label: "REF Position", icon: Award },
+  { key: "inspections", label: "Inspections", icon: Eye },
+  { key: "counselling", label: "Counselling", icon: HeartHandshake },
+  { key: "myAssessment", label: "My Assessment", icon: FileBarChart2 },
+  { key: "reports", label: "Reports and Analytics", icon: BarChart3 },
+  { key: "profile", label: "My Profile", icon: UserCircle2 },
 ];
 
 const TI_PROFILE = {};
@@ -76,9 +80,9 @@ const statusBadge = (s) => {
   return <span className={`sdom-badge ${map[s] || "sdom-badge-neutral"}`}>{s}</span>;
 };
 
-const CAT_C  = { A: "#16a34a", B: "#2563eb", C: "#d97706", D: "#dc2626" };
-const CAT_B  = { A: "#dcfce7", B: "#dbeafe", C: "#fef3c7", D: "#fee2e2" };
-const PIE_C  = ["#16a34a", "#2563eb", "#d97706", "#dc2626"];
+const CAT_C = { A: "#16a34a", B: "#2563eb", C: "#d97706", D: "#dc2626" };
+const CAT_B = { A: "#dcfce7", B: "#dbeafe", C: "#fef3c7", D: "#fee2e2" };
+const PIE_C = ["#16a34a", "#2563eb", "#d97706", "#dc2626"];
 const RISK_C = { High: "#dc2626", Medium: "#d97706", Low: "#16a34a" };
 const RISK_B = { High: "#fee2e2", Medium: "#fef3c7", Low: "#dcfce7" };
 
@@ -195,6 +199,7 @@ const TiTooltip = ({ active, payload, label }) => {
 ═══════════════════════════════════════════ */
 
 export default function TrafficInspectorModule({ user, onLogout }) {
+  const { language, changeLanguage, t } = useLanguage();
 
   const {
     activePage, setActivePage, goTo,
@@ -295,18 +300,135 @@ export default function TrafficInspectorModule({ user, onLogout }) {
     fullscreenChart, setFullscreenChart,
     recentAssessments,
 
-    triggerNotification, addAuditLog, exportAlert,
+    triggerNotification, addAuditLog, exportAlert, fetchLiveDatabaseData,
     handleChartClick, handlePieClick, handleResetPopupFilters,
 
-    showAddStationModal, setShowAddStationModal, newStationData, setNewStationData,
+    defaultStationForm, showAddStationModal, setShowAddStationModal, newStationData, setNewStationData, stationFormErrors, setStationFormErrors,
+    editingStationId, setEditingStationId, stationModalMode, setStationModalMode,
+    handleOpenEditStation, handleOpenAddStation, handleDeleteStation,
     showAddUserModal, setShowAddUserModal, newUserData, setNewUserData,
 
     handleAddStationSubmit, openAddUserModal, handleAddUserSubmit, handleEditUser, saveEditedUser, handleDeleteUser, handleTransferClick, confirmTransfer,
     openPmReview, updateSec, finalizePM, openSMForm, handleSendExamAccess, toggleSMYN, setSMField, submitSMAssessment, openTMForm, handleSendTMExamAccess, toggleTMYN, setTMField, submitTMAssessment,
-    openSSForm, handleSendSSExamAccess, toggleSSYN, setSSField, submitSSAssessment, submitInspection, submitCounselling, startQuiz, handleSelectQuizOpt, submitQuiz, markAllNotificationsRead
+    openSSForm, handleSendSSExamAccess, toggleSSYN, setSSField, submitSSAssessment, submitInspection, submitCounselling, startQuiz, handleSelectQuizOpt, submitQuiz, markAllNotificationsRead,
+    allDbAssessments, selectedCategory, setSelectedCategory, selectedHrmsIds, setSelectedHrmsIds, viewUpcomingOnly, setViewUpcomingOnly,
+    sendBatchExamAccess, updateEmployeeScheduleTI
   } = useTrafficInspectorState(user, onLogout);
 
-    const renderChartZoomModal = () => {
+  const [editingEmployee, setEditingEmployee] = useState(null);
+  const [showCategoriesPanel, setShowCategoriesPanel] = useState(false);
+  const [scheduleDate, setScheduleDate] = useState("");
+  const [scheduleTime, setScheduleTime] = useState("10:00");
+  const [scheduleReason, setScheduleReason] = useState("");
+
+  const convertTo24Hour = (time12) => {
+    if (!time12) return "10:00";
+    const match = time12.match(/^(\d+):(\d+)\s*(AM|PM)$/i);
+    if (!match) return "10:00";
+    let hours = parseInt(match[1]);
+    const minutes = match[2];
+    const ampm = match[3].toUpperCase();
+    if (ampm === "PM" && hours < 12) hours += 12;
+    if (ampm === "AM" && hours === 12) hours = 0;
+    return `${String(hours).padStart(2, "0")}:${minutes}`;
+  };
+
+  const convertTo12Hour = (time24) => {
+    if (!time24) return "10:00 AM";
+    const [hoursStr, minutesStr] = time24.split(":");
+    let hours = parseInt(hoursStr);
+    const minutes = minutesStr;
+    const ampm = hours >= 12 ? "PM" : "AM";
+    hours = hours % 12;
+    if (hours === 0) hours = 12;
+    return `${hours}:${minutes} ${ampm}`;
+  };
+
+  const getEmployeeScheduleDetails = (p, role) => {
+    const cat = p.cat || getCat(p.score || 0);
+    const frequency = cat === "A" || cat === "B" ? "6 Months" : (cat === "C" ? "3 Months" : "1 Month");
+    
+    // Find all assessments for this employee from allDbAssessments
+    const empAssessments = allDbAssessments ? allDbAssessments.filter(a => a.employee?.hrms_id === p.hrmsId) : [];
+    
+    const baseAssessType = role === "SM" ? "Station Master Assessment" : "Train Manager Assessment";
+
+    // 1. Last Assessment Date
+    const pastApproved = empAssessments.filter(a => ["Approved", "Completed", "EVALUATED"].includes(a.status));
+    pastApproved.sort((a, b) => new Date(b.assessment_date || b.created_at) - new Date(a.assessment_date || a.created_at));
+    const lastAssess = pastApproved[0];
+    const lastAssessDate = lastAssess ? (lastAssess.assessment_date || lastAssess.created_at?.slice(0, 10)) : (p.submissionDate || p.lastDate || "None");
+    
+    // 2. Next Due Date & Time
+    const upcomingAssess = empAssessments.find(a => ["LOCKED", "AVAILABLE", "IN_PROGRESS", "Pending", "Draft", "Scheduled"].includes(a.status) && a.due_date && (a.assessment_type?.startsWith(baseAssessType) || a.assessment_type === baseAssessType));
+    
+    let nextDueDate = null;
+    let nextDueTime = "10:00 AM";
+    let isCustomScheduled = false;
+    
+    if (upcomingAssess) {
+      nextDueDate = upcomingAssess.due_date;
+      isCustomScheduled = true;
+      if (upcomingAssess.assessment_type) {
+        const timeMatch = upcomingAssess.assessment_type.match(/Time:\s*(.+)$/i);
+        if (timeMatch) {
+          nextDueTime = timeMatch[1].trim();
+        }
+      }
+    } else if (lastAssessDate && lastAssessDate !== "None") {
+      const lastDateObj = new Date(lastAssessDate);
+      if (!isNaN(lastDateObj.getTime())) {
+        const monthsToAdd = cat === "A" || cat === "B" ? 6 : (cat === "C" ? 3 : 1);
+        lastDateObj.setMonth(lastDateObj.getMonth() + monthsToAdd);
+        nextDueDate = lastDateObj.toISOString().slice(0, 10);
+      }
+    }
+    
+    if (!nextDueDate) {
+      nextDueDate = "Not Scheduled";
+    }
+    
+    // 3. Days Remaining
+    let daysRemaining = null;
+    if (nextDueDate && nextDueDate !== "Not Scheduled") {
+      const diffTime = new Date(nextDueDate).getTime() - new Date().setHours(0,0,0,0);
+      daysRemaining = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    }
+    
+    // 4. Status Indicator
+    let statusText = "Not Scheduled";
+    let statusType = "neutral"; 
+    
+    if (nextDueDate !== "Not Scheduled" && daysRemaining !== null) {
+      if (daysRemaining < 0) {
+        statusText = "Overdue";
+        statusType = "danger";
+      } else if (daysRemaining === 0) {
+        statusText = "Due Today";
+        statusType = "danger";
+      } else if (daysRemaining <= 7) {
+        statusText = "Due Soon";
+        statusType = "warning";
+      } else {
+        statusText = "Upcoming";
+        statusType = "success";
+      }
+    }
+    
+    return {
+      frequency,
+      lastAssessDate,
+      nextDueDate,
+      nextDueTime,
+      daysRemaining,
+      statusText,
+      statusType,
+      isCustomScheduled,
+      upcomingAssessId: upcomingAssess?.assessment_id || null
+    };
+  };
+
+  const renderChartZoomModal = () => {
     if (!isChartZoomModalOpen) return null;
 
     const filtered = stationStats.map(st => {
@@ -340,13 +462,13 @@ export default function TrafficInspectorModule({ user, onLogout }) {
     }).filter(st => {
       const q = zoomPopupSearch.trim().toLowerCase();
       const matchesSearch = !q || st.stationName.toLowerCase().includes(q) || st.stationCode.toLowerCase().includes(q);
-      
+
       const matchesZone = zoomPopupZone === "All" || st.zone === zoomPopupZone;
       const matchesDivision = zoomPopupDivision === "All" || st.division === zoomPopupDivision;
-      
+
       const matchesName = zoomPopupStationName === "All" || !zoomPopupStationName.trim() || st.stationName.toLowerCase().includes(zoomPopupStationName.toLowerCase());
       const matchesCode = zoomPopupStationCode === "All" || !zoomPopupStationCode.trim() || st.stationCode.toLowerCase().includes(zoomPopupStationCode.toLowerCase());
-      
+
       const matchesCategory = zoomPopupCategory === "All" || st.category === zoomPopupCategory;
       const matchesRisk = zoomPopupRisk === "All" || st.riskLevel === zoomPopupRisk;
       const matchesStatus = zoomPopupStatus === "All" || st.assessmentStatus === zoomPopupStatus;
@@ -430,7 +552,7 @@ export default function TrafficInspectorModule({ user, onLogout }) {
     );
   };
 
-    const renderDashboard = ()=>(
+  const renderDashboard = () => (
     <div className="sdom-fade">
       {/* Page header */}
       <h1 className="sdom-page-title">{user?.jurisdiction || "Jurisdiction"} Section Command Center</h1>
@@ -446,8 +568,8 @@ export default function TrafficInspectorModule({ user, onLogout }) {
           { key: "avg", label: "Average Score", count: `${avgScoreAll}/100`, sub: "Section-wide average", icon: <Activity size={18} />, color: "#1E3A5F", onClick: () => goTo("reports") },
           { key: "risk", label: "High-Risk Staff", count: highRiskAll, sub: "Requires immediate attention", icon: <AlertTriangle size={18} />, color: "#1E3A5F", onClick: () => { goTo("pointsmen"); setUserRiskFilter("High"); setUserStationFilter("All"); setUserCategoryFilter("All"); setUserSearch(""); } },
         ].map((c) => (
-          <div 
-            className="sdom-stat-card" 
+          <div
+            className="sdom-stat-card"
             key={c.key}
             style={{ cursor: "pointer" }}
             onClick={c.onClick}
@@ -525,7 +647,7 @@ export default function TrafficInspectorModule({ user, onLogout }) {
             </ResponsiveContainer>
           </div>
         </div>
-        
+
         <div className="sdom-chart-card">
           <div className="chart-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px", gap: "12px" }}>
             <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
@@ -796,29 +918,29 @@ export default function TrafficInspectorModule({ user, onLogout }) {
         {/* Hero header */}
         <div className="sdom-station-header" style={{ marginBottom: 24 }}>
           <div className="sdom-station-header-meta">
-            <div style={{ fontSize: "0.8rem", color: "rgba(255,255,255,0.6)", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.06em" }}>Staff Profile</div>
+            <div style={{ fontSize: "0.8rem", color: "rgba(255,255,255,0.6)", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.06em" }}>{t("Staff Profile")}</div>
             <div style={{ fontSize: "1.8rem", fontWeight: 800, marginBottom: 4 }}>{user?.name || tiName}</div>
-            <div style={{ fontSize: "0.9rem", color: "rgba(255,255,255,0.7)" }}>{user?.role || "Traffic Inspector"} &bull; {user?.division || "Division"} &bull; {user?.zone || "Zone"}</div>
+            <div style={{ fontSize: "0.9rem", color: "rgba(255,255,255,0.7)" }}>{t(user?.role || "Traffic Inspector")} &bull; {t(user?.division || "Nagpur")} {t("Division")} &bull; {t(user?.zone || "Central Railway")}</div>
             <div style={{ marginTop: 12, display: "flex", gap: 10 }}>
-              <span className="sdom-badge sdom-badge-success">Category {user?.cat || "Untested"}</span>
-              <span className="sdom-badge sdom-badge-success">Inspector</span>
-              <span className="sdom-badge sdom-badge-success">Active</span>
+              <span className="sdom-badge sdom-badge-success">{t("Category")} {user?.cat || "Untested"}</span>
+              <span className="sdom-badge sdom-badge-success">{t("Inspector")}</span>
+              <span className="sdom-badge sdom-badge-success">{t("Active")}</span>
             </div>
           </div>
           <div className="sdom-station-header-stats">
             <div className="sdom-station-header-stat">
               <span className="val">{user?.score || "N/A"}{user?.score ? "%" : ""}</span>
-              <span className="lbl">Section Avg</span>
+              <span className="lbl">{t("Section Avg")}</span>
             </div>
-            <div style={{ width: 1, height: 60, background: "rgba(255,255,255,0.15)" }}/>
+            <div style={{ width: 1, height: 60, background: "rgba(255,255,255,0.15)" }} />
             <div className="sdom-station-header-stat">
               <span className="val">{user?.contact || "N/A"}</span>
-              <span className="lbl">Contact</span>
+              <span className="lbl">{t("Contact")}</span>
             </div>
-            <div style={{ width: 1, height: 60, background: "rgba(255,255,255,0.15)" }}/>
+            <div style={{ width: 1, height: 60, background: "rgba(255,255,255,0.15)" }} />
             <div className="sdom-station-header-stat">
               <span className="val">{user?.lastAssessDate || "N/A"}</span>
-              <span className="lbl">Last Audit</span>
+              <span className="lbl">{t("Last Audit")}</span>
             </div>
           </div>
         </div>
@@ -826,19 +948,19 @@ export default function TrafficInspectorModule({ user, onLogout }) {
         {/* Info grid */}
         <div className="sdom-row-2" style={{ marginBottom: "24px" }}>
           <div className="sdom-chart-card">
-            <div className="sdom-chart-title" style={{ marginBottom: "16px" }}>Personal & Professional Details</div>
-            
+            <div className="sdom-chart-title" style={{ marginBottom: "16px" }}>{t("Personal & Professional Details")}</div>
+
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '15px', paddingBottom: '20px' }}>
               {[
-                ["Employee ID / HRMS ID", user?.hrmsId || tiId],
-                ["Designation", user?.role || "Traffic Inspector"],
-                ["Mobile Number", user?.contact || "N/A"],
-                ["Email ID", `${(user?.hrmsId || tiId).toLowerCase()}@rail.in`],
-                ["Account Status", "Active"],
-                ["Current Zone", "Central Railway"],
-                ["Current Division", "Nagpur Division"],
-                ["Current Placement", user?.jurisdiction || "Various"],
-                ["Reporting Officer", "P. K. Verma (Sr. DOM)"]
+                [t("Employee ID / HRMS ID"), user?.hrmsId || tiId],
+                [t("Designation"), t(user?.role || "Traffic Inspector")],
+                [t("Mobile Number"), user?.contact || "N/A"],
+                [t("Email ID"), `${(user?.hrmsId || tiId).toLowerCase()}@rail.in`],
+                [t("Account Status"), t("Active")],
+                [t("Current Zone"), t("Central Railway")],
+                [t("Current Division"), t("Nagpur Division")],
+                [t("Current Placement"), t(user?.jurisdiction || "Various")],
+                [t("Reporting Officer"), t("P. K. Verma (Sr. DOM)")]
               ].map(([lbl, val]) => (
                 <div key={lbl} style={{ background: "#f8fafc", borderRadius: 8, padding: "12px 16px", border: "1px solid #e2e8f0" }}>
                   <div style={{ fontSize: "0.75rem", color: "#64748b", fontWeight: 700, marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.04em" }}>{lbl}</div>
@@ -850,28 +972,30 @@ export default function TrafficInspectorModule({ user, onLogout }) {
             {/* Operational & Safety Dates Card */}
             <div style={{ background: '#f8fafc', padding: '16px', borderRadius: '10px', border: '1px solid #e2e8f0', marginTop: '10px' }}>
               <h4 style={{ margin: '0 0 12px', fontSize: '14px', color: '#0f172a', fontWeight: '800', borderBottom: '1px solid #cbd5e1', paddingBottom: '6px' }}>
-                Operational & Safety Dates
+                {t("Operational & Safety Dates")}
               </h4>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '15px', fontSize: '13px' }}>
-                <div><strong>Last Section Audit Done:</strong><div style={{fontWeight: 700, color: "#065f46", marginTop: 4}}>2026-05-24</div></div>
-                <div><strong>Next Audit Due:</strong><div style={{fontWeight: 700, color: "#991b1b", marginTop: 4}}>2026-06-24</div></div>
-                <div><strong>Inspector Safety Training:</strong><div style={{fontWeight: 700, color: "#0d2c4d", marginTop: 4}}>2025-11-05</div></div>
-                <div><strong>Safety Seminar Attended:</strong><div style={{fontWeight: 700, color: "#0d2c4d", marginTop: 4}}>2026-04-02</div></div>
-                
-                <div><strong>PME Done Date:</strong><div style={{fontWeight: 700, color: "#065f46", marginTop: 4}}>{user?.pmeDoneDate || "N/A"}</div></div>
-                <div><strong>PME Due Date:</strong><div style={{fontWeight: 700, color: "#991b1b", marginTop: 4}}>{user?.pmeDueDate || "N/A"}</div></div>
-                <div><strong>Isolator Certificate issued:</strong><div style={{fontWeight: 700, color: "#0d2c4d", marginTop: 4}}>{user?.isolatorCertDate || "N/A"}</div></div>
-                <div><strong>Automatic Training Date:</strong><div style={{fontWeight: 700, color: "#0d2c4d", marginTop: 4}}>{user?.autoTrainingDate || "N/A"}</div></div>
-                <div style={{ gridColumn: "span 2" }}><strong>Counselling Done Date:</strong><div style={{fontWeight: 700, color: "#d97706", marginTop: 4}}>{user?.counsellingDate || "N/A"}</div></div>
-                
+                <div><strong>{t("Last Section Audit Done")}:</strong><div style={{ fontWeight: 700, color: "#065f46", marginTop: 4 }}>2026-05-24</div></div>
+                <div><strong>{t("Next Audit Due")}:</strong><div style={{ fontWeight: 700, color: "#991b1b", marginTop: 4 }}>2026-06-24</div></div>
+                <div><strong>{t("Inspector Safety Training")}:</strong><div style={{ fontWeight: 700, color: "#0d2c4d", marginTop: 4 }}>2025-11-05</div></div>
+                <div><strong>{t("Safety Seminar Attended")}:</strong><div style={{ fontWeight: 700, color: "#0d2c4d", marginTop: 4 }}>2026-04-02</div></div>
+
+                <div><strong>{t("PME Done Date")}:</strong><div style={{ fontWeight: 700, color: "#065f46", marginTop: 4 }}>{user?.pmeDoneDate || "N/A"}</div></div>
+                <div><strong>{t("PME Due Date")}:</strong><div style={{ fontWeight: 700, color: "#991b1b", marginTop: 4 }}>{user?.pmeDueDate || "N/A"}</div></div>
+                <div><strong>{t("Isolator Certificate issued")}:</strong><div style={{ fontWeight: 700, color: "#0d2c4d", marginTop: 4 }}>{user?.isolatorCertDate || "N/A"}</div></div>
+                <div><strong>{t("Automatic Training Date")}:</strong><div style={{ fontWeight: 700, color: "#0d2c4d", marginTop: 4 }}>{user?.autoTrainingDate || "N/A"}</div></div>
+                <div style={{ gridColumn: "span 2" }}><strong>{t("Counselling Done Date")}:</strong><div style={{ fontWeight: 700, color: "#d97706", marginTop: 4 }}>{user?.counsellingDate || "N/A"}</div></div>
+
                 <div style={{ gridColumn: "span 2", marginTop: 8 }}>
-                  <strong>Assigned Stations Under Jurisdiction ({myStations.length})</strong>
+                  <strong>{t("Assigned Stations Under Jurisdiction")} ({myStations.length})</strong>
                   <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", marginTop: "8px" }}>
                     {myStations.map(st => <span key={st.id} className="sdom-badge sdom-badge-blue" style={{ fontSize: "11px", fontWeight: "700" }}>{st.code} - {st.name}</span>)}
                   </div>
                 </div>
               </div>
             </div>
+
+
           </div>
 
           <div className="sdom-chart-card">
@@ -880,11 +1004,11 @@ export default function TrafficInspectorModule({ user, onLogout }) {
             <div style={{ height: 300 }}>
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={sectionPerformanceData}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false}/>
-                  <XAxis dataKey="month" fontSize={11}/>
-                  <YAxis domain={[40, 100]} fontSize={11}/>
-                  <Tooltip/>
-                  <Line type="monotone" dataKey="score" stroke="#2563eb" strokeWidth={3} dot={{ r: 5 }}/>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                  <XAxis dataKey="month" fontSize={11} />
+                  <YAxis domain={[40, 100]} fontSize={11} />
+                  <Tooltip />
+                  <Line type="monotone" dataKey="score" stroke="#2563eb" strokeWidth={3} dot={{ r: 5 }} />
                 </LineChart>
               </ResponsiveContainer>
             </div>
@@ -898,7 +1022,7 @@ export default function TrafficInspectorModule({ user, onLogout }) {
   const renderStaffDetail = (s) => {
     const computedRisk = getUserRisk(s);
     const scoreData = MONTHLY_TREND.map((m, i) => ({ month: m.month, score: Math.max(50, s.score - 10 + i * 2) }));
-    
+
     return (
       <div className="sdom-fade">
         <div style={{ marginBottom: 24 }}>
@@ -948,7 +1072,7 @@ export default function TrafficInspectorModule({ user, onLogout }) {
         <div className="sdom-row-2">
           <div className="sdom-chart-card">
             <div className="sdom-chart-title" style={{ marginBottom: "16px" }}>Personal &amp; Professional Details</div>
-            
+
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '15px', paddingBottom: '20px' }}>
               {[
                 ["Employee ID / HRMS ID", s.id],
@@ -973,28 +1097,36 @@ export default function TrafficInspectorModule({ user, onLogout }) {
               <h4 style={{ margin: '0 0 12px', fontSize: '14px', color: '#0f172a', fontWeight: '800', borderBottom: '1px solid #cbd5e1', paddingBottom: '6px' }}>
                 Operational Profile Specifications
               </h4>
-              
+
               {(s.role === "Pointsman" || s.role === "pointsmen") && (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', fontSize: '13px' }}>
-                  <div><strong>Reporting Station Master:</strong><div style={{fontWeight: 700, color: "#1e3a5f", marginTop: 4}}>{s.reportingSm || "S. Deshmukh (SM)"}</div></div>
-                  <div><strong>Assigned Shift:</strong><div style={{fontWeight: 700, color: "#1e3a5f", marginTop: 4}}>{s.shift || "Morning Shift (06:00 - 14:00)"}</div></div>
-                  <div><strong>Work Location Setup:</strong><div style={{fontWeight: 700, color: "#1e3a5f", marginTop: 4}}>{s.workLocation || "Yard Area"}</div></div>
+                  <div><strong>Reporting Station Master:</strong><div style={{ fontWeight: 700, color: "#1e3a5f", marginTop: 4 }}>{s.reportingSm || "S. Deshmukh (SM)"}</div></div>
+                  <div><strong>Assigned Shift:</strong><div style={{ fontWeight: 700, color: "#1e3a5f", marginTop: 4 }}>{s.shift || "Morning Shift (06:00 - 14:00)"}</div></div>
+                  <div><strong>Work Location Setup:</strong><div style={{ fontWeight: 700, color: "#1e3a5f", marginTop: 4 }}>{s.workLocation || "Yard Area"}</div></div>
                 </div>
               )}
 
               {(s.role === "Station Master" || s.role === "sm" || s.role === "Station Superintendent" || s.role === "ss") && (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', fontSize: '13px' }}>
-                  <div><strong>Operational Station:</strong><div style={{fontWeight: 700, color: "#065f46", marginTop: 4}}>{s.station || "N/A"}</div></div>
-                  <div><strong>Operational Division:</strong><div style={{fontWeight: 700, color: "#065f46", marginTop: 4}}>{s.division || "Nagpur Division"}</div></div>
-                  <div><strong>Operational Zone:</strong><div style={{fontWeight: 700, color: "#065f46", marginTop: 4}}>{s.zone || "Central Railway"}</div></div>
+                  <div><strong>Operational Station:</strong><div style={{ fontWeight: 700, color: "#065f46", marginTop: 4 }}>{s.station || "N/A"}</div></div>
+                  <div><strong>Operational Division:</strong><div style={{ fontWeight: 700, color: "#065f46", marginTop: 4 }}>{s.division || "Nagpur Division"}</div></div>
+                  <div><strong>Operational Zone:</strong><div style={{ fontWeight: 700, color: "#065f46", marginTop: 4 }}>{s.zone || "Central Railway"}</div></div>
                 </div>
               )}
 
               {(s.role === "Train Manager" || s.role === "tm") && (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', fontSize: '13px' }}>
-                  <div><strong>Crew Depot:</strong><div style={{fontWeight: 700, color: "#6b21a8", marginTop: 4}}>{s.workLocation || "Nagpur Depot"}</div></div>
-                  <div><strong>Assigned Shift:</strong><div style={{fontWeight: 700, color: "#6b21a8", marginTop: 4}}>{s.shift || "Goods Train Beat"}</div></div>
-                  <div><strong>Assigned Section Beats:</strong><div style={{fontWeight: 700, color: "#6b21a8", marginTop: 4}}>{s.reportingSm || "NGP-BSL Section"}</div></div>
+                  <div><strong>Crew Depot:</strong><div style={{ fontWeight: 700, color: "#6b21a8", marginTop: 4 }}>{s.workLocation || "Nagpur Depot"}</div></div>
+                  <div><strong>Assigned Shift:</strong><div style={{ fontWeight: 700, color: "#6b21a8", marginTop: 4 }}>{s.shift || "Goods Train Beat"}</div></div>
+                  <div><strong>Assigned Section Beats:</strong><div style={{ fontWeight: 700, color: "#6b21a8", marginTop: 4 }}>{s.reportingSm || "NGP-BSL Section"}</div></div>
+                </div>
+              )}
+
+              {(s.role === "Traffic Inspector" || s.role === "ti") && (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', fontSize: '13px' }}>
+                  <div><strong>Jurisdiction Division:</strong><div style={{ fontWeight: 700, color: "#92400e", marginTop: 4 }}>{s.division || "Nagpur Division"}</div></div>
+                  <div><strong>Reporting AOM Officer:</strong><div style={{ fontWeight: 700, color: "#92400e", marginTop: 4 }}>{s.reportingAom || "P. K. Verma (Sr. DOM)"}</div></div>
+                  <div style={{ gridColumn: 'span 3', marginTop: '6px' }}><strong>Linked Stations under supervision:</strong><div style={{ fontWeight: 700, color: "#92400e", marginTop: 4 }}>{s.jurisdiction || "None"}</div></div>
                 </div>
               )}
             </div>
@@ -1051,314 +1183,78 @@ export default function TrafficInspectorModule({ user, onLogout }) {
 
     // Sub-view: Station Detail Dashboard (drill-down)
     const renderStationDetail = (st) => {
-      const stStaff = users.filter(s => s.station === st.name).map(u => ({
-        ...u,
-        risk: getUserRisk(u)
-      }));
-      const pmList = stStaff.filter(s => s.role === "Pointsman" || s.role === "pointsmen");
-      const smList = stStaff.filter(s => s.role === "Station Master" || s.role === "sm");
-      
-      const catCount = ["A", "B", "C", "D"].map(c => ({
-        cat: `Cat ${c}`,
-        count: stStaff.filter(s => (s.cat || getCat(s.score)) === c).length,
-        fill: CAT_COLORS[c]
-      }));
-
-      const riskCount = [
-        { name: "Low", value: stStaff.filter(s => s.risk === "Low").length, fill: "#16a34a" },
-        { name: "Medium", value: stStaff.filter(s => s.risk === "Medium").length, fill: "#f59e0b" },
-        { name: "High", value: stStaff.filter(s => s.risk === "High").length, fill: "#ef4444" },
-      ].filter(r => r.value > 0);
-
-      const trend = MONTHLY_TREND.map(m => ({ ...m, score: Math.max(60, st.score - 8 + MONTHLY_TREND.indexOf(m) * 2) }));
-
       return (
-        <div className="sdom-fade">
-          <div style={{ marginBottom: 20 }}>
-            <button className="sdom-back-btn" onClick={() => { setView(null); setSelectedStation(null); }} style={{ display: "inline-flex", alignItems: "center", gap: "6px", background: "none", border: "none", color: "#2563eb", cursor: "pointer", fontWeight: 700 }}>
-              <ArrowLeft size={16} /> Back to Stations
-            </button>
-          </div>
-
-          <div className="sdom-station-header">
-            <div className="sdom-station-header-meta">
-              <div style={{ fontSize: "0.78rem", color: "rgba(255,255,255,0.6)", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.06em" }}>Station Analytics Dashboard</div>
-              <div style={{ fontSize: "1.9rem", fontWeight: 800, marginBottom: 4 }}>{st.name}</div>
-              <div style={{ fontSize: "0.9rem", color: "rgba(255,255,255,0.7)" }}>Code: <b>{st.code}</b> &bull; Assigned TI: <b>{st.ti}</b></div>
-              <div style={{ marginTop: 12, display: "flex", gap: 10 }}>
-                <span className="sdom-badge" style={{ background: "rgba(255,255,255,0.15)", color: "#fff" }}>{st.smCount} Station Masters</span>
-                <span className="sdom-badge" style={{ background: "rgba(255,255,255,0.15)", color: "#fff" }}>{st.pmCount} Pointsmen</span>
-                <span className={`sdom-badge ${st.highRisk > 4 ? "sdom-badge-red" : "sdom-badge-green"}`}>{st.highRisk} High-Risk</span>
-              </div>
-            </div>
-            <div className="sdom-station-header-stats">
-              <div className="sdom-station-header-stat">
-                <span className="val">{st.score}</span>
-                <span className="lbl">Avg Score</span>
-              </div>
-              <div style={{ width: 1, height: 60, background: "rgba(255,255,255,0.15)" }} />
-              <div className="sdom-station-header-stat">
-                <span className="val">{st.safety}%</span>
-                <span className="lbl">Safety</span>
-              </div>
-              <div style={{ width: 1, height: 60, background: "rgba(255,255,255,0.15)" }} />
-              <div className="sdom-station-header-stat">
-                <span className="val">{st.pending}</span>
-                <span className="lbl">Pending</span>
-              </div>
-              <div style={{ width: 1, height: 60, background: "rgba(255,255,255,0.15)" }} />
-              <div className="sdom-station-header-stat">
-                <span className="val">{stStaff.length}</span>
-                <span className="lbl">Total Staff</span>
-              </div>
-            </div>
-          </div>
-
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(5,1fr)", gap: 16, marginBottom: 24 }}>
-            {[
-              { label: "Total Staff", val: stStaff.length },
-              { label: "Pending Assessments", val: st.pending },
-              { label: "Completed", val: stStaff.filter(s => s.status === "Approved" || s.status === "Submitted").length },
-              { label: "High-Risk Pointsmen", val: pmList.filter(s => s.risk === "High").length },
-              { label: "Safety Compliance", val: `${st.safety}%` },
-            ].map(c => (
-              <div key={c.label} className="sdom-stat-card">
-                <div className="sdom-stat-value">{c.val}</div>
-                <div className="sdom-stat-label">{c.label}</div>
-              </div>
-            ))}
-          </div>
-
-          <div className="sdom-row-2">
-            <div className="sdom-chart-card">
-              <div className="sdom-chart-title">Category/Grade Distribution</div>
-              <div className="sdom-chart-subtitle">A/B/C/D breakdown of staff at this station</div>
-              <div style={{ height: 260 }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={catCount} barSize={46} margin={{ top: 16, right: 24, left: 0, bottom: 8 }}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#D9E2EC" />
-                    <XAxis dataKey="cat" fontSize={12} tick={{ fill: "#102A43", fontWeight: 600 }} axisLine={false} tickLine={false} />
-                    <YAxis fontSize={11} tick={{ fill: "#627D98" }} axisLine={false} tickLine={false} />
-                    <Tooltip contentStyle={{ fontSize: "0.85rem", borderRadius: 6, border: "1px solid #D9E2EC" }} cursor={{ fill: "rgba(0,0,0,0.03)" }} />
-                    <Bar dataKey="count" radius={[5, 5, 0, 0]}>
-                      {catCount.map((d, i) => <Cell key={i} fill={CAT_COLORS[Object.keys(CAT_COLORS)[i]]} />)}
-                      <LabelList dataKey="count" position="top" style={{ fontSize: 12, fontWeight: 700, fill: "#102A43" }} />
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-
-            <div className="sdom-chart-card">
-              <div className="sdom-chart-title">Risk Distribution</div>
-              <div className="sdom-chart-subtitle">Staff risk level breakdown at this station</div>
-              <div style={{ height: 260 }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie data={riskCount} cx="50%" cy="50%" innerRadius={70} outerRadius={105}
-                         dataKey="value" paddingAngle={4}
-                         label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                         labelLine={false}>
-                      {riskCount.map((d, i) => <Cell key={i} fill={RISK_COLORS[d.name]} />)}
-                    </Pie>
-                    <Legend wrapperStyle={{ fontSize: "0.82rem" }} />
-                    <Tooltip contentStyle={{ fontSize: "0.85rem", borderRadius: 6, border: "1px solid #D9E2EC" }} />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-          </div>
-
-          <div className="sdom-row-1">
-            <div className="sdom-chart-card">
-              <div className="sdom-chart-title" style={{ marginBottom: 16 }}>Station Masters</div>
-              <div className="sdom-table-wrap">
-                <table className="sdom-table">
-                  <thead><tr><th>Name</th><th>HRMS ID</th><th>Category</th><th>Last Score</th><th>Last Assessment</th><th>Status</th><th>Action</th></tr></thead>
-                  <tbody>
-                    {smList.length === 0 && <tr><td colSpan={7} style={{ textAlign: "center", color: "#94a3b8", padding: 24 }}>No Station Masters assigned</td></tr>}
-                    {smList.map(s => (
-                      <tr key={s.id}>
-                        <td style={{ fontWeight: 700 }}>{s.name}</td>
-                        <td style={{ color: "#64748b", fontSize: "0.85rem" }}>{s.id}</td>
-                        <td>{catBadge(s.cat || getCat(s.score))}</td>
-                        <td style={{ fontWeight: 700 }}>{s.score}</td>
-                        <td>{s.lastAssessDate || s.lastDate || "—"}</td>
-                        <td>{statusBadge(s.status || "Active")}</td>
-                        <td><button className="sdom-btn-ghost" onClick={() => setView({ type: "staffDetail", data: s, returnTo: "stationDetail", stationData: st })}>View Details</button></td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-
-          <div className="sdom-row-1">
-            <div className="sdom-chart-card">
-              <div className="sdom-chart-title" style={{ marginBottom: 16 }}>Pointsmen</div>
-              <div className="sdom-table-wrap">
-                <table className="sdom-table">
-                  <thead><tr><th>Name</th><th>HRMS ID</th><th>Category</th><th>Risk Level</th><th>Latest Score</th><th>Status</th><th>Action</th></tr></thead>
-                  <tbody>
-                    {pmList.length === 0 && <tr><td colSpan={7} style={{ textAlign: "center", color: "#94a3b8", padding: 24 }}>No Pointsmen assigned</td></tr>}
-                    {pmList.map(s => (
-                      <tr key={s.id}>
-                        <td style={{ fontWeight: 700 }}>{s.name}</td>
-                        <td style={{ color: "#64748b", fontSize: "0.85rem" }}>{s.id}</td>
-                        <td>{catBadge(s.cat || getCat(s.score))}</td>
-                        <td>{riskBadge(s.risk)}</td>
-                        <td style={{ fontWeight: 700 }}>{s.score}</td>
-                        <td>{statusBadge(s.status || "Active")}</td>
-                        <td><button className="sdom-btn-ghost" onClick={() => setView({ type: "staffDetail", data: s, returnTo: "stationDetail", stationData: st })}>View Details</button></td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        </div>
+        <SAStationDetail
+          st={st}
+          staff={users}
+          closeView={() => {
+            setView(null);
+            setSelectedStation(null);
+          }}
+          setView={setView}
+        />
       );
     };
 
     if (view?.type === "staffDetail") return renderStaffDetail(view.data);
     if (view?.type === "stationDetail") return renderStationDetail(view.data);
 
-    // Main Station List rendering (looks exactly like AOM's renderStations)
-    const filtered = stationStats.map(st => {
+    const mappedStations = stationStats.map(st => {
       const smCount = users.filter(u => u.station === st.name && (u.role === "Station Master" || u.role === "sm")).length;
       const pmCount = users.filter(u => u.station === st.name && (u.role === "Pointsman" || u.role === "pointsmen")).length;
       const pmPending = myPmList.filter(p => p.station === st.name && p.status === "Pending").length;
       const smPending = mySmList.filter(s => s.station === st.name && s.status === "Pending").length;
       const tmPending = myTmList.filter(t => t.station === st.name && t.status === "Pending").length;
       const pending = pmPending + smPending + tmPending;
-      
+
       return {
         ...st,
-        ti: user.name || "TI R. Khan",
+        ti: st.ti || "—",
         smCount,
         pmCount,
-        score: st.avgScore,
-        safety: st.safetyPct,
-        highRisk: st.highRisk,
+        score: st.avgScore || st.score || 0,
+        safety: st.safetyPct || st.safety || 0,
+        highRisk: st.highRisk || 0,
         pending
       };
-    }).filter(st => {
-      const q = stSearch.toLowerCase();
-      const matchesSearch = !q || st.name.toLowerCase().includes(q) || st.code.toLowerCase().includes(q);
-      const matchesCat = stCatFilter === "All" || getCat(st.avgScore) === stCatFilter;
-      return matchesSearch && matchesCat;
     });
 
     return (
-      <div className="sdom-fade">
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 }}>
-          <div>
-            <h1 className="sdom-page-title">Stations</h1>
-            <p className="sdom-page-subtitle">Full list of stations under your jurisdiction. Click a station to open its complete analytics dashboard.</p>
-          </div>
-          <button className="sdom-btn-primary" onClick={() => {
-            setNewStationData({ name: "", code: "" });
-            setShowAddStationModal(true);
-          }} style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-            <Plus size={16} /> Add New Station
-          </button>
-        </div>
-
-        <div className="sdom-filter-bar" style={{ display: "flex", gap: "12px", flexWrap: "nowrap", marginBottom: "16px" }}>
-          <div className="sdom-filter-field" style={{ flex: 1 }}>
-            <label>Search Station</label>
-            <input value={stSearch} onChange={e => setStSearch(e.target.value)} placeholder="Station name or code..." />
-          </div>
-          <div className="sdom-filter-field" style={{ width: "200px" }}>
-            <label>Category Filter</label>
-            <select value={stCatFilter} onChange={e => setStCatFilter(e.target.value)}>
-              <option value="All">All Categories</option>
-              <option value="A">Grade A Stations</option>
-              <option value="B">Grade B Stations</option>
-              <option value="C">Grade C Stations</option>
-              <option value="D">Grade D Stations</option>
-            </select>
-          </div>
-        </div>
-
-        <div className="sdom-chart-card">
-          <div className="sdom-table-wrap">
-            <table className="sdom-table">
-              <thead>
-                <tr>
-                  <th>Station Name</th>
-                  <th>Code</th>
-                  <th>Assigned TI</th>
-                  <th>SMs</th>
-                  <th>Pointsmen</th>
-                  <th>Avg Score</th>
-                  <th>Safety %</th>
-                  <th>High Risk</th>
-                  <th>Pending</th>
-                  <th>Dashboard</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.length === 0 ? (
-                  <tr>
-                    <td colSpan={10} style={{ textAlign: "center", color: "#64748b", padding: "24px" }}>
-                      No stations found matching filters.
-                    </td>
-                  </tr>
-                ) : (
-                  filtered.map(st => (
-                    <tr key={st.id}>
-                      <td style={{ fontWeight: 700 }}>{st.name}</td>
-                      <td><span className="sdom-badge sdom-badge-blue">{st.code}</span></td>
-                      <td>{st.ti}</td>
-                      <td>{st.smCount}</td>
-                      <td>{st.pmCount}</td>
-                      <td style={{ fontWeight: 700, color: st.score >= 85 ? "#16a34a" : st.score >= 75 ? "#d97706" : "#dc2626" }}>{st.score}%</td>
-                      <td>{st.safety}%</td>
-                      <td>{st.highRisk > 3 ? <span style={{ color: "#dc2626", fontWeight: 700 }}>{st.highRisk}</span> : st.highRisk}</td>
-                      <td>{st.pending}</td>
-                      <td>
-                        <button className="sdom-btn-primary" style={{ padding: "7px 14px", fontSize: "0.82rem" }} onClick={() => setSelectedStation(st)}>
-                          Open Station Dashboard
-                        </button>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        {showAddStationModal && (
-          <div className="sdom-modal-overlay" style={{ zIndex: 9999 }}>
-            <div className="sdom-modal" style={{ width: "450px" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
-                <h3 style={{ margin: 0, fontSize: "1.2rem", fontWeight: 700, color: "#0B1F3A" }}>Add New Station</h3>
-                <button type="button" onClick={() => setShowAddStationModal(false)} style={{ background: "none", border: "none", fontSize: "20px", cursor: "pointer", color: "#64748b" }}>&times;</button>
-              </div>
-              
-              <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
-                <div className="sdom-filter-field">
-                  <label style={{ fontWeight: 600, fontSize: "0.8rem", color: "#334155" }}>Station Name</label>
-                  <input type="text" value={newStationData.name} onChange={e => setNewStationData({ ...newStationData, name: e.target.value })} placeholder="e.g. Wardha Junction" />
-                </div>
-                <div className="sdom-filter-field">
-                  <label style={{ fontWeight: 600, fontSize: "0.8rem", color: "#334155" }}>Station Code</label>
-                  <input type="text" value={newStationData.code} onChange={e => setNewStationData({ ...newStationData, code: e.target.value })} placeholder="e.g. WR" />
-                </div>
-              </div>
-
-              <div style={{ display: "flex", justifyContent: "flex-end", gap: "12px", marginTop: "24px" }}>
-                <button className="sdom-btn-outline" onClick={() => setShowAddStationModal(false)}>Cancel</button>
-                <button className="sdom-btn-primary" onClick={handleAddStationSubmit}>Create Station</button>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
+      <SAStationDirectory
+        stations={mappedStations}
+        staff={users}
+        addStation={async (station) => {
+          try {
+            await saDataService.addStation(station);
+            await fetchLiveDatabaseData();
+          } catch (err) {
+            alert("Error adding station: " + err.message);
+          }
+        }}
+        updateStation={async (station) => {
+          try {
+            await saDataService.saveStation(station, "edit");
+            await fetchLiveDatabaseData();
+          } catch (err) {
+            alert("Error updating station: " + err.message);
+          }
+        }}
+        deleteStation={async (id, name) => {
+          try {
+            await saDataService.deleteStation(id, name);
+            await fetchLiveDatabaseData();
+          } catch (err) {
+            alert("Error deleting station: " + err.message);
+          }
+        }}
+        openView={(type, data) => {
+          if (type === "stationDetail") {
+            setSelectedStation(data);
+          } else {
+            setView({ type, data });
+          }
+        }}
+      />
     );
   };
 
@@ -1413,7 +1309,7 @@ export default function TrafficInspectorModule({ user, onLogout }) {
     );
   };
 
-    const renderMyAssessment = ()=>{
+  const renderMyAssessment = () => {
     if (quizState === "quiz") {
       const question = TI_QUIZ[currentQuestion];
       const answeredCount = quizAnswers.filter(r => r !== null && r !== undefined).length;
@@ -1447,19 +1343,19 @@ export default function TrafficInspectorModule({ user, onLogout }) {
             height: "70px",
             flexShrink: 0
           }}>
-            <div style={{display: "flex", alignItems: "center", gap: 12}}>
-              <ShieldCheck size={28} color="#f97316"/>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <ShieldCheck size={28} color="#f97316" />
               <div>
-                <h1 style={{fontSize: 18, fontWeight: 800, margin: 0, color: "#ffffff", letterSpacing: "0.5px"}}>
+                <h1 style={{ fontSize: 18, fontWeight: 800, margin: 0, color: "#ffffff", letterSpacing: "0.5px" }}>
                   TRAFFIC INSPECTOR CBT COMPETENCY EVALUATION
                 </h1>
-                <p style={{margin: 0, fontSize: 11, color: "#94a3b8", fontWeight: 500}}>
+                <p style={{ margin: 0, fontSize: 11, color: "#94a3b8", fontWeight: 500 }}>
                   Official Online Railway Rules &amp; Operational Safety Examination (2026 Cycle)
                 </p>
               </div>
             </div>
-            
-            <div style={{display: "flex", alignItems: "center", gap: 16}}>
+
+            <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
               <div style={{
                 background: "#334155",
                 padding: "6px 16px",
@@ -1469,23 +1365,23 @@ export default function TrafficInspectorModule({ user, onLogout }) {
                 color: "#cbd5e1",
                 border: "1px solid #475569"
               }}>
-                â³ TIME ELAPSED: <span style={{color: "#3b82f6"}}>Active Session</span>
+                â³ TIME ELAPSED: <span style={{ color: "#3b82f6" }}>Active Session</span>
               </div>
-              
-              <button 
+
+              <button
                 onClick={() => {
                   if (window.confirm("Are you sure you want to exit the exam? Your progress will not be saved.")) {
                     setQuizState("idle");
                   }
-                }} 
+                }}
                 style={{
-                  padding: "8px 18px", 
-                  borderRadius: 8, 
-                  fontSize: 13, 
-                  background: "#ef4444", 
-                  color: "#ffffff", 
-                  border: "none", 
-                  fontWeight: 700, 
+                  padding: "8px 18px",
+                  borderRadius: 8,
+                  fontSize: 13,
+                  background: "#ef4444",
+                  color: "#ffffff",
+                  border: "none",
+                  fontWeight: 700,
                   cursor: "pointer",
                   boxShadow: "0 2px 4px rgba(239, 68, 68, 0.2)",
                   transition: "all 0.2s ease"
@@ -1510,34 +1406,34 @@ export default function TrafficInspectorModule({ user, onLogout }) {
             color: "#334155"
           }}>
             <div>
-              Candidate Name: <strong style={{color: "#2563eb"}}>{tiName}</strong> &nbsp;|&nbsp; HRMS ID: <strong style={{color: "#2563eb"}}>{tiId}</strong> &nbsp;|&nbsp; Section Scope: <strong>Parbhani-Amla Section</strong>
+              Candidate Name: <strong style={{ color: "#2563eb" }}>{tiName}</strong> &nbsp;|&nbsp; HRMS ID: <strong style={{ color: "#2563eb" }}>{tiId}</strong> &nbsp;|&nbsp; Section Scope: <strong>Parbhani-Amla Section</strong>
             </div>
-            <div style={{display: "flex", alignItems: "center", gap: 12}}>
-              <span style={{fontWeight: 600}}>Progress: <strong style={{color: "#2563eb"}}>{answeredCount} / 25 Answered</strong> ({completionRate}%)</span>
-              <div style={{width: 140, height: 8, background: "#e2e8f0", borderRadius: 4, overflow: "hidden"}}>
-                <div style={{width: `${completionRate}%`, height: "100%", background: "#2563eb", borderRadius: 4}}/>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <span style={{ fontWeight: 600 }}>Progress: <strong style={{ color: "#2563eb" }}>{answeredCount} / 25 Answered</strong> ({completionRate}%)</span>
+              <div style={{ width: 140, height: 8, background: "#e2e8f0", borderRadius: 4, overflow: "hidden" }}>
+                <div style={{ width: `${completionRate}%`, height: "100%", background: "#2563eb", borderRadius: 4 }} />
               </div>
             </div>
           </div>
 
           {/* Main Split Body */}
           <div style={{
-            display: "grid", 
-            gridTemplateColumns: "1fr 340px", 
-            flex: 1, 
+            display: "grid",
+            gridTemplateColumns: "1fr 340px",
+            flex: 1,
             overflow: "hidden"
           }}>
-            
+
             {/* Left Column: Spacious Question Pane */}
             <div style={{
-              padding: "32px 40px", 
-              display: "flex", 
-              flexDirection: "column", 
+              padding: "32px 40px",
+              display: "flex",
+              flexDirection: "column",
               background: "#f8fafc",
               overflowY: "auto",
               height: "100%"
             }}>
-              
+
               {/* Immersive Question Card */}
               <div style={{
                 background: "#ffffff",
@@ -1564,19 +1460,19 @@ export default function TrafficInspectorModule({ user, onLogout }) {
                   }}>
                     Question {currentQuestion + 1} of 25
                   </span>
-                  
+
                   <h2 style={{
-                    fontSize: 22, 
-                    fontWeight: 700, 
-                    color: "#0f172a", 
-                    marginTop: 24, 
-                    marginBottom: 28, 
+                    fontSize: 22,
+                    fontWeight: 700,
+                    color: "#0f172a",
+                    marginTop: 24,
+                    marginBottom: 28,
                     lineHeight: 1.5
                   }}>
                     {question.q}
                   </h2>
 
-                  <div style={{display: "flex", flexDirection: "column", gap: 14}}>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
                     {question.opts.map((opt, oi) => {
                       const isSelected = quizAnswers[currentQuestion] === oi;
                       return (
@@ -1599,7 +1495,7 @@ export default function TrafficInspectorModule({ user, onLogout }) {
                             onChange={() => {
                               handleSelectQuizOpt(oi);
                             }}
-                            style={{width: 20, height: 20, accentColor: "#2563eb"}}
+                            style={{ width: 20, height: 20, accentColor: "#2563eb" }}
                           />
                           <span style={{
                             fontSize: 15,
@@ -1608,8 +1504,8 @@ export default function TrafficInspectorModule({ user, onLogout }) {
                             width: 24
                           }}>{["A", "B", "C", "D"][oi]}</span>
                           <span style={{
-                            fontSize: 15, 
-                            color: "#1e293b", 
+                            fontSize: 15,
+                            color: "#1e293b",
                             fontWeight: isSelected ? 700 : 500
                           }}>{opt}</span>
                         </label>
@@ -1621,8 +1517,8 @@ export default function TrafficInspectorModule({ user, onLogout }) {
 
               {/* Immersive Control Footer Bar */}
               <div style={{
-                display: "flex", 
-                justifyContent: "space-between", 
+                display: "flex",
+                justifyContent: "space-between",
                 alignItems: "center",
                 background: "#ffffff",
                 border: "1px solid #e2e8f0",
@@ -1648,13 +1544,13 @@ export default function TrafficInspectorModule({ user, onLogout }) {
                   â† Previous Question
                 </button>
 
-                <div style={{fontSize: 14, color: "#64748b"}}>
+                <div style={{ fontSize: 14, color: "#64748b" }}>
                   {unansweredCount > 0 ? (
-                    <span style={{color: "#d97706", fontWeight: 800, display: "flex", alignItems: "center", gap: 6}}>
+                    <span style={{ color: "#d97706", fontWeight: 800, display: "flex", alignItems: "center", gap: 6 }}>
                       âš ï¸ {unansweredCount} question{unansweredCount > 1 ? "s" : ""} remaining to unlock submission
                     </span>
                   ) : (
-                    <span style={{color: "#16a34a", fontWeight: 800, display: "flex", alignItems: "center", gap: 6}}>
+                    <span style={{ color: "#16a34a", fontWeight: 800, display: "flex", alignItems: "center", gap: 6 }}>
                       ✓ All 25 questions attempted! You can now submit.
                     </span>
                   )}
@@ -1691,7 +1587,7 @@ export default function TrafficInspectorModule({ user, onLogout }) {
               overflowY: "auto",
               height: "100%"
             }}>
-              <div style={{textAlign: "center", paddingBottom: 16, borderBottom: "1.5px solid #f1f5f9"}}>
+              <div style={{ textAlign: "center", paddingBottom: 16, borderBottom: "1.5px solid #f1f5f9" }}>
                 <div style={{
                   width: 60,
                   height: 60,
@@ -1707,16 +1603,16 @@ export default function TrafficInspectorModule({ user, onLogout }) {
                 }}>
                   {tiName.charAt(0)}
                 </div>
-                <h3 style={{fontSize: 15, fontWeight: 700, color: "#1e293b", margin: 0}}>{tiName}</h3>
-                <span style={{fontSize: 12, color: "#64748b", fontWeight: 500}}>HRMS ID: {tiId}</span>
+                <h3 style={{ fontSize: 15, fontWeight: 700, color: "#1e293b", margin: 0 }}>{tiName}</h3>
+                <span style={{ fontSize: 12, color: "#64748b", fontWeight: 500 }}>HRMS ID: {tiId}</span>
               </div>
 
               <h4 style={{
-                fontSize: 12, 
-                fontWeight: 800, 
-                color: "#475569", 
-                textTransform: "uppercase", 
-                letterSpacing: "0.6px", 
+                fontSize: 12,
+                fontWeight: 800,
+                color: "#475569",
+                textTransform: "uppercase",
+                letterSpacing: "0.6px",
                 margin: 0
               }}>
                 Question Palette
@@ -1734,7 +1630,7 @@ export default function TrafficInspectorModule({ user, onLogout }) {
                 {TI_QUIZ.map((q, idx) => {
                   const isCurrent = idx === currentQuestion;
                   const isAnswered = quizAnswers[idx] !== null && quizAnswers[idx] !== undefined;
-                  
+
                   let btnBg = "#ffffff";
                   let btnBorder = "1.5px solid #cbd5e1";
                   let btnColor = "#475569";
@@ -1790,24 +1686,24 @@ export default function TrafficInspectorModule({ user, onLogout }) {
                 flexDirection: "column",
                 gap: 8
               }}>
-                <div style={{display: "flex", alignItems: "center", gap: 10}}>
-                  <span style={{width: 16, height: 16, background: "#dcfce7", border: "1.5px solid #86efac", borderRadius: 4}}/>
-                  <span style={{fontWeight: 500}}>Attempted</span>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <span style={{ width: 16, height: 16, background: "#dcfce7", border: "1.5px solid #86efac", borderRadius: 4 }} />
+                  <span style={{ fontWeight: 500 }}>Attempted</span>
                 </div>
-                <div style={{display: "flex", alignItems: "center", gap: 10}}>
-                  <span style={{width: 16, height: 16, background: "#fef3c7", border: "1.5px solid #fde047", borderRadius: 4}}/>
-                  <span style={{fontWeight: 600, color: "#a16207"}}>Unattempted</span>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <span style={{ width: 16, height: 16, background: "#fef3c7", border: "1.5px solid #fde047", borderRadius: 4 }} />
+                  <span style={{ fontWeight: 600, color: "#a16207" }}>Unattempted</span>
                 </div>
-                <div style={{display: "flex", alignItems: "center", gap: 10}}>
-                  <span style={{width: 16, height: 16, background: "#dbeafe", border: "2px solid #2563eb", borderRadius: 4}}/>
-                  <span style={{fontWeight: 500}}>Current Focus</span>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <span style={{ width: 16, height: 16, background: "#dbeafe", border: "2px solid #2563eb", borderRadius: 4 }} />
+                  <span style={{ fontWeight: 500 }}>Current Focus</span>
                 </div>
               </div>
 
               {/* Submission Section at Bottom */}
               <div style={{
-                marginTop: "auto", 
-                paddingTop: 20, 
+                marginTop: "auto",
+                paddingTop: 20,
                 borderTop: "1.5px solid #f1f5f9"
               }}>
                 <button
@@ -1858,7 +1754,7 @@ export default function TrafficInspectorModule({ user, onLogout }) {
       return (
         <div className="ti2-card animate-fade-in" style={{ padding: "24px", maxHeight: "calc(100vh - 120px)", overflowY: "auto" }}>
           <div className="ti2-card-hdr" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #e2e8f0", paddingBottom: "14px", marginBottom: "20px" }}>
-            <h2 style={{ display: "flex", alignItems: "center", gap: "8px", margin: 0 }}><ShieldCheck size={22} color="#16a34a"/> Detailed Evaluation Scorecard</h2>
+            <h2 style={{ display: "flex", alignItems: "center", gap: "8px", margin: 0 }}><ShieldCheck size={22} color="#16a34a" /> Detailed Evaluation Scorecard</h2>
             <button className="ti2-primary-btn" onClick={() => { setSelectedRecord(null); setQuizState("idle"); }}>← Return to History</button>
           </div>
 
@@ -1911,7 +1807,7 @@ export default function TrafficInspectorModule({ user, onLogout }) {
           {/* Complete MCQ Question Review */}
           <div className="pm-mcq-review-panel" style={{ borderTop: "1px solid #e2e8f0", paddingTop: "24px" }}>
             <div className="pm-chart-header" style={{ marginBottom: "16px", display: "flex", alignItems: "center", gap: "6px" }}>
-              <Clock size={16} color="#475569"/>
+              <Clock size={16} color="#475569" />
               <h3 style={{ margin: 0, fontSize: "15px", color: "#0f172a", fontWeight: "700" }}>Complete Assessment Question Review</h3>
             </div>
             <p className="pm-subtitle" style={{ fontSize: "12px", color: "#64748b", marginTop: "-10px", marginBottom: "20px" }}>
@@ -1939,7 +1835,7 @@ export default function TrafficInspectorModule({ user, onLogout }) {
                       {q.opts.map((opt, oIdx) => {
                         const wasSelected = selectedOpt === oIdx;
                         const isOptCorrect = q.ans === oIdx;
-                        
+
                         let optClass = "";
                         if (wasSelected) {
                           optClass = isCorrect ? "opt-selected-correct" : "opt-selected-wrong";
@@ -1976,8 +1872,8 @@ export default function TrafficInspectorModule({ user, onLogout }) {
     }
 
     const testActive = isExamAssigned;
-    const avgScore = tiAssessments.length 
-      ? Math.round(tiAssessments.reduce((s, a) => s + a.totalScore, 0) / tiAssessments.length) 
+    const avgScore = tiAssessments.length
+      ? Math.round(tiAssessments.reduce((s, a) => s + a.totalScore, 0) / tiAssessments.length)
       : 0;
 
     return (
@@ -1985,48 +1881,48 @@ export default function TrafficInspectorModule({ user, onLogout }) {
         {/* MCQ Assessment Assignment Banner */}
         {testActive ? (
           <div style={{
-            background:"linear-gradient(135deg, #fffbeb 0%, #fff7ed 100%)",
-            border:"1.5px solid #fed7aa",
-            borderRadius:12,
-            padding:20,
-            marginBottom:24,
-            boxShadow:"0 4px 6px -1px rgba(0,0,0,0.05)"
+            background: "linear-gradient(135deg, #fffbeb 0%, #fff7ed 100%)",
+            border: "1.5px solid #fed7aa",
+            borderRadius: 12,
+            padding: 20,
+            marginBottom: 24,
+            boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)"
           }}>
-            <div style={{display:"flex", gap:16, alignItems:"start"}}>
+            <div style={{ display: "flex", gap: 16, alignItems: "start" }}>
               <div style={{
-                background:"#ffedd5",
-                borderRadius:50,
-                width:42,
-                height:42,
-                display:"flex",
-                alignItems:"center",
-                justifyContent:"center",
-                flexShrink:0
+                background: "#ffedd5",
+                borderRadius: 50,
+                width: 42,
+                height: 42,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                flexShrink: 0
               }}>
-                <ShieldCheck size={22} color="#ea580c"/>
+                <ShieldCheck size={22} color="#ea580c" />
               </div>
-              <div style={{flex:1}}>
-                <h3 style={{margin:"0 0 6px", fontSize:16, fontWeight:700, color:"#c2410c"}}>
+              <div style={{ flex: 1 }}>
+                <h3 style={{ margin: "0 0 6px", fontSize: 16, fontWeight: 700, color: "#c2410c" }}>
                   ⚠️ Pending Competency Assessment
                 </h3>
-                <p style={{margin:"0 0 14px", fontSize:13, color:"#9a3412", lineHeight:1.4}}>
+                <p style={{ margin: "0 0 14px", fontSize: 13, color: "#9a3412", lineHeight: 1.4 }}>
                   Your supervisor (Area Operation Manager) has scheduled a periodic safety &amp; competency assessment for you. You must complete the 25-question MCQ exam.
                 </p>
                 <button
                   onClick={startQuiz}
                   style={{
-                    background:"#ea580c",
-                    color:"#ffffff",
-                    border:"none",
-                    padding:"10px 20px",
-                    borderRadius:8,
-                    fontSize:13.5,
-                    fontWeight:700,
-                    cursor:"pointer",
-                    boxShadow:"0 4px 6px rgba(234, 88, 12, 0.2)",
-                    display:"flex",
-                    alignItems:"center",
-                    gap:8
+                    background: "#ea580c",
+                    color: "#ffffff",
+                    border: "none",
+                    padding: "10px 20px",
+                    borderRadius: 8,
+                    fontSize: 13.5,
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    boxShadow: "0 4px 6px rgba(234, 88, 12, 0.2)",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8
                   }}
                 >
                   Start 25 MCQ Online Assessment
@@ -2036,32 +1932,32 @@ export default function TrafficInspectorModule({ user, onLogout }) {
           </div>
         ) : (
           <div style={{
-            background:"#fef2f2",
-            border:"1.5px solid #fecaca",
-            borderRadius:12,
-            padding:18,
-            marginBottom:24,
-            display:"flex",
-            alignItems:"center",
-            gap:14
+            background: "#fef2f2",
+            border: "1.5px solid #fecaca",
+            borderRadius: 12,
+            padding: 18,
+            marginBottom: 24,
+            display: "flex",
+            alignItems: "center",
+            gap: 14
           }}>
-            <Lock size={24} color="#dc2626"/>
-            <div style={{flex:1}}>
-              <h3 style={{margin:"0 0 2px", fontSize:14.5, fontWeight:700, color:"#991b1b"}}>
+            <Lock size={24} color="#dc2626" />
+            <div style={{ flex: 1 }}>
+              <h3 style={{ margin: "0 0 2px", fontSize: 14.5, fontWeight: 700, color: "#991b1b" }}>
                 Assessment Locked
               </h3>
-              <p style={{margin:0, fontSize:12, color:"#b91c1c"}}>
+              <p style={{ margin: 0, fontSize: 12, color: "#b91c1c" }}>
                 Your Traffic Inspector assessment is currently locked. It will be enabled once authorized by the Area Operation Manager.
               </p>
             </div>
-            <div style={{display:"flex", gap:16, fontSize:12, textAlign:"right"}}>
+            <div style={{ display: "flex", gap: 16, fontSize: 12, textAlign: "right" }}>
               <div>
-                <span style={{color:"#b91c1c", display:"block"}}>Last Exam Score</span>
-                <strong style={{color:"#7f1d1d", fontSize:13}}>{tiAssessments[0] ? `${tiAssessments[0].totalScore}%` : "N/A"}</strong>
+                <span style={{ color: "#b91c1c", display: "block" }}>Last Exam Score</span>
+                <strong style={{ color: "#7f1d1d", fontSize: 13 }}>{tiAssessments[0] ? `${tiAssessments[0].totalScore}%` : "N/A"}</strong>
               </div>
-              <div style={{borderLeft:"1px solid #fca5a5", paddingLeft:16}}>
-                <span style={{color:"#b91c1c", display:"block"}}>Next Due Date</span>
-                <strong style={{color:"#7f1d1d", fontSize:13}}>Pending Authorization</strong>
+              <div style={{ borderLeft: "1px solid #fca5a5", paddingLeft: 16 }}>
+                <span style={{ color: "#b91c1c", display: "block" }}>Next Due Date</span>
+                <strong style={{ color: "#7f1d1d", fontSize: 13 }}>Pending Authorization</strong>
               </div>
             </div>
           </div>
@@ -2086,7 +1982,7 @@ export default function TrafficInspectorModule({ user, onLogout }) {
           </div>
           <div className="sm2-report-mini">
             <label>Latest Assessment</label>
-            <strong style={{color: tiAssessments[0]?.approvalStatus === "Approved" ? (CAT_C[tiAssessments[0]?.category] || "#2563eb") : "#ea580c"}}>
+            <strong style={{ color: tiAssessments[0]?.approvalStatus === "Approved" ? (CAT_C[tiAssessments[0]?.category] || "#2563eb") : "#ea580c" }}>
               {tiAssessments[0] ? (tiAssessments[0].approvalStatus === "Approved" ? `Category ${tiAssessments[0].category}` : "Awaiting AOM") : "—"}
             </strong>
           </div>
@@ -2095,7 +1991,7 @@ export default function TrafficInspectorModule({ user, onLogout }) {
         {/* List */}
         <div className="sm2-myassess-list">
           <div className="sm2-myassess-head">
-            {["Period","Date","Score Scale","Category","Assessed By","Status",""].map(h =>
+            {["Period", "Date", "Score Scale", "Category", "Assessed By", "Status", ""].map(h =>
               <span key={h}>{h}</span>)}
           </div>
           {tiAssessments.map(sc => {
@@ -2110,18 +2006,18 @@ export default function TrafficInspectorModule({ user, onLogout }) {
                 <span><strong>{sc.totalScore}/{isApproved ? "100" : "25"}</strong></span>
                 <span>
                   {isApproved ? (
-                    <span className="sm2-badge" style={{background:CAT_B[cat],color:CAT_C[cat]}}>
+                    <span className="sm2-badge" style={{ background: CAT_B[cat], color: CAT_C[cat] }}>
                       Cat. {cat}
                     </span>
                   ) : (
-                    <span style={{color: "#ea580c", fontSize: "12px", fontWeight: "600"}}>—</span>
+                    <span style={{ color: "#ea580c", fontSize: "12px", fontWeight: "600" }}>—</span>
                   )}
                 </span>
-                <span style={{fontSize:11,color:"#64748b"}}>{sc.assessedBy}</span>
+                <span style={{ fontSize: 11, color: "#64748b" }}>{sc.assessedBy}</span>
                 <span>
                   <span className={`sm2-status-pill sm2-status-${sc.approvalStatus.toLowerCase()}`}>{sc.approvalStatus}</span>
                 </span>
-                <span style={{color:"#2563eb",fontSize:12,fontWeight:600}}>View Form</span>
+                <span style={{ color: "#2563eb", fontSize: 12, fontWeight: 600 }}>View Form</span>
               </button>
             );
           })}
@@ -2137,7 +2033,7 @@ export default function TrafficInspectorModule({ user, onLogout }) {
     const due = users.filter(u => u.pmeStatus === "Due" || u.pmeStatus === "Pending");
     const fit = users.filter(u => u.pmeStatus === "Fit");
     const overdue = users.filter(u => u.pmeStatus === "Overdue" || u.pmeStatus === "Unfit");
-    
+
     return (
       <div className="ti2-page-body animate-fade-in">
         <div className="ti2-card">
@@ -2147,7 +2043,7 @@ export default function TrafficInspectorModule({ user, onLogout }) {
               <p className="ti2-subtitle" style={{ margin: "2px 0 0" }}>Track periodic medical exam clearances, overdue alerts, and compliance targets.</p>
             </div>
             <button className="ti2-view-profile-btn" onClick={() => exportAlert("PDF", "Section_PME_Compliance_Report")}>
-              <Download size={13}/> PME Report
+              <Download size={13} /> PME Report
             </button>
           </div>
 
@@ -2206,7 +2102,7 @@ export default function TrafficInspectorModule({ user, onLogout }) {
               <p className="ti2-subtitle" style={{ margin: "2px 0 0" }}>Monitor pointsmen safety refresher training compliance ledger.</p>
             </div>
             <button className="ti2-view-profile-btn" onClick={() => exportAlert("PDF", "REF_Refresher_Training_Position")}>
-              <Download size={13}/> REF Report
+              <Download size={13} /> REF Report
             </button>
           </div>
 
@@ -2233,7 +2129,7 @@ export default function TrafficInspectorModule({ user, onLogout }) {
                 <span>{u.designation}</span>
                 <strong>{u.station}</strong>
                 <span style={{ color: u.refStatus === "Expired" ? "#dc2626" : "#d97706", fontWeight: "800" }}>{u.refStatus}</span>
-                <span><button className="ti2-primary-btn-sm" style={{ fontSize: "11px", padding: "5px 12px" }} onClick={() => { alert(`✓ Clear REF action submitted: ${u.name} scheduled for refresher training batches.`); setUsers(prev=>prev.map(x=>x.id===u.id?{...x, refStatus: "Cleared"}:x)); addAuditLog("Clear REF training", `Scheduled refresher course for ${u.name}`); }}>Clear REF</button></span>
+                <span><button className="ti2-primary-btn-sm" style={{ fontSize: "11px", padding: "5px 12px" }} onClick={() => { alert(`✓ Clear REF action submitted: ${u.name} scheduled for refresher training batches.`); setUsers(prev => prev.map(x => x.id === u.id ? { ...x, refStatus: "Cleared" } : x)); addAuditLog("Clear REF training", `Scheduled refresher course for ${u.name}`); }}>Clear REF</button></span>
               </div>
             ))}
           </div>
@@ -2254,7 +2150,7 @@ export default function TrafficInspectorModule({ user, onLogout }) {
             <p className="ti2-subtitle" style={{ margin: "2px 0 0" }}>Schedule field audits, document safety observations, and log track point compliance.</p>
           </div>
           <button className="ti2-primary-btn" onClick={() => setShowInspForm(!showInspForm)}>
-            <Plus size={13}/> {showInspForm ? "Close Form" : "Log New Inspection"}
+            <Plus size={13} /> {showInspForm ? "Close Form" : "Log New Inspection"}
           </button>
         </div>
 
@@ -2262,14 +2158,14 @@ export default function TrafficInspectorModule({ user, onLogout }) {
           <form onSubmit={submitInspection} className="ti2-assess-form" style={{ padding: "18px", border: "1px dashed #cbd5e1", borderRadius: "12px", background: "#f8fafc", marginBottom: "18px" }}>
             <div className="ti2-form-field">
               <label>Audited Station</label>
-              <select value={newInsp.station} onChange={e=>setNewInsp({...newInsp, station: e.target.value})} required>
+              <select value={newInsp.station} onChange={e => setNewInsp({ ...newInsp, station: e.target.value })} required>
                 {myStations.map(st => <option key={st.id} value={st.name}>{st.name}</option>)}
               </select>
             </div>
-            
+
             <div className="ti2-form-field">
               <label>Risk Level Class</label>
-              <select value={newInsp.risk} onChange={e=>setNewInsp({...newInsp, risk: e.target.value})} required>
+              <select value={newInsp.risk} onChange={e => setNewInsp({ ...newInsp, risk: e.target.value })} required>
                 <option>Low</option>
                 <option>Medium</option>
                 <option>High</option>
@@ -2278,7 +2174,7 @@ export default function TrafficInspectorModule({ user, onLogout }) {
 
             <div className="ti2-form-field" style={{ gridColumn: "1/-1" }}>
               <label>Safety Observations &amp; Point Audit Remarks</label>
-              <textarea rows={3} value={newInsp.observations} onChange={e=>setNewInsp({...newInsp, observations: e.target.value})} placeholder="Describe joint clearance, signal relays, shunting speed compliance observations..." required/>
+              <textarea rows={3} value={newInsp.observations} onChange={e => setNewInsp({ ...newInsp, observations: e.target.value })} placeholder="Describe joint clearance, signal relays, shunting speed compliance observations..." required />
             </div>
 
             <div style={{ gridColumn: "1/-1", display: "flex", justifyContent: "flex-end", gap: "8px" }}>
@@ -2324,7 +2220,7 @@ export default function TrafficInspectorModule({ user, onLogout }) {
             <p className="ti2-subtitle" style={{ margin: "2px 0 0" }}>Brief high-risk pointsmen, log safety awareness counseling sessions, and track behaviour logs.</p>
           </div>
           <button className="ti2-primary-btn" onClick={() => setShowCounForm(!showCounForm)}>
-            <Plus size={13}/> {showCounForm ? "Close Form" : "Log Counselling Briefing"}
+            <Plus size={13} /> {showCounForm ? "Close Form" : "Log Counselling Briefing"}
           </button>
         </div>
 
@@ -2332,7 +2228,7 @@ export default function TrafficInspectorModule({ user, onLogout }) {
           <form onSubmit={submitCounselling} className="ti2-assess-form" style={{ padding: "18px", border: "1px dashed #cbd5e1", borderRadius: "12px", background: "#f8fafc", marginBottom: "18px" }}>
             <div className="ti2-form-field">
               <label>Staff Roster Personnel</label>
-              <select value={newCoun.staffName} onChange={e=>{
+              <select value={newCoun.staffName} onChange={e => {
                 const targetUser = users.find(u => u.name === e.target.value);
                 setNewCoun({ ...newCoun, staffName: e.target.value, designation: targetUser?.designation || "Pointsman", station: targetUser?.station || "Parbhani Junction" });
               }} required>
@@ -2344,11 +2240,11 @@ export default function TrafficInspectorModule({ user, onLogout }) {
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
               <div className="ti2-form-field">
                 <label>Session Duration</label>
-                <input type="text" value={newCoun.duration} onChange={e=>setNewCoun({...newCoun, duration: e.target.value})} placeholder="e.g. 45 mins" required/>
+                <input type="text" value={newCoun.duration} onChange={e => setNewCoun({ ...newCoun, duration: e.target.value })} placeholder="e.g. 45 mins" required />
               </div>
               <div className="ti2-form-field">
                 <label>Progress Status</label>
-                <select value={newCoun.progress} onChange={e=>setNewCoun({...newCoun, progress: e.target.value})} required>
+                <select value={newCoun.progress} onChange={e => setNewCoun({ ...newCoun, progress: e.target.value })} required>
                   <option>Under Monitor</option>
                   <option>Completed</option>
                   <option>Recommended for REF</option>
@@ -2358,7 +2254,7 @@ export default function TrafficInspectorModule({ user, onLogout }) {
 
             <div className="ti2-form-field" style={{ gridColumn: "1/-1" }}>
               <label>Briefing Topics &amp; Counselling Notes</label>
-              <textarea rows={3} value={newCoun.topics} onChange={e=>setNewCoun({...newCoun, topics: e.target.value})} placeholder="Focus topics: Alcoholic rehabilitation, safe shunting speeds, whistle codes compliance, alertness..." required/>
+              <textarea rows={3} value={newCoun.topics} onChange={e => setNewCoun({ ...newCoun, topics: e.target.value })} placeholder="Focus topics: Alcoholic rehabilitation, safe shunting speeds, whistle codes compliance, alertness..." required />
             </div>
 
             <div style={{ gridColumn: "1/-1", display: "flex", justifyContent: "flex-end", gap: "8px" }}>
@@ -2395,16 +2291,16 @@ export default function TrafficInspectorModule({ user, onLogout }) {
   );
 
   /* ── APPROVALS (AOM PARITY REPLICATION) ── */
-  const renderApprovals = ()=>{
+  const renderApprovals = () => {
     const tabs = ["Pending", "Approved", "Rejected"];
 
     /* ─── DETAIL VIEW ─── */
     if (selectedPM) {
-      const secs = editSections[selectedPM.id]||selectedPM.originalSections;
-      const liveTotal = secs.reduce((s,x)=>s+x.score,0);
-      const liveCat   = selectedPM.category === "D" ? "D" : getCat(liveTotal);
-      const locked    = selectedPM.status!=="Pending";
-      const reject    = rejectMode[selectedPM.id]||false;
+      const secs = editSections[selectedPM.id] || selectedPM.originalSections;
+      const liveTotal = secs.reduce((s, x) => s + x.score, 0);
+      const liveCat = selectedPM.category === "D" ? "D" : getCat(liveTotal);
+      const locked = selectedPM.status !== "Pending";
+      const reject = rejectMode[selectedPM.id] || false;
 
       const pme = selectedPM.meta?.pmeStatus || "Fit";
       const ref = selectedPM.meta?.refStatus || "Cleared";
@@ -2415,11 +2311,11 @@ export default function TrafficInspectorModule({ user, onLogout }) {
           <div className="ti2-card-hdr">
             <div>
               <h2>Review — {selectedPM.pointsmanName} ({selectedPM.hrmsId})</h2>
-              <p style={{margin:"2px 0 0",fontSize:12,color:"#64748b"}}>
+              <p style={{ margin: "2px 0 0", fontSize: 12, color: "#64748b" }}>
                 {selectedPM.station} · Pointsman · Submitted by {selectedPM.assessingSM} on {selectedPM.submissionDate}
               </p>
             </div>
-            <button className="ti2-link-btn" onClick={()=>setSelectedPmId(null)}>â† Back</button>
+            <button className="ti2-link-btn" onClick={() => setSelectedPmId(null)}>â† Back</button>
           </div>
 
           {/* Info meta — same ti2-review-meta grid as AOM */}
@@ -2427,28 +2323,28 @@ export default function TrafficInspectorModule({ user, onLogout }) {
             <div><label>Pointsman</label><strong>{selectedPM.pointsmanName}</strong></div>
             <div><label>HRMS ID</label><strong>{selectedPM.hrmsId}</strong></div>
             <div><label>Station</label><strong>{selectedPM.station}</strong></div>
-            <div><label>PME Status</label><strong className={pme==="Fit"?"ti2-green":"ti2-red"}>{pme}</strong></div>
-            <div><label>REF Status</label><strong className={ref==="Cleared"?"ti2-green":"ti2-amber"}>{ref}</strong></div>
+            <div><label>PME Status</label><strong className={pme === "Fit" ? "ti2-green" : "ti2-red"}>{pme}</strong></div>
+            <div><label>REF Status</label><strong className={ref === "Cleared" ? "ti2-green" : "ti2-amber"}>{ref}</strong></div>
             <div><label>Alcoholic Status</label><strong>{alc}</strong></div>
           </div>
 
           {/* Section-wise marks — same ti2-review-sections as AOM */}
           <h4 className="ti2-sec-title">Section-wise Assessment Marks</h4>
           <div className="ti2-review-sections">
-            {secs.map((sec,idx)=>{
-              const pct = Math.round((sec.score/sec.max)*100);
+            {secs.map((sec, idx) => {
+              const pct = Math.round((sec.score / sec.max) * 100);
               return (
                 <div key={sec.title} className="ti2-review-sec-row">
                   <span className="ti2-review-sec-name">{sec.title}</span>
                   <div className="ti2-review-bar-wrap">
-                    <div className="ti2-review-bar" style={{width:`${pct}%`,background:pct>=80?"#16a34a":pct>=50?"#2563eb":"#dc2626"}}/>
+                    <div className="ti2-review-bar" style={{ width: `${pct}%`, background: pct >= 80 ? "#16a34a" : pct >= 50 ? "#2563eb" : "#dc2626" }} />
                   </div>
                   {locked ? (
                     <span className="ti2-review-score-static">{sec.score}/{sec.max}</span>
                   ) : (
                     <div className="ti2-review-score-input">
                       <input type="number" min={0} max={sec.max} value={sec.score}
-                        onChange={e=>updateSec(selectedPM.id,idx,e.target.value)}/>
+                        onChange={e => updateSec(selectedPM.id, idx, e.target.value)} />
                       <span className="ti2-sec-max">/ {sec.max}</span>
                     </div>
                   )}
@@ -2459,38 +2355,38 @@ export default function TrafficInspectorModule({ user, onLogout }) {
 
           {/* Live score — same ti2-live-score as AOM */}
           <div className="ti2-live-score">
-            <div><label>Grand Total</label><strong style={{color:CAT_C[liveCat],fontSize:22}}>{liveTotal}/100</strong></div>
-            <div><label>Category</label><span className="ti2-badge" style={{background:CAT_B[liveCat],color:CAT_C[liveCat],fontSize:13,padding:"4px 14px"}}>Category {liveCat}</span></div>
+            <div><label>Grand Total</label><strong style={{ color: CAT_C[liveCat], fontSize: 22 }}>{liveTotal}/100</strong></div>
+            <div><label>Category</label><span className="ti2-badge" style={{ background: CAT_B[liveCat], color: CAT_C[liveCat], fontSize: 13, padding: "4px 14px" }}>Category {liveCat}</span></div>
           </div>
 
           {/* TI remarks — mirrors AOM Remarks */}
           {!locked && (
             <div className="ti2-form-field">
               <label>TI Remarks</label>
-              <textarea rows={3} value={tiRemarks[selectedPM.id]||""} onChange={e=>setTiRemarks(p=>({...p,[selectedPM.id]:e.target.value}))} placeholder="Add remarks…"/>
+              <textarea rows={3} value={tiRemarks[selectedPM.id] || ""} onChange={e => setTiRemarks(p => ({ ...p, [selectedPM.id]: e.target.value }))} placeholder="Add remarks…" />
             </div>
           )}
 
           {/* Reject reason input */}
           {reject && !locked && (
-            <div className="ti2-form-field" style={{marginTop:10}}>
-              <label style={{color:"#dc2626"}}>Rejection Reason (mandatory)</label>
-              <textarea rows={2} placeholder="Enter rejection reason…" id={`reject-${selectedPM.id}`}/>
+            <div className="ti2-form-field" style={{ marginTop: 10 }}>
+              <label style={{ color: "#dc2626" }}>Rejection Reason (mandatory)</label>
+              <textarea rows={2} placeholder="Enter rejection reason…" id={`reject-${selectedPM.id}`} />
             </div>
           )}
 
           {/* Audit trail */}
-          {selectedPM.auditTrail?.length>0 && (
+          {selectedPM.auditTrail?.length > 0 && (
             <div>
-              <button className="ti2-link-btn-sm" style={{marginTop:12}} onClick={()=>setShowAudit(p=>({...p,[selectedPM.id]:!p[selectedPM.id]}))}>
-                {showAudit[selectedPM.id]?"Hide":"View"} Audit Trail
+              <button className="ti2-link-btn-sm" style={{ marginTop: 12 }} onClick={() => setShowAudit(p => ({ ...p, [selectedPM.id]: !p[selectedPM.id] }))}>
+                {showAudit[selectedPM.id] ? "Hide" : "View"} Audit Trail
               </button>
               {showAudit[selectedPM.id] && (
                 <div className="ti2-audit-trail">
-                  {selectedPM.auditTrail.map((a,i)=>(
+                  {selectedPM.auditTrail.map((a, i) => (
                     <div key={i} className="ti2-audit-row">
                       <strong>{a.action}</strong> · {a.by} · {a.date}
-                      {a.remark && <div style={{fontSize:11,color:"#64748b",marginTop:2}}>"{a.remark}"</div>}
+                      {a.remark && <div style={{ fontSize: 11, color: "#64748b", marginTop: 2 }}>"{a.remark}"</div>}
                     </div>
                   ))}
                 </div>
@@ -2501,31 +2397,31 @@ export default function TrafficInspectorModule({ user, onLogout }) {
           {/* Locked banner */}
           {locked && (
             <div className="ti2-locked-banner">
-              {selectedPM.status==="Approved"?"✓ Assessment Approved and Locked":"✗ Assessment Rejected"}
-              {selectedPM.tiRemarks && <div style={{marginTop:4,fontSize:12}}>Remarks: {selectedPM.tiRemarks}</div>}
+              {selectedPM.status === "Approved" ? "✓ Assessment Approved and Locked" : "✗ Assessment Rejected"}
+              {selectedPM.tiRemarks && <div style={{ marginTop: 4, fontSize: 12 }}>Remarks: {selectedPM.tiRemarks}</div>}
             </div>
           )}
 
           {/* Action buttons — exact same as AOM: Reject / Approve as Submitted / Modify & Approve */}
           {!locked && !reject && (
             <div className="ti2-review-actions">
-              <button className="ti2-danger-btn" onClick={()=>setRejectMode(p=>({...p,[selectedPM.id]:true}))}>
-                <XCircle size={14}/> Reject
+              <button className="ti2-danger-btn" onClick={() => setRejectMode(p => ({ ...p, [selectedPM.id]: true }))}>
+                <XCircle size={14} /> Reject
               </button>
-              <button className="ti2-ghost-btn" onClick={()=>finalizePM(selectedPM.id,"approve")}>
-                <CheckCircle2 size={14}/> Approve as Submitted
+              <button className="ti2-ghost-btn" onClick={() => finalizePM(selectedPM.id, "approve")}>
+                <CheckCircle2 size={14} /> Approve as Submitted
               </button>
-              <button className="ti2-primary-btn" onClick={()=>finalizePM(selectedPM.id,"modify")}>
-                <CheckCircle2 size={14}/> Modify &amp; Approve
+              <button className="ti2-primary-btn" onClick={() => finalizePM(selectedPM.id, "modify")}>
+                <CheckCircle2 size={14} /> Modify &amp; Approve
               </button>
             </div>
           )}
           {reject && !locked && (
             <div className="ti2-review-actions">
-              <button className="ti2-ghost-btn" onClick={()=>setRejectMode(p=>({...p,[selectedPM.id]:false}))}>Cancel</button>
-              <button className="ti2-danger-btn" onClick={()=>{
-                const note=document.getElementById(`reject-${selectedPM.id}`)?.value||"No reason provided";
-                finalizePM(selectedPM.id,"reject",note);
+              <button className="ti2-ghost-btn" onClick={() => setRejectMode(p => ({ ...p, [selectedPM.id]: false }))}>Cancel</button>
+              <button className="ti2-danger-btn" onClick={() => {
+                const note = document.getElementById(`reject-${selectedPM.id}`)?.value || "No reason provided";
+                finalizePM(selectedPM.id, "reject", note);
               }}>Confirm Rejection</button>
             </div>
           )}
@@ -2542,7 +2438,7 @@ export default function TrafficInspectorModule({ user, onLogout }) {
         <p className="ti2-subtitle">Review and approve Pointsman assessments submitted by Station Masters.</p>
 
         {/* Role switch — mirrors AOM's approvals style */}
-        <div className="ti2-tabs" style={{marginBottom:4}}>
+        <div className="ti2-tabs" style={{ marginBottom: 4 }}>
           <button className="ti2-tab active">
             Pointsmen
             <span className="ti2-tab-count">
@@ -2565,9 +2461,9 @@ export default function TrafficInspectorModule({ user, onLogout }) {
         {/* Filters — exact same as AOM */}
         <div className="ti2-filter-row">
           <div className="ti2-search-box">
-            <Search size={13}/>
+            <Search size={13} />
             <input placeholder="Search pointsman…"
-              value={reviewSearch} onChange={e => setReviewSearch(e.target.value)}/>
+              value={reviewSearch} onChange={e => setReviewSearch(e.target.value)} />
           </div>
           <select className="ti2-select" value={reviewStation} onChange={e => setReviewStation(e.target.value)}>
             <option value="All">All Stations</option>
@@ -2578,12 +2474,12 @@ export default function TrafficInspectorModule({ user, onLogout }) {
         {/* Table — exact same structure as AOM */}
         <div className="ti2-table-wrap">
           <div className="ti2-pm-head ti2-pm-row">
-            {["Name","HRMS ID","Station","Submitted By","Date","Score","Status","Action"].map(h => <span key={h}>{h}</span>)}
+            {["Name", "HRMS ID", "Station", "Submitted By", "Date", "Score", "Status", "Action"].map(h => <span key={h}>{h}</span>)}
           </div>
           {filteredPM.length === 0 && <p className="ti2-empty">No records in this category.</p>}
           {filteredPM.map(p => {
-            const total = (p.finalSections||p.originalSections).reduce((s,x)=>s+x.score,0);
-            const cat   = p.category || getCat(total);
+            const total = (p.finalSections || p.originalSections).reduce((s, x) => s + x.score, 0);
+            const cat = p.category || getCat(total);
             return (
               <div key={p.id} className="ti2-pm-row ti2-pm-data-row">
                 <span><strong>{p.pointsmanName}</strong></span>
@@ -2591,7 +2487,7 @@ export default function TrafficInspectorModule({ user, onLogout }) {
                 <span>{p.station}</span>
                 <span>{p.assessingSM}</span>
                 <span>{p.submissionDate}</span>
-                <span><strong style={{color:CAT_C[cat]}}>{total}/100</strong></span>
+                <span><strong style={{ color: CAT_C[cat] }}>{total}/100</strong></span>
                 <span>
                   <span className={`ti2-status-pill ti2-status-${p.status.toLowerCase()}`}>
                     {p.status}
@@ -2599,7 +2495,7 @@ export default function TrafficInspectorModule({ user, onLogout }) {
                 </span>
                 <span>
                   <button className="ti2-link-btn-sm" onClick={() => openPmReview(p.id)}>
-                    {p.status === "Pending" ? <><ClipboardCheck size={12}/> Review</> : <><Eye size={12}/> View</>}
+                    {p.status === "Pending" ? <><ClipboardCheck size={12} /> Review</> : <><Eye size={12} /> View</>}
                   </button>
                 </span>
               </div>
@@ -2613,17 +2509,17 @@ export default function TrafficInspectorModule({ user, onLogout }) {
   /* ── ASSESSMENTS (unified: SM / SS / TM) ── */
   const renderAssessments = () => {
     const getStatusStyle = (status) => {
-      if (status === "Exam Sent")  return { background: "#f3e8ff", color: "#6b21a8" };
+      if (status === "Exam Sent") return { background: "#f3e8ff", color: "#6b21a8" };
       if (status === "Exam Taken") return { background: "#dcfce7", color: "#166534" };
       return {};
     };
 
     // ─── LEVEL 3: Form views (SM, SS, TM) ───
     if (assessRole === "SM" && activeSmId) {
-      const sm     = smList.find(s => s.id === activeSmId);
-      const f      = smForms[activeSmId] || defaultSMForm();
+      const sm = smList.find(s => s.id === activeSmId);
+      const f = smForms[activeSmId] || defaultSMForm();
       const locked = !!smLocked[activeSmId];
-      
+
       const mcqDataStr = localStorage.getItem(`sm_mcq_test_${sm?.hrmsId}`);
       const mcqData = mcqDataStr ? JSON.parse(mcqDataStr) : null;
       const dbExamScore = sm?.examScore !== undefined && sm?.examScore !== null
@@ -2631,9 +2527,9 @@ export default function TrafficInspectorModule({ user, onLogout }) {
         : null;
       const isMcqCompleted = !!(mcqData && mcqData.completed) || dbExamScore !== null || sm?.status === "Submitted" || sm?.status === "Approved";
       const isActivated = localStorage.getItem(`sm_test_activated_${sm?.hrmsId}`) === "true";
-      
-      const knowledge = dbExamScore !== null 
-        ? dbExamScore 
+
+      const knowledge = dbExamScore !== null
+        ? dbExamScore
         : (isMcqCompleted ? (mcqData?.correctCount || 0) : (parseInt(f.knowledgeMarks) || 0));
       const displayScore = dbExamScore !== null ? dbExamScore : (mcqData?.correctCount || 0);
       const displayPercentage = dbExamScore !== null ? Math.round((dbExamScore / 25) * 100) : (mcqData?.percentage || 0);
@@ -2653,9 +2549,9 @@ export default function TrafficInspectorModule({ user, onLogout }) {
                 {sm?.hrmsId} · {sm?.lastDate || "20 May 2026"}
               </p>
             </div>
-            <button 
-              className="sm2-ghost-btn" 
-              style={{ display: "flex", alignItems: "center", gap: "6px", border: "1px solid #cbd5e1", background: "#fff", cursor: "pointer", padding: "8px 16px", borderRadius: "8px", fontWeight: "700", fontSize: "13px", color: "#475569" }} 
+            <button
+              className="sm2-ghost-btn"
+              style={{ display: "flex", alignItems: "center", gap: "6px", border: "1px solid #cbd5e1", background: "#fff", cursor: "pointer", padding: "8px 16px", borderRadius: "8px", fontWeight: "700", fontSize: "13px", color: "#475569" }}
               onClick={() => setActiveSmId(null)}
             >
               ← Back
@@ -2672,8 +2568,8 @@ export default function TrafficInspectorModule({ user, onLogout }) {
               </div>
               <span className="sm2-assess-live-marks">{knowledge} / 25</span>
             </div>
-            
-            <div className="sm2-mcq-card-container" style={{marginTop: 16}}>
+
+            <div className="sm2-mcq-card-container" style={{ marginTop: 16 }}>
               {isMcqCompleted ? (
                 <div className="sm2-mcq-success-card">
                   <div className="sm2-mcq-card-header">
@@ -2686,7 +2582,7 @@ export default function TrafficInspectorModule({ user, onLogout }) {
                       <span>Read-Only (Synced)</span>
                     </div>
                   </div>
-                  
+
                   <div className="sm2-mcq-card-body">
                     <div className="sm2-mcq-score-display">
                       <div className="sm2-mcq-large-score">
@@ -2696,7 +2592,7 @@ export default function TrafficInspectorModule({ user, onLogout }) {
                       <div className="sm2-mcq-percentage-badge">
                         {displayPercentage}% Score
                       </div>
-                      <button 
+                      <button
                         type="button"
                         style={{ marginLeft: "auto", background: "#fee2e2", border: "none", color: "#dc2626", padding: "6px 12px", borderRadius: "6px", fontSize: "12px", fontWeight: "700", cursor: "pointer" }}
                         onClick={() => {
@@ -2707,19 +2603,19 @@ export default function TrafficInspectorModule({ user, onLogout }) {
                         Reset Mock Exam
                       </button>
                     </div>
-                    
+
                     <div className="sm2-mcq-progress-container">
                       <div className="sm2-mcq-progress-bar">
-                        <div 
-                          className="sm2-mcq-progress-fill" 
-                          style={{ 
+                        <div
+                          className="sm2-mcq-progress-fill"
+                          style={{
                             width: `${mcqData?.percentage || 88}%`,
                             background: (mcqData?.percentage || 88) >= 80 ? "#16a34a" : (mcqData?.percentage || 88) >= 50 ? "#2563eb" : "#dc2626"
                           }}
                         />
                       </div>
                     </div>
-                    
+
                     <div className="sm2-mcq-meta-grid">
                       <div className="sm2-mcq-meta-item">
                         <span className="sm2-mcq-meta-label">Submitted On</span>
@@ -2746,13 +2642,13 @@ export default function TrafficInspectorModule({ user, onLogout }) {
                       <span>Read-Only</span>
                     </div>
                   </div>
-                  
+
                   <div className="sm2-mcq-card-body pending" style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
                     <div className="sm2-mcq-pending-message" style={{ display: "flex", gap: "12px", background: isActivated ? "#fffbeb" : "#fef2f2", border: isActivated ? "1px solid #fef3c7" : "1px solid #fee2e2", padding: "16px", borderRadius: "8px" }}>
-                      <AlertTriangle size={24} color={isActivated ? "#d97706" : "#dc2626"} style={{marginTop: 2, flexShrink: 0}} />
+                      <AlertTriangle size={24} color={isActivated ? "#d97706" : "#dc2626"} style={{ marginTop: 2, flexShrink: 0 }} />
                       <div>
-                        <h4 style={{margin:"0 0 4px", fontSize:14, color: isActivated ? "#b45309" : "#991b1b"}}>{isActivated ? "Awaiting Station Master Attempt" : "Competency Exam Locked"}</h4>
-                        <p style={{margin:0, fontSize:12.5, lineHeight:1.5, color: isActivated ? "#d97706" : "#dc2626"}}>
+                        <h4 style={{ margin: "0 0 4px", fontSize: 14, color: isActivated ? "#b45309" : "#991b1b" }}>{isActivated ? "Awaiting Station Master Attempt" : "Competency Exam Locked"}</h4>
+                        <p style={{ margin: 0, fontSize: 12.5, lineHeight: 1.5, color: isActivated ? "#d97706" : "#dc2626" }}>
                           {isActivated ? (
                             <span>The Station Master safety competency trial is active. Request SM (<strong>{sm?.name}</strong>) to log into their portal and attempt the 25 safety questions to automatically sync scores.</span>
                           ) : (
@@ -2761,7 +2657,7 @@ export default function TrafficInspectorModule({ user, onLogout }) {
                         </p>
                       </div>
                     </div>
-                    
+
                     <div style={{ display: "flex", gap: "12px", marginBottom: "16px" }}>
                       {/* Activation is now exclusively done via 'Send Access' button on the table list */}
                       <span style={{ fontSize: "12px", color: "#64748b", fontStyle: "italic" }}>Activation controlled from Dashboard table.</span>
@@ -2791,20 +2687,73 @@ export default function TrafficInspectorModule({ user, onLogout }) {
           {TI_SM_CRITERIA.map((sec, si) => (
             <div id={'section-' + sec.key} key={sec.key} className="sm2-assess-section" style={{ opacity: 1 }}>
               <div className="sm2-assess-sec-hdr">
-                <span className="sm2-assess-sec-num">{String(si+2).padStart(2,"0")}</span>
+                <span className="sm2-assess-sec-num">{String(si + 2).padStart(2, "0")}</span>
                 <div>
-                  <strong>{sec.label} <span style={{color:"#dc2626"}}>*</span></strong>
+                  <strong>{sec.label} <span style={{ color: "#dc2626" }}>*</span></strong>
                   {!(f[sec.key] && f[sec.key].length === sec.count && f[sec.key].every(v => v === "Yes" || v === "No")) && (
                     <span style={{ color: "#dc2626", fontSize: "11px", fontWeight: "700", marginLeft: "8px", background: "#fee2e2", padding: "2px 6px", borderRadius: "4px" }}>Incomplete</span>
                   )}
-                  <span className="sm2-assess-sec-meta">{sec.count} criteria · {sec.weight} marks each · Total {sec.count*sec.weight}</span>
+                  <span className="sm2-assess-sec-meta">{sec.count} criteria · {sec.weight} marks each · Total {sec.count * sec.weight}</span>
                 </div>
-                <span className="sm2-assess-live-marks\">{(f[sec.key] || []).filter(v=>v==="Yes").length*sec.weight} / {sec.count*sec.weight}</span>
+                <span className="sm2-assess-live-marks">{(f[sec.key] || []).filter(v => v === "Yes").length * sec.weight} / {sec.count * sec.weight}</span>
+              </div>
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px", padding: "6px 16px", background: "#f8fafc", borderBottom: "1px solid #e2e8f0", borderTopLeftRadius: "8px", borderTopRightRadius: "8px", alignItems: "center" }}>
+                <span style={{ fontSize: "11px", fontWeight: "700", color: "#64748b", marginRight: "auto" }}>{t("Quick Fill:")}</span>
+                <button
+                  type="button"
+                  disabled={locked}
+                  onClick={() => {
+                    setSmForms(prev => ({
+                      ...prev,
+                      [activeSmId]: {
+                        ...(prev[activeSmId] || defaultSMForm()),
+                        [sec.key]: Array(sec.count).fill("Yes")
+                      }
+                    }));
+                  }}
+                  style={{
+                    padding: "2px 8px",
+                    fontSize: "11px",
+                    fontWeight: "700",
+                    borderRadius: "4px",
+                    border: "1px solid #cbd5e1",
+                    background: "#f0fdf4",
+                    color: "#166534",
+                    cursor: locked ? "not-allowed" : "pointer"
+                  }}
+                >
+                  ✓ {t("All Yes")}
+                </button>
+                <button
+                  type="button"
+                  disabled={locked}
+                  onClick={() => {
+                    setSmForms(prev => ({
+                      ...prev,
+                      [activeSmId]: {
+                        ...(prev[activeSmId] || defaultSMForm()),
+                        [sec.key]: Array(sec.count).fill("No")
+                      }
+                    }));
+                  }}
+                  style={{
+                    padding: "2px 8px",
+                    fontSize: "11px",
+                    fontWeight: "700",
+                    borderRadius: "4px",
+                    border: "1px solid #cbd5e1",
+                    background: "#fef2f2",
+                    color: "#991b1b",
+                    cursor: locked ? "not-allowed" : "pointer"
+                  }}
+                >
+                  ✗ {t("All No")}
+                </button>
               </div>
               <div className="sm2-yn-grid">
                 {sec.criteria.map((cr, idx) => (
                   <div key={idx} className="sm2-yn-row">
-                    <span className="sm2-yn-label">{idx+1}. {cr}</span>
+                    <span className="sm2-yn-label">{idx + 1}. {cr}</span>
                     <div className="sm2-yn-btns">
                       <button
                         type="button" disabled={locked}
@@ -2833,17 +2782,17 @@ export default function TrafficInspectorModule({ user, onLogout }) {
               <span className="sm2-assess-sec-num">07</span>
               <div><strong>Additional Details</strong><span className="sm2-assess-sec-meta">Mandatory fields</span></div>
             </div>
-            <div className="sm2-assess-form" style={{marginTop:12}}>
+            <div className="sm2-assess-form" style={{ marginTop: 12 }}>
               <div className="sm2-form-field">
                 <label>Knowledge Marks (MCQ Test)</label>
-                <input type="number" min={0} max={25} disabled={locked} value={knowledge} onChange={e=>{
+                <input type="number" min={0} max={25} disabled={locked} value={knowledge} onChange={e => {
                   const val = e.target.value;
-                  setSMField(activeSmId,"knowledgeMarks",val);
-                }} placeholder="Synced MCQ marks" style={{ background: "#f1f5f9" }} readOnly/>
+                  setSMField(activeSmId, "knowledgeMarks", val);
+                }} placeholder="Synced MCQ marks" style={{ background: "#f1f5f9" }} readOnly />
               </div>
               <div className="sm2-form-field">
-                <label>Alcoholic Status <span style={{color:"#dc2626"}}>*</span></label>
-                <select disabled={locked} value={f.alcoholicStatus} onChange={e=>setSMField(activeSmId,"alcoholicStatus",e.target.value)}>
+                <label>Alcoholic Status <span style={{ color: "#dc2626" }}>*</span></label>
+                <select disabled={locked} value={f.alcoholicStatus} onChange={e => setSMField(activeSmId, "alcoholicStatus", e.target.value)}>
                   <option value="">Select…</option>
                   <option>Non-Alcoholic</option>
                   <option>Alcoholic</option>
@@ -2851,31 +2800,31 @@ export default function TrafficInspectorModule({ user, onLogout }) {
               </div>
               <div className="sm2-form-field">
                 <label>PME Status</label>
-                <select disabled={locked} value={f.pmeStatus} onChange={e=>setSMField(activeSmId,"pmeStatus",e.target.value)}>
+                <select disabled={locked} value={f.pmeStatus} onChange={e => setSMField(activeSmId, "pmeStatus", e.target.value)}>
                   <option>Fit</option><option>Unfit</option><option>Pending</option>
                 </select>
               </div>
               <div className="sm2-form-field">
                 <label>REF Status</label>
-                <select disabled={locked} value={f.refStatus} onChange={e=>setSMField(activeSmId,"refStatus",e.target.value)}>
+                <select disabled={locked} value={f.refStatus} onChange={e => setSMField(activeSmId, "refStatus", e.target.value)}>
                   <option>Cleared</option><option>Pending</option><option>Failed</option>
                 </select>
               </div>
               <div className="sm2-form-field">
                 <label>Counselling</label>
-                <select disabled={locked} value={f.counselling} onChange={e=>setSMField(activeSmId,"counselling",e.target.value)}>
+                <select disabled={locked} value={f.counselling} onChange={e => setSMField(activeSmId, "counselling", e.target.value)}>
                   <option>Not Required</option><option>Recommended</option><option>Mandatory</option>
                 </select>
               </div>
               <div className="sm2-form-field">
                 <label>Automatic Training</label>
-                <select disabled={locked} value={f.automaticTraining} onChange={e=>setSMField(activeSmId,"automaticTraining",e.target.value)}>
+                <select disabled={locked} value={f.automaticTraining} onChange={e => setSMField(activeSmId, "automaticTraining", e.target.value)}>
                   <option>Not Required</option><option>Recommended</option><option>Mandatory</option>
                 </select>
               </div>
-              <div className="sm2-form-field sm2-form-full" style={{gridColumn:"1/-1"}}>
+              <div className="sm2-form-field sm2-form-full" style={{ gridColumn: "1/-1" }}>
                 <label>Remarks for AOM</label>
-                <textarea rows={3} disabled={locked} value={f.remarks} onChange={e=>setSMField(activeSmId,"remarks",e.target.value)} placeholder="Enter observations, recommendations…"/>
+                <textarea rows={3} disabled={locked} value={f.remarks} onChange={e => setSMField(activeSmId, "remarks", e.target.value)} placeholder="Enter observations, recommendations…" />
               </div>
             </div>
           </div>
@@ -2884,17 +2833,17 @@ export default function TrafficInspectorModule({ user, onLogout }) {
           <div className="sm2-live-score" style={{ opacity: 1 }}>
             <div><label>Knowledge (MCQ)</label><strong>{knowledge}/25</strong></div>
             <div><label>Yes/No Score</label><strong>{ynScore}/75</strong></div>
-            <div><label>Grand Total</label><strong style={{color:CAT_C[liveCat],fontSize:22}}>{total}/100</strong></div>
-            <div><label>Category</label><span className="sm2-badge" style={{background:CAT_B[liveCat],color:CAT_C[liveCat],fontSize:13,padding:"4px 14px"}}>Category {liveCat}</span></div>
+            <div><label>Grand Total</label><strong style={{ color: CAT_C[liveCat], fontSize: 22 }}>{total}/100</strong></div>
+            <div><label>Category</label><span className="sm2-badge" style={{ background: CAT_B[liveCat], color: CAT_C[liveCat], fontSize: 13, padding: "4px 14px" }}>Category {liveCat}</span></div>
           </div>
 
           {locked && (
-            <div style={{display:"flex",flexDirection:"column",gap:"10px",marginTop:"16px"}}>
+            <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginTop: "16px" }}>
               <div style={{ background: "#dcfce7", color: "#166534", border: "1px solid #bbf7d0", padding: "12px", borderRadius: "8px", fontWeight: "700", fontSize: "13px", textAlign: "center" }}>
                 ✓ Assessment submitted. Pending AOM Approval.
               </div>
-              <button type="button" className="sm2-ghost-btn" style={{border:"1px solid #7c3aed",color:"#7c3aed", padding: "10px", borderRadius: "8px", fontWeight: "700", background: "none", cursor: "pointer"}} onClick={() => setSmLocked(p => ({...p,[activeSmId]:false}))}>
-                <Edit size={14} style={{marginRight:6}}/> Unlock & Edit Assessment
+              <button type="button" className="sm2-ghost-btn" style={{ border: "1px solid #7c3aed", color: "#7c3aed", padding: "10px", borderRadius: "8px", fontWeight: "700", background: "none", cursor: "pointer" }} onClick={() => setSmLocked(p => ({ ...p, [activeSmId]: false }))}>
+                <Edit size={14} style={{ marginRight: 6 }} /> Unlock & Edit Assessment
               </button>
             </div>
           )}
@@ -2927,7 +2876,7 @@ export default function TrafficInspectorModule({ user, onLogout }) {
                   setSMField(activeSmId, "knowledgeMarks", String(knowledge));
                   submitSMAssessment(activeSmId, String(knowledge));
                 }}>
-                  <CheckCircle2 size={14}/> Submit for AOM Approval
+                  <CheckCircle2 size={14} /> Submit for AOM Approval
                 </button>
               </div>
             </div>
@@ -2937,10 +2886,10 @@ export default function TrafficInspectorModule({ user, onLogout }) {
     }
 
     if (assessRole === "SS" && activeSsId) {
-      const ss     = ssList.find(s => s.id === activeSsId);
-      const f      = ssForms[activeSsId] || defaultSSForm();
+      const ss = ssList.find(s => s.id === activeSsId);
+      const f = ssForms[activeSsId] || defaultSSForm();
       const locked = !!ssLocked[activeSsId];
-      
+
       const mcqDataStr = localStorage.getItem(`ss_mcq_test_${ss?.hrmsId}`);
       const mcqData = mcqDataStr ? JSON.parse(mcqDataStr) : null;
       const dbExamScore = ss?.examScore !== undefined && ss?.examScore !== null
@@ -2948,9 +2897,9 @@ export default function TrafficInspectorModule({ user, onLogout }) {
         : null;
       const isMcqCompleted = !!(mcqData && mcqData.completed) || dbExamScore !== null || ss?.status === "Submitted" || ss?.status === "Approved";
       const isActivated = localStorage.getItem(`ss_test_activated_${ss?.hrmsId}`) === "true";
-      
-      const knowledge = dbExamScore !== null 
-        ? dbExamScore 
+
+      const knowledge = dbExamScore !== null
+        ? dbExamScore
         : (isMcqCompleted ? (mcqData?.correctCount || 0) : (parseInt(f.knowledgeMarks) || 0));
       const displayScore = dbExamScore !== null ? dbExamScore : (mcqData?.correctCount || 0);
       const displayPercentage = dbExamScore !== null ? Math.round((dbExamScore / 25) * 100) : (mcqData?.percentage || 0);
@@ -2970,9 +2919,9 @@ export default function TrafficInspectorModule({ user, onLogout }) {
                 {ss?.hrmsId} · {ss?.station}
               </p>
             </div>
-            <button 
-              className="sm2-ghost-btn" 
-              style={{ display: "flex", alignItems: "center", gap: "6px", border: "1px solid #cbd5e1", background: "#fff", cursor: "pointer", padding: "8px 16px", borderRadius: "8px", fontWeight: "700", fontSize: "13px", color: "#475569" }} 
+            <button
+              className="sm2-ghost-btn"
+              style={{ display: "flex", alignItems: "center", gap: "6px", border: "1px solid #cbd5e1", background: "#fff", cursor: "pointer", padding: "8px 16px", borderRadius: "8px", fontWeight: "700", fontSize: "13px", color: "#475569" }}
               onClick={() => setActiveSsId(null)}
             >
               ← Back
@@ -2989,8 +2938,8 @@ export default function TrafficInspectorModule({ user, onLogout }) {
               </div>
               <span className="sm2-assess-live-marks">{knowledge} / 25</span>
             </div>
-            
-            <div className="sm2-mcq-card-container" style={{marginTop: 16}}>
+
+            <div className="sm2-mcq-card-container" style={{ marginTop: 16 }}>
               {isMcqCompleted ? (
                 <div className="sm2-mcq-success-card">
                   <div className="sm2-mcq-card-header">
@@ -3003,7 +2952,7 @@ export default function TrafficInspectorModule({ user, onLogout }) {
                       <span>Read-Only (Synced)</span>
                     </div>
                   </div>
-                  
+
                   <div className="sm2-mcq-card-body">
                     <div className="sm2-mcq-score-display">
                       <div className="sm2-mcq-large-score">
@@ -3013,7 +2962,7 @@ export default function TrafficInspectorModule({ user, onLogout }) {
                       <div className="sm2-mcq-percentage-badge">
                         {displayPercentage}% Score
                       </div>
-                      <button 
+                      <button
                         type="button"
                         style={{ marginLeft: "auto", background: "#fee2e2", border: "none", color: "#dc2626", padding: "6px 12px", borderRadius: "6px", fontSize: "12px", fontWeight: "700", cursor: "pointer" }}
                         onClick={() => {
@@ -3024,19 +2973,19 @@ export default function TrafficInspectorModule({ user, onLogout }) {
                         Reset Mock Exam
                       </button>
                     </div>
-                    
+
                     <div className="sm2-mcq-progress-container">
                       <div className="sm2-mcq-progress-bar">
-                        <div 
-                          className="sm2-mcq-progress-fill" 
-                          style={{ 
+                        <div
+                          className="sm2-mcq-progress-fill"
+                          style={{
                             width: `${mcqData?.percentage || 84}%`,
                             background: (mcqData?.percentage || 84) >= 80 ? "#16a34a" : (mcqData?.percentage || 84) >= 50 ? "#2563eb" : "#dc2626"
                           }}
                         />
                       </div>
                     </div>
-                    
+
                     <div className="sm2-mcq-meta-grid">
                       <div className="sm2-mcq-meta-item">
                         <span className="sm2-mcq-meta-label">Submitted On</span>
@@ -3063,13 +3012,13 @@ export default function TrafficInspectorModule({ user, onLogout }) {
                       <span>Read-Only</span>
                     </div>
                   </div>
-                  
+
                   <div className="sm2-mcq-card-body pending" style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
                     <div className="sm2-mcq-pending-message" style={{ display: "flex", gap: "12px", background: isActivated ? "#fffbeb" : "#fef2f2", border: isActivated ? "1px solid #fef3c7" : "1px solid #fee2e2", padding: "16px", borderRadius: "8px" }}>
-                      <AlertTriangle size={24} color={isActivated ? "#d97706" : "#dc2626"} style={{marginTop: 2, flexShrink: 0}} />
+                      <AlertTriangle size={24} color={isActivated ? "#d97706" : "#dc2626"} style={{ marginTop: 2, flexShrink: 0 }} />
                       <div>
-                        <h4 style={{margin:"0 0 4px", fontSize:14, color: isActivated ? "#b45309" : "#991b1b"}}>{isActivated ? "Awaiting Station Superintendent Attempt" : "Competency Exam Locked"}</h4>
-                        <p style={{margin:0, fontSize:12.5, lineHeight:1.5, color: isActivated ? "#d97706" : "#dc2626"}}>
+                        <h4 style={{ margin: "0 0 4px", fontSize: 14, color: isActivated ? "#b45309" : "#991b1b" }}>{isActivated ? "Awaiting Station Superintendent Attempt" : "Competency Exam Locked"}</h4>
+                        <p style={{ margin: 0, fontSize: 12.5, lineHeight: 1.5, color: isActivated ? "#d97706" : "#dc2626" }}>
                           {isActivated ? (
                             <span>The Station Superintendent safety competency trial is active. Request SS (<strong>{ss?.name}</strong>) to log into their portal and attempt the 25 safety questions to automatically sync scores.</span>
                           ) : (
@@ -3103,20 +3052,73 @@ export default function TrafficInspectorModule({ user, onLogout }) {
           {TI_SS_CRITERIA.map((sec, si) => (
             <div id={'section-' + sec.key} key={sec.key} className="sm2-assess-section" style={{ opacity: 1 }}>
               <div className="sm2-assess-sec-hdr">
-                <span className="sm2-assess-sec-num">{String(si+2).padStart(2,"0")}</span>
+                <span className="sm2-assess-sec-num">{String(si + 2).padStart(2, "0")}</span>
                 <div>
-                  <strong>{sec.label} <span style={{color:"#dc2626"}}>*</span></strong>
+                  <strong>{sec.label} <span style={{ color: "#dc2626" }}>*</span></strong>
                   {!(f[sec.key] && f[sec.key].length === sec.count && f[sec.key].every(v => v === "Yes" || v === "No")) && (
                     <span style={{ color: "#dc2626", fontSize: "11px", fontWeight: "700", marginLeft: "8px", background: "#fee2e2", padding: "2px 6px", borderRadius: "4px" }}>Incomplete</span>
                   )}
-                  <span className="sm2-assess-sec-meta">{sec.count} criteria · {sec.weight} marks each · Total {sec.count*sec.weight}</span>
+                  <span className="sm2-assess-sec-meta">{sec.count} criteria · {sec.weight} marks each · Total {sec.count * sec.weight}</span>
                 </div>
-                <span className="sm2-assess-live-marks\">{(f[sec.key] || []).filter(v=>v==="Yes").length*sec.weight} / {sec.count*sec.weight}</span>
+                <span className="sm2-assess-live-marks">{(f[sec.key] || []).filter(v => v === "Yes").length * sec.weight} / {sec.count * sec.weight}</span>
+              </div>
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px", padding: "6px 16px", background: "#f8fafc", borderBottom: "1px solid #e2e8f0", borderTopLeftRadius: "8px", borderTopRightRadius: "8px", alignItems: "center" }}>
+                <span style={{ fontSize: "11px", fontWeight: "700", color: "#64748b", marginRight: "auto" }}>{t("Quick Fill:")}</span>
+                <button
+                  type="button"
+                  disabled={locked}
+                  onClick={() => {
+                    setSsForms(prev => ({
+                      ...prev,
+                      [activeSsId]: {
+                        ...(prev[activeSsId] || defaultSSForm()),
+                        [sec.key]: Array(sec.count).fill("Yes")
+                      }
+                    }));
+                  }}
+                  style={{
+                    padding: "2px 8px",
+                    fontSize: "11px",
+                    fontWeight: "700",
+                    borderRadius: "4px",
+                    border: "1px solid #cbd5e1",
+                    background: "#f0fdf4",
+                    color: "#166534",
+                    cursor: locked ? "not-allowed" : "pointer"
+                  }}
+                >
+                  ✓ {t("All Yes")}
+                </button>
+                <button
+                  type="button"
+                  disabled={locked}
+                  onClick={() => {
+                    setSsForms(prev => ({
+                      ...prev,
+                      [activeSsId]: {
+                        ...(prev[activeSsId] || defaultSSForm()),
+                        [sec.key]: Array(sec.count).fill("No")
+                      }
+                    }));
+                  }}
+                  style={{
+                    padding: "2px 8px",
+                    fontSize: "11px",
+                    fontWeight: "700",
+                    borderRadius: "4px",
+                    border: "1px solid #cbd5e1",
+                    background: "#fef2f2",
+                    color: "#991b1b",
+                    cursor: locked ? "not-allowed" : "pointer"
+                  }}
+                >
+                  ✗ {t("All No")}
+                </button>
               </div>
               <div className="sm2-yn-grid">
                 {sec.criteria.map((cr, idx) => (
                   <div key={idx} className="sm2-yn-row">
-                    <span className="sm2-yn-label">{idx+1}. {cr}</span>
+                    <span className="sm2-yn-label">{idx + 1}. {cr}</span>
                     <div className="sm2-yn-btns">
                       <button
                         type="button" disabled={locked}
@@ -3145,17 +3147,17 @@ export default function TrafficInspectorModule({ user, onLogout }) {
               <span className="sm2-assess-sec-num">07</span>
               <div><strong>Additional Details</strong><span className="sm2-assess-sec-meta">Mandatory fields</span></div>
             </div>
-            <div className="sm2-assess-form" style={{marginTop:12}}>
+            <div className="sm2-assess-form" style={{ marginTop: 12 }}>
               <div className="sm2-form-field">
                 <label>Knowledge Marks (MCQ Test)</label>
-                <input type="number" min={0} max={25} disabled={locked} value={knowledge} onChange={e=>{
+                <input type="number" min={0} max={25} disabled={locked} value={knowledge} onChange={e => {
                   const val = e.target.value;
-                  setSSField(activeSsId,"knowledgeMarks",val);
-                }} placeholder="Synced MCQ marks" style={{ background: "#f1f5f9" }} readOnly/>
+                  setSSField(activeSsId, "knowledgeMarks", val);
+                }} placeholder="Synced MCQ marks" style={{ background: "#f1f5f9" }} readOnly />
               </div>
               <div className="sm2-form-field">
-                <label>Alcoholic Status <span style={{color:"#dc2626"}}>*</span></label>
-                <select disabled={locked} value={f.alcoholicStatus} onChange={e=>setSSField(activeSsId,"alcoholicStatus",e.target.value)}>
+                <label>Alcoholic Status <span style={{ color: "#dc2626" }}>*</span></label>
+                <select disabled={locked} value={f.alcoholicStatus} onChange={e => setSSField(activeSsId, "alcoholicStatus", e.target.value)}>
                   <option value="">Select…</option>
                   <option>Non-Alcoholic</option>
                   <option>Alcoholic</option>
@@ -3163,31 +3165,31 @@ export default function TrafficInspectorModule({ user, onLogout }) {
               </div>
               <div className="sm2-form-field">
                 <label>PME Status</label>
-                <select disabled={locked} value={f.pmeStatus} onChange={e=>setSSField(activeSsId,"pmeStatus",e.target.value)}>
+                <select disabled={locked} value={f.pmeStatus} onChange={e => setSSField(activeSsId, "pmeStatus", e.target.value)}>
                   <option>Fit</option><option>Unfit</option><option>Pending</option>
                 </select>
               </div>
               <div className="sm2-form-field">
                 <label>REF Status</label>
-                <select disabled={locked} value={f.refStatus} onChange={e=>setSSField(activeSsId,"refStatus",e.target.value)}>
+                <select disabled={locked} value={f.refStatus} onChange={e => setSSField(activeSsId, "refStatus", e.target.value)}>
                   <option>Cleared</option><option>Pending</option><option>Failed</option>
                 </select>
               </div>
               <div className="sm2-form-field">
                 <label>Counselling</label>
-                <select disabled={locked} value={f.counselling} onChange={e=>setSSField(activeSsId,"counselling",e.target.value)}>
+                <select disabled={locked} value={f.counselling} onChange={e => setSSField(activeSsId, "counselling", e.target.value)}>
                   <option>Not Required</option><option>Recommended</option><option>Mandatory</option>
                 </select>
               </div>
               <div className="sm2-form-field">
                 <label>Automatic Training</label>
-                <select disabled={locked} value={f.automaticTraining} onChange={e=>setSSField(activeSsId,"automaticTraining",e.target.value)}>
+                <select disabled={locked} value={f.automaticTraining} onChange={e => setSSField(activeSsId, "automaticTraining", e.target.value)}>
                   <option>Not Required</option><option>Recommended</option><option>Mandatory</option>
                 </select>
               </div>
-              <div className="sm2-form-field sm2-form-full" style={{gridColumn:"1/-1"}}>
+              <div className="sm2-form-field sm2-form-full" style={{ gridColumn: "1/-1" }}>
                 <label>Remarks for AOM</label>
-                <textarea rows={3} disabled={locked} value={f.remarks} onChange={e=>setSSField(activeSsId,"remarks",e.target.value)} placeholder="Enter observations, recommendations…"/>
+                <textarea rows={3} disabled={locked} value={f.remarks} onChange={e => setSSField(activeSsId, "remarks", e.target.value)} placeholder="Enter observations, recommendations…" />
               </div>
             </div>
           </div>
@@ -3196,17 +3198,17 @@ export default function TrafficInspectorModule({ user, onLogout }) {
           <div className="sm2-live-score" style={{ opacity: 1 }}>
             <div><label>Knowledge (MCQ)</label><strong>{knowledge}/25</strong></div>
             <div><label>Yes/No Score</label><strong>{ynScore}/75</strong></div>
-            <div><label>Grand Total</label><strong style={{color:CAT_C[liveCat],fontSize:22}}>{total}/100</strong></div>
-            <div><label>Category</label><span className="sm2-badge" style={{background:CAT_B[liveCat],color:CAT_C[liveCat],fontSize:13,padding:"4px 14px"}}>Category {liveCat}</span></div>
+            <div><label>Grand Total</label><strong style={{ color: CAT_C[liveCat], fontSize: 22 }}>{total}/100</strong></div>
+            <div><label>Category</label><span className="sm2-badge" style={{ background: CAT_B[liveCat], color: CAT_C[liveCat], fontSize: 13, padding: "4px 14px" }}>Category {liveCat}</span></div>
           </div>
 
           {locked && (
-            <div style={{display:"flex",flexDirection:"column",gap:"10px",marginTop:"16px"}}>
+            <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginTop: "16px" }}>
               <div style={{ background: "#dcfce7", color: "#166534", border: "1px solid #bbf7d0", padding: "12px", borderRadius: "8px", fontWeight: "700", fontSize: "13px", textAlign: "center" }}>
                 ✓ Assessment submitted. Pending AOM Approval.
               </div>
-              <button type="button" className="sm2-ghost-btn" style={{border:"1px solid #7c3aed",color:"#7c3aed", padding: "10px", borderRadius: "8px", fontWeight: "700", background: "none", cursor: "pointer"}} onClick={() => setSsLocked(p => ({...p,[activeSsId]:false}))}>
-                <Edit size={14} style={{marginRight:6}}/> Unlock & Edit Assessment
+              <button type="button" className="sm2-ghost-btn" style={{ border: "1px solid #7c3aed", color: "#7c3aed", padding: "10px", borderRadius: "8px", fontWeight: "700", background: "none", cursor: "pointer" }} onClick={() => setSsLocked(p => ({ ...p, [activeSsId]: false }))}>
+                <Edit size={14} style={{ marginRight: 6 }} /> Unlock & Edit Assessment
               </button>
             </div>
           )}
@@ -3237,9 +3239,9 @@ export default function TrafficInspectorModule({ user, onLogout }) {
                     return;
                   }
                   setSSField(activeSsId, "knowledgeMarks", String(knowledge));
-                  submitSSAssessment(activeSsId);
+                  submitSSAssessment(activeSsId, String(knowledge));
                 }}>
-                  <CheckCircle2 size={14}/> Submit for AOM Approval
+                  <CheckCircle2 size={14} /> Submit for AOM Approval
                 </button>
               </div>
             </div>
@@ -3249,10 +3251,10 @@ export default function TrafficInspectorModule({ user, onLogout }) {
     }
 
     if (assessRole === "TM" && activeTmId) {
-      const tm     = tmList.find(t => t.id === activeTmId);
-      const f      = tmForms[activeTmId] || defaultTMForm();
+      const tm = tmList.find(t => t.id === activeTmId);
+      const f = tmForms[activeTmId] || defaultTMForm();
       const locked = !!tmLocked[activeTmId];
-      
+
       const mcqDataStr = localStorage.getItem(`tm_mcq_test_${tm?.hrmsId}`);
       const mcqData = mcqDataStr ? JSON.parse(mcqDataStr) : null;
       const dbExamScore = tm?.examScore !== undefined && tm?.examScore !== null
@@ -3260,9 +3262,9 @@ export default function TrafficInspectorModule({ user, onLogout }) {
         : null;
       const isMcqCompleted = !!(mcqData && mcqData.completed) || dbExamScore !== null || tm?.status === "Submitted" || tm?.status === "Approved";
       const isActivated = localStorage.getItem(`tm_test_activated_${tm?.hrmsId}`) === "true";
-      
-      const knowledge = dbExamScore !== null 
-        ? dbExamScore 
+
+      const knowledge = dbExamScore !== null
+        ? dbExamScore
         : (isMcqCompleted ? (mcqData?.correctCount || 0) : (parseInt(f.knowledgeMarks) || 0));
       const displayScore = dbExamScore !== null ? dbExamScore : (mcqData?.correctCount || 0);
       const displayPercentage = dbExamScore !== null ? Math.round((dbExamScore / 25) * 100) : (mcqData?.percentage || 0);
@@ -3282,9 +3284,9 @@ export default function TrafficInspectorModule({ user, onLogout }) {
                 {tm?.hrmsId} · Home Station: {tm?.station}
               </p>
             </div>
-            <button 
-              className="sm2-ghost-btn" 
-              style={{ display: "flex", alignItems: "center", gap: "6px", border: "1px solid #cbd5e1", background: "#fff", cursor: "pointer", padding: "8px 16px", borderRadius: "8px", fontWeight: "700", fontSize: "13px", color: "#475569" }} 
+            <button
+              className="sm2-ghost-btn"
+              style={{ display: "flex", alignItems: "center", gap: "6px", border: "1px solid #cbd5e1", background: "#fff", cursor: "pointer", padding: "8px 16px", borderRadius: "8px", fontWeight: "700", fontSize: "13px", color: "#475569" }}
               onClick={() => setActiveTmId(null)}
             >
               ← Back
@@ -3301,8 +3303,8 @@ export default function TrafficInspectorModule({ user, onLogout }) {
               </div>
               <span className="sm2-assess-live-marks">{knowledge} / 25</span>
             </div>
-            
-            <div className="sm2-mcq-card-container" style={{marginTop: 16}}>
+
+            <div className="sm2-mcq-card-container" style={{ marginTop: 16 }}>
               {isMcqCompleted ? (
                 <div className="sm2-mcq-success-card">
                   <div className="sm2-mcq-card-header">
@@ -3315,7 +3317,7 @@ export default function TrafficInspectorModule({ user, onLogout }) {
                       <span>Read-Only (Synced)</span>
                     </div>
                   </div>
-                  
+
                   <div className="sm2-mcq-card-body">
                     <div className="sm2-mcq-score-display">
                       <div className="sm2-mcq-large-score">
@@ -3325,7 +3327,7 @@ export default function TrafficInspectorModule({ user, onLogout }) {
                       <div className="sm2-mcq-percentage-badge">
                         {displayPercentage}% Score
                       </div>
-                      <button 
+                      <button
                         type="button"
                         style={{ marginLeft: "auto", background: "#fee2e2", border: "none", color: "#dc2626", padding: "6px 12px", borderRadius: "6px", fontSize: "12px", fontWeight: "700", cursor: "pointer" }}
                         onClick={() => {
@@ -3336,19 +3338,19 @@ export default function TrafficInspectorModule({ user, onLogout }) {
                         Reset Mock Exam
                       </button>
                     </div>
-                    
+
                     <div className="sm2-mcq-progress-container">
                       <div className="sm2-mcq-progress-bar">
-                        <div 
-                          className="sm2-mcq-progress-fill" 
-                          style={{ 
+                        <div
+                          className="sm2-mcq-progress-fill"
+                          style={{
                             width: `${displayPercentage}%`,
                             background: displayPercentage >= 80 ? "#16a34a" : displayPercentage >= 50 ? "#2563eb" : "#dc2626"
                           }}
                         />
                       </div>
                     </div>
-                    
+
                     <div className="sm2-mcq-meta-grid">
                       <div className="sm2-mcq-meta-item">
                         <span className="sm2-mcq-meta-label">Submitted On</span>
@@ -3375,13 +3377,13 @@ export default function TrafficInspectorModule({ user, onLogout }) {
                       <span>Read-Only</span>
                     </div>
                   </div>
-                  
+
                   <div className="sm2-mcq-card-body pending" style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
                     <div className="sm2-mcq-pending-message" style={{ display: "flex", gap: "12px", background: isActivated ? "#fffbeb" : "#fef2f2", border: isActivated ? "1px solid #fef3c7" : "1px solid #fee2e2", padding: "16px", borderRadius: "8px" }}>
-                      <AlertTriangle size={24} color={isActivated ? "#d97706" : "#dc2626"} style={{marginTop: 2, flexShrink: 0}} />
+                      <AlertTriangle size={24} color={isActivated ? "#d97706" : "#dc2626"} style={{ marginTop: 2, flexShrink: 0 }} />
                       <div>
-                        <h4 style={{margin:"0 0 4px", fontSize:14, color: isActivated ? "#b45309" : "#991b1b"}}>{isActivated ? "Awaiting Train Manager Attempt" : "Competency Exam Locked"}</h4>
-                        <p style={{margin:0, fontSize:12.5, lineHeight:1.5, color: isActivated ? "#d97706" : "#dc2626"}}>
+                        <h4 style={{ margin: "0 0 4px", fontSize: 14, color: isActivated ? "#b45309" : "#991b1b" }}>{isActivated ? "Awaiting Train Manager Attempt" : "Competency Exam Locked"}</h4>
+                        <p style={{ margin: 0, fontSize: 12.5, lineHeight: 1.5, color: isActivated ? "#d97706" : "#dc2626" }}>
                           {isActivated ? (
                             <span>The Train Manager safety competency trial is active. Request TM (<strong>{tm?.name}</strong>) to log into their portal and attempt the 25 safety questions to automatically sync scores.</span>
                           ) : (
@@ -3390,9 +3392,9 @@ export default function TrafficInspectorModule({ user, onLogout }) {
                         </p>
                       </div>
                     </div>
-                    
+
                     <div style={{ display: "flex", gap: "12px" }}>
-                      <button 
+                      <button
                         type="button"
                         style={{
                           padding: "8px 16px",
@@ -3441,20 +3443,73 @@ export default function TrafficInspectorModule({ user, onLogout }) {
           {TI_TM_CRITERIA.map((sec, si) => (
             <div id={'section-' + sec.key} key={sec.key} className="sm2-assess-section" style={{ opacity: 1 }}>
               <div className="sm2-assess-sec-hdr">
-                <span className="sm2-assess-sec-num">{String(si+2).padStart(2,"0")}</span>
+                <span className="sm2-assess-sec-num">{String(si + 2).padStart(2, "0")}</span>
                 <div>
-                  <strong>{sec.label} <span style={{color:"#dc2626"}}>*</span></strong>
+                  <strong>{sec.label} <span style={{ color: "#dc2626" }}>*</span></strong>
                   {!(f[sec.key] && f[sec.key].length === sec.count && f[sec.key].every(v => v === "Yes" || v === "No")) && (
                     <span style={{ color: "#dc2626", fontSize: "11px", fontWeight: "700", marginLeft: "8px", background: "#fee2e2", padding: "2px 6px", borderRadius: "4px" }}>Incomplete</span>
                   )}
-                  <span className="sm2-assess-sec-meta">{sec.count} criteria · {sec.weight} marks each · Total {sec.count*sec.weight}</span>
+                  <span className="sm2-assess-sec-meta">{sec.count} criteria · {sec.weight} marks each · Total {sec.count * sec.weight}</span>
                 </div>
-                <span className="sm2-assess-live-marks\">{(f[sec.key] || []).filter(v=>v==="Yes").length*sec.weight} / {sec.count*sec.weight}</span>
+                <span className="sm2-assess-live-marks">{(f[sec.key] || []).filter(v => v === "Yes").length * sec.weight} / {sec.count * sec.weight}</span>
+              </div>
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px", padding: "6px 16px", background: "#f8fafc", borderBottom: "1px solid #e2e8f0", borderTopLeftRadius: "8px", borderTopRightRadius: "8px", alignItems: "center" }}>
+                <span style={{ fontSize: "11px", fontWeight: "700", color: "#64748b", marginRight: "auto" }}>{t("Quick Fill:")}</span>
+                <button
+                  type="button"
+                  disabled={locked}
+                  onClick={() => {
+                    setTmForms(prev => ({
+                      ...prev,
+                      [activeTmId]: {
+                        ...(prev[activeTmId] || defaultTMForm()),
+                        [sec.key]: Array(sec.count).fill("Yes")
+                      }
+                    }));
+                  }}
+                  style={{
+                    padding: "2px 8px",
+                    fontSize: "11px",
+                    fontWeight: "700",
+                    borderRadius: "4px",
+                    border: "1px solid #cbd5e1",
+                    background: "#f0fdf4",
+                    color: "#166534",
+                    cursor: locked ? "not-allowed" : "pointer"
+                  }}
+                >
+                  ✓ {t("All Yes")}
+                </button>
+                <button
+                  type="button"
+                  disabled={locked}
+                  onClick={() => {
+                    setTmForms(prev => ({
+                      ...prev,
+                      [activeTmId]: {
+                        ...(prev[activeTmId] || defaultTMForm()),
+                        [sec.key]: Array(sec.count).fill("No")
+                      }
+                    }));
+                  }}
+                  style={{
+                    padding: "2px 8px",
+                    fontSize: "11px",
+                    fontWeight: "700",
+                    borderRadius: "4px",
+                    border: "1px solid #cbd5e1",
+                    background: "#fef2f2",
+                    color: "#991b1b",
+                    cursor: locked ? "not-allowed" : "pointer"
+                  }}
+                >
+                  ✗ {t("All No")}
+                </button>
               </div>
               <div className="sm2-yn-grid">
                 {sec.criteria.map((cr, idx) => (
                   <div key={idx} className="sm2-yn-row">
-                    <span className="sm2-yn-label">{idx+1}. {cr}</span>
+                    <span className="sm2-yn-label">{idx + 1}. {cr}</span>
                     <div className="sm2-yn-btns">
                       <button
                         type="button" disabled={locked}
@@ -3483,17 +3538,17 @@ export default function TrafficInspectorModule({ user, onLogout }) {
               <span className="sm2-assess-sec-num">07</span>
               <div><strong>Additional Details</strong><span className="sm2-assess-sec-meta">Mandatory fields</span></div>
             </div>
-            <div className="sm2-assess-form" style={{marginTop:12}}>
+            <div className="sm2-assess-form" style={{ marginTop: 12 }}>
               <div className="sm2-form-field">
                 <label>Knowledge Marks (MCQ Test)</label>
-                <input type="number" min={0} max={25} disabled={locked} value={knowledge} onChange={e=>{
+                <input type="number" min={0} max={25} disabled={locked} value={knowledge} onChange={e => {
                   const val = e.target.value;
-                  setTMField(activeTmId,"knowledgeMarks",val);
-                }} placeholder="Synced MCQ marks" style={{ background: "#f1f5f9" }} readOnly/>
+                  setTMField(activeTmId, "knowledgeMarks", val);
+                }} placeholder="Synced MCQ marks" style={{ background: "#f1f5f9" }} readOnly />
               </div>
               <div className="sm2-form-field">
-                <label>Alcoholic Status <span style={{color:"#dc2626"}}>*</span></label>
-                <select disabled={locked} value={f.alcoholicStatus} onChange={e=>setTMField(activeTmId,"alcoholicStatus",e.target.value)}>
+                <label>Alcoholic Status <span style={{ color: "#dc2626" }}>*</span></label>
+                <select disabled={locked} value={f.alcoholicStatus} onChange={e => setTMField(activeTmId, "alcoholicStatus", e.target.value)}>
                   <option value="">Select…</option>
                   <option>Non-Alcoholic</option>
                   <option>Alcoholic</option>
@@ -3501,31 +3556,31 @@ export default function TrafficInspectorModule({ user, onLogout }) {
               </div>
               <div className="sm2-form-field">
                 <label>PME Status</label>
-                <select disabled={locked} value={f.pmeStatus} onChange={e=>setTMField(activeTmId,"pmeStatus",e.target.value)}>
+                <select disabled={locked} value={f.pmeStatus} onChange={e => setTMField(activeTmId, "pmeStatus", e.target.value)}>
                   <option>Fit</option><option>Unfit</option><option>Pending</option>
                 </select>
               </div>
               <div className="sm2-form-field">
                 <label>REF Status</label>
-                <select disabled={locked} value={f.refStatus} onChange={e=>setTMField(activeTmId,"refStatus",e.target.value)}>
+                <select disabled={locked} value={f.refStatus} onChange={e => setTMField(activeTmId, "refStatus", e.target.value)}>
                   <option>Cleared</option><option>Pending</option><option>Failed</option>
                 </select>
               </div>
               <div className="sm2-form-field">
                 <label>Counselling</label>
-                <select disabled={locked} value={f.counselling} onChange={e=>setTMField(activeTmId,"counselling",e.target.value)}>
+                <select disabled={locked} value={f.counselling} onChange={e => setTMField(activeTmId, "counselling", e.target.value)}>
                   <option>Not Required</option><option>Recommended</option><option>Mandatory</option>
                 </select>
               </div>
               <div className="sm2-form-field">
                 <label>Automatic Training</label>
-                <select disabled={locked} value={f.automaticTraining} onChange={e=>setTMField(activeTmId,"automaticTraining",e.target.value)}>
+                <select disabled={locked} value={f.automaticTraining} onChange={e => setTMField(activeTmId, "automaticTraining", e.target.value)}>
                   <option>Not Required</option><option>Recommended</option><option>Mandatory</option>
                 </select>
               </div>
-              <div className="sm2-form-field sm2-form-full" style={{gridColumn:"1/-1"}}>
+              <div className="sm2-form-field sm2-form-full" style={{ gridColumn: "1/-1" }}>
                 <label>Remarks for AOM</label>
-                <textarea rows={3} disabled={locked} value={f.remarks} onChange={e=>setTMField(activeTmId,"remarks",e.target.value)} placeholder="Enter observations, recommendations…"/>
+                <textarea rows={3} disabled={locked} value={f.remarks} onChange={e => setTMField(activeTmId, "remarks", e.target.value)} placeholder="Enter observations, recommendations…" />
               </div>
             </div>
           </div>
@@ -3534,17 +3589,17 @@ export default function TrafficInspectorModule({ user, onLogout }) {
           <div className="sm2-live-score" style={{ opacity: 1 }}>
             <div><label>Knowledge (MCQ)</label><strong>{knowledge}/25</strong></div>
             <div><label>Yes/No Score</label><strong>{ynScore}/75</strong></div>
-            <div><label>Grand Total</label><strong style={{color:CAT_C[liveCat],fontSize:22}}>{total}/100</strong></div>
-            <div><label>Category</label><span className="sm2-badge" style={{background:CAT_B[liveCat],color:CAT_C[liveCat],fontSize:13,padding:"4px 14px"}}>Category {liveCat}</span></div>
+            <div><label>Grand Total</label><strong style={{ color: CAT_C[liveCat], fontSize: 22 }}>{total}/100</strong></div>
+            <div><label>Category</label><span className="sm2-badge" style={{ background: CAT_B[liveCat], color: CAT_C[liveCat], fontSize: 13, padding: "4px 14px" }}>Category {liveCat}</span></div>
           </div>
 
           {locked && (
-            <div style={{display:"flex",flexDirection:"column",gap:"10px",marginTop:"16px"}}>
+            <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginTop: "16px" }}>
               <div style={{ background: "#dcfce7", color: "#166534", border: "1px solid #bbf7d0", padding: "12px", borderRadius: "8px", fontWeight: "700", fontSize: "13px", textAlign: "center" }}>
                 ✓ Assessment submitted. Pending AOM Approval.
               </div>
-              <button type="button" className="sm2-ghost-btn" style={{border:"1px solid #7c3aed",color:"#7c3aed", padding: "10px", borderRadius: "8px", fontWeight: "700", background: "none", cursor: "pointer"}} onClick={() => setTmLocked(p => ({...p,[activeTmId]:false}))}>
-                <Edit size={14} style={{marginRight:6}}/> Unlock & Edit Assessment
+              <button type="button" className="sm2-ghost-btn" style={{ border: "1px solid #7c3aed", color: "#7c3aed", padding: "10px", borderRadius: "8px", fontWeight: "700", background: "none", cursor: "pointer" }} onClick={() => setTmLocked(p => ({ ...p, [activeTmId]: false }))}>
+                <Edit size={14} style={{ marginRight: 6 }} /> Unlock & Edit Assessment
               </button>
             </div>
           )}
@@ -3575,9 +3630,9 @@ export default function TrafficInspectorModule({ user, onLogout }) {
                     return;
                   }
                   setTMField(activeTmId, "knowledgeMarks", String(knowledge));
-                  submitTMAssessment(activeTmId);
+                  submitTMAssessment(activeTmId, String(knowledge));
                 }}>
-                  <CheckCircle2 size={14}/> Submit for AOM Approval
+                  <CheckCircle2 size={14} /> Submit for AOM Approval
                 </button>
               </div>
             </div>
@@ -3585,6 +3640,219 @@ export default function TrafficInspectorModule({ user, onLogout }) {
         </section>
       );
     }
+
+    const renderScheduleModal = (roleKey) => {
+      if (!editingEmployee) return null;
+
+      const isBulk = editingEmployee === "bulk";
+      const title = isBulk
+        ? `Bulk Schedule Assessments (${selectedHrmsIds.length} employees)`
+        : `Schedule Assessment — ${editingEmployee.name} (${editingEmployee.hrmsId})`;
+
+      const handleSaveSchedule = async () => {
+        if (!scheduleDate) {
+          alert("Please select a date.");
+          return;
+        }
+        if (!scheduleReason.trim()) {
+          alert("Please enter a reason for scheduling.");
+          return;
+        }
+
+        try {
+          const formattedTime = convertTo12Hour(scheduleTime);
+          let successCount = 0;
+
+          if (isBulk) {
+            for (const hrmsId of selectedHrmsIds) {
+              const res = await updateEmployeeScheduleTI(roleKey, hrmsId, scheduleDate, formattedTime, scheduleReason);
+              if (res && res.success) {
+                successCount++;
+              }
+            }
+            setSelectedHrmsIds([]);
+            alert(`Successfully scheduled assessment for ${successCount} employee(s).`);
+          } else {
+            const res = await updateEmployeeScheduleTI(roleKey, editingEmployee.hrmsId, scheduleDate, formattedTime, scheduleReason);
+            if (res && res.success) {
+              alert(`Successfully scheduled assessment for ${editingEmployee.name}.`);
+            }
+          }
+        } catch (err) {
+          console.error("Error scheduling:", err);
+          alert("An error occurred during scheduling: " + err.message);
+        } finally {
+          setEditingEmployee(null);
+          setScheduleDate("");
+          setScheduleTime("10:00");
+          setScheduleReason("");
+          await fetchLiveDatabaseData();
+        }
+      };
+
+      return (
+        <div style={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: "rgba(15, 23, 42, 0.6)",
+          backdropFilter: "blur(4px)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          zIndex: 9999,
+        }}>
+          <div style={{
+            backgroundColor: "#ffffff",
+            borderRadius: "16px",
+            width: "100%",
+            maxWidth: "480px",
+            boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
+            padding: "24px",
+            border: "1px solid #e2e8f0"
+          }}>
+            {/* Modal Header */}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
+              <h3 style={{ margin: 0, fontSize: "18px", fontWeight: "800", color: "#0f172a" }}>{title}</h3>
+              <button
+                onClick={() => {
+                  setEditingEmployee(null);
+                  setScheduleDate("");
+                  setScheduleTime("10:00");
+                  setScheduleReason("");
+                }}
+                style={{
+                  background: "none",
+                  border: "none",
+                  fontSize: "20px",
+                  color: "#64748b",
+                  cursor: "pointer",
+                  padding: "4px"
+                }}
+              >
+                ×
+              </button>
+            </div>
+
+            {/* Modal Content */}
+            <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+              <div style={{ display: "flex", gap: "12px" }}>
+                <div style={{ flex: 1 }}>
+                  <label style={{ display: "block", fontSize: "12.5px", fontWeight: "700", color: "#475569", marginBottom: "6px" }}>
+                    Assessment Date *
+                  </label>
+                  <input
+                    type="date"
+                    min={new Date().toISOString().slice(0, 10)}
+                    value={scheduleDate}
+                    onChange={e => setScheduleDate(e.target.value)}
+                    style={{
+                      width: "100%",
+                      height: "40px",
+                      padding: "0 12px",
+                      borderRadius: "8px",
+                      border: "1px solid #cbd5e1",
+                      fontSize: "13.5px",
+                      fontWeight: "600",
+                      boxSizing: "border-box",
+                      outline: "none"
+                    }}
+                  />
+                </div>
+
+                <div style={{ width: "130px" }}>
+                  <label style={{ display: "block", fontSize: "12.5px", fontWeight: "700", color: "#475569", marginBottom: "6px" }}>
+                    Time *
+                  </label>
+                  <input
+                    type="time"
+                    value={scheduleTime}
+                    onChange={e => setScheduleTime(e.target.value)}
+                    style={{
+                      width: "100%",
+                      height: "40px",
+                      padding: "0 12px",
+                      borderRadius: "8px",
+                      border: "1px solid #cbd5e1",
+                      fontSize: "13.5px",
+                      fontWeight: "600",
+                      boxSizing: "border-box",
+                      outline: "none"
+                    }}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label style={{ display: "block", fontSize: "12.5px", fontWeight: "700", color: "#475569", marginBottom: "6px" }}>
+                  Reason / Remarks for Scheduling *
+                </label>
+                <textarea
+                  rows={3}
+                  placeholder="Enter reason (e.g. Periodic assessment, Counselling completed, Retest schedule)..."
+                  value={scheduleReason}
+                  onChange={e => setScheduleReason(e.target.value)}
+                  style={{
+                    width: "100%",
+                    padding: "10px 12px",
+                    borderRadius: "8px",
+                    border: "1px solid #cbd5e1",
+                    fontSize: "13.5px",
+                    fontWeight: "600",
+                    boxSizing: "border-box",
+                    outline: "none",
+                    resize: "none"
+                  }}
+                />
+              </div>
+
+              {/* Modal Actions */}
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: "12px", marginTop: "12px" }}>
+                <button
+                  onClick={() => {
+                    setEditingEmployee(null);
+                    setScheduleDate("");
+                    setScheduleTime("10:00");
+                    setScheduleReason("");
+                  }}
+                  className="sm2-ghost-btn"
+                  style={{
+                    height: "38px",
+                    padding: "0 16px",
+                    borderRadius: "8px",
+                    fontWeight: "700",
+                    border: "1px solid #cbd5e1",
+                    background: "#ffffff",
+                    cursor: "pointer"
+                  }}
+                >
+                  Cancel
+                </button>
+
+                <button
+                  onClick={handleSaveSchedule}
+                  className="sm2-primary-btn"
+                  style={{
+                    height: "38px",
+                    padding: "0 16px",
+                    borderRadius: "8px",
+                    fontWeight: "700",
+                    border: "none",
+                    background: "#2563eb",
+                    color: "#ffffff",
+                    cursor: "pointer"
+                  }}
+                >
+                  Save Schedule
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    };
 
     // ─── LEVEL 2: Roster/List View Generic Render ───
     const renderRoleRoster = (roleKey) => {
@@ -3600,6 +3868,7 @@ export default function TrafficInspectorModule({ user, onLogout }) {
           roleName: "Station Master",
           rolePillBg: "#eff6ff",
           rolePillColor: "#2563eb",
+          roleCode: "sm"
         },
         SS: {
           title: "Station Superintendents",
@@ -3611,6 +3880,7 @@ export default function TrafficInspectorModule({ user, onLogout }) {
           roleName: "Station Superintendent",
           rolePillBg: "#f5f3ff",
           rolePillColor: "#7c3aed",
+          roleCode: "ss"
         },
         TM: {
           title: "Train Managers",
@@ -3623,354 +3893,371 @@ export default function TrafficInspectorModule({ user, onLogout }) {
           roleName: "Train Manager",
           rolePillBg: "#f0fdf4",
           rolePillColor: "#16a34a",
+          roleCode: "tm"
         }
       }[roleKey];
 
-      const totalStaff = config.list.length;
-      const pendingCount = config.list.filter(x => x.status === "Pending" || x.status === "Exam Sent").length;
-      const completedCount = config.list.filter(x => x.status === "Submitted" || x.status === "Exam Taken").length;
-      const rejectedCount = config.list.filter(x => x.status === "Rejected").length;
-      const lastUpdatedDate = "20 May 2026";
+      // If it's SS or categories view is not active, render the standard roster (non-category based)
+      if (roleKey === "SS" || !showCategoriesPanel) {
+        const totalStaff = config.list.length;
+        const pendingCount = config.list.filter(x => x.status === "Pending" || x.status === "Exam Sent").length;
+        const completedCount = config.list.filter(x => x.status === "Submitted" || x.status === "Exam Taken").length;
+        const rejectedCount = config.list.filter(x => x.status === "Rejected").length;
+        const lastUpdatedDate = "20 May 2026";
 
-      const stations = ["All", ...new Set(config.list.map(x => x.station))];
+        const stations = ["All", ...new Set(config.list.map(x => x.station))];
 
-      const filteredList = config.list.filter(item => {
-        const matchesSearch = rosterSearch === "" || 
-          item.name.toLowerCase().includes(rosterSearch.toLowerCase()) || 
-          item.hrmsId.toLowerCase().includes(rosterSearch.toLowerCase());
-        
-        const matchesStation = rosterStation === "All" || item.station === rosterStation;
-        const matchesStatus = rosterStatus === "All" || item.status === rosterStatus;
-        const matchesDate = rosterDate === "" || item.lastDate === rosterDate;
-        
-        return matchesSearch && matchesStation && matchesStatus && matchesDate;
-      });
+        const filteredList = config.list.filter(item => {
+          const matchesSearch = rosterSearch === "" ||
+            item.name.toLowerCase().includes(rosterSearch.toLowerCase()) ||
+            item.hrmsId.toLowerCase().includes(rosterSearch.toLowerCase());
 
-      const stationCodeMap = {
-        "Parbhani Junction": "PBN",
-        "Amla Junction": "AMLA",
-        "Badnera Junction": "BDN",
-        "Akola Junction": "AK",
-        "Nagpur Junction": "NGP",
-        "Wardha Junction": "WR",
-        "Betul Station": "BYT",
-        "Itarsi Junction": "ET",
-        "Chandrapur Station": "CD",
-        "Gondia Junction": "G",
-        "Dhamangaon Station": "DMN",
-        "Pulgaon Junction": "PLO"
-      };
+          const matchesStation = rosterStation === "All" || item.station === rosterStation;
+          const matchesStatus = rosterStatus === "All" || item.status === rosterStatus;
+          const matchesDate = rosterDate === "" || item.lastDate === rosterDate;
 
-      return (
-        <div className="ti2-page-body animate-fade-in" style={{ padding: "24px", background: "#f8fafc", minHeight: "100%" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
-            <div>
-              <h1 style={{ fontSize: "28px", fontWeight: "800", color: "#0f172a", margin: "0 0 4px" }}>
-                Assessments — {config.title}
-              </h1>
-              <p style={{ margin: 0, fontSize: "14px", color: "#64748b", fontWeight: "500" }}>
-                {config.title} pending assessment are listed below. Open the form to conduct a structured evaluation.
-              </p>
-            </div>
-            <button 
-              onClick={() => { setAssessRole(null); setRosterSearch(""); setRosterStation("All"); setRosterStatus("All"); setRosterDate(""); }}
-              style={{
-                background: "#ffffff",
-                border: "1px solid #cbd5e1",
-                padding: "8px 16px",
-                borderRadius: "8px",
-                fontSize: "13px",
-                fontWeight: "700",
-                color: "#334155",
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "6px",
-                cursor: "pointer"
-              }}
-            >
-              ← Back to Roles
-            </button>
-          </div>
+          return matchesSearch && matchesStation && matchesStatus && matchesDate;
+        });
 
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: "16px", marginBottom: "24px" }}>
-            {[
-              { label: `Total ${config.title}`, value: totalStaff, subtitle: "In your jurisdiction", icon: Users, bg: "#f8fafc", color: "#475569", valColor: "#0f172a" },
-              { label: "Pending Assessments", value: pendingCount, subtitle: "Awaiting completion", icon: ClipboardList, bg: "#f8fafc", color: "#d97706", valColor: "#d97706" },
-              { label: "Completed This Month", value: completedCount, subtitle: "Assessments done", icon: Send, bg: "#f8fafc", color: "#16a34a", valColor: "#16a34a" },
-              { label: "Rejected", value: rejectedCount, subtitle: "Needs review", icon: AlertTriangle, bg: "#f8fafc", color: "#dc2626", valColor: "#dc2626" },
-              { label: "Last Updated", value: lastUpdatedDate, subtitle: "Recent activity", icon: Calendar, bg: "#f8fafc", color: "#64748b", valColor: "#0f172a" }
-            ].map((stat, idx) => (
-              <div 
-                key={idx}
-                style={{
-                  background: "#ffffff",
-                  border: "1px solid #e2e8f0",
-                  borderRadius: "16px",
-                  padding: "20px",
-                  boxShadow: "0 1px 3px rgba(0,0,0,0.02)",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "16px"
-                }}
-              >
-                <div style={{ width: "40px", height: "40px", borderRadius: "8px", background: "#f1f5f9", display: "flex", alignItems: "center", justifyContent: "center", color: stat.color, flexShrink: 0 }}>
-                  <stat.icon size={20} />
-                </div>
-                <div>
-                  <div style={{ display: "flex", alignItems: "baseline", gap: "6px" }}>
-                    <span style={{ fontSize: "22px", fontWeight: "800", color: stat.valColor }}>{stat.value}</span>
-                  </div>
-                  <div style={{ fontSize: "12px", fontWeight: "700", color: "#334155", marginTop: "2px" }}>{stat.label}</div>
-                  <div style={{ fontSize: "11px", color: "#64748b", fontWeight: "500", marginTop: "1px" }}>{stat.subtitle}</div>
-                </div>
-              </div>
-            ))}
-          </div>
+        const stationCodeMap = {
+          "Parbhani Junction": "PBN",
+          "Amla Junction": "AMLA",
+          "Badnera Junction": "BDN",
+          "Akola Junction": "AK",
+          "Nagpur Junction": "NGP",
+          "Wardha Junction": "WR",
+          "Betul Station": "BYT",
+          "Itarsi Junction": "ET",
+          "Chandrapur Station": "CD",
+          "Gondia Junction": "G",
+          "Dhamangaon Station": "DMN",
+          "Pulgaon Junction": "PLO"
+        };
 
-          <div 
-            style={{
-              background: "#ffffff",
-              border: "1px solid #e2e8f0",
-              borderRadius: "16px",
-              padding: "20px",
-              marginBottom: "24px",
-              boxShadow: "0 1px 3px rgba(0,0,0,0.02)"
-            }}
-          >
-            <div style={{ display: "grid", gridTemplateColumns: "1.5fr 1fr 1fr 1fr auto", gap: "16px", alignItems: "end" }}>
+        return (
+          <div className="ti2-page-body animate-fade-in" style={{ padding: "24px", background: "#f8fafc", minHeight: "100%" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
               <div>
-                <label style={{ display: "block", fontSize: "12px", fontWeight: "700", color: "#334155", marginBottom: "6px" }}>
-                  {config.searchLabel}
-                </label>
-                <div style={{ position: "relative" }}>
-                  <Search size={14} style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", color: "#64748b" }} />
-                  <input 
-                    type="text"
-                    placeholder="Name or HRMS ID..."
-                    value={rosterSearch}
-                    onChange={(e) => setRosterSearch(e.target.value)}
-                    style={{
-                      width: "100%",
-                      padding: "10px 12px 10px 36px",
-                      borderRadius: "8px",
-                      border: "1px solid #cbd5e1",
-                      fontSize: "13px",
-                      fontWeight: "500",
-                      color: "#0f172a",
-                      boxSizing: "border-box"
+                <h1 style={{ fontSize: "28px", fontWeight: "800", color: "#0f172a", margin: "0 0 4px" }}>
+                  Assessments — {config.title}
+                </h1>
+                <p style={{ margin: 0, fontSize: "14px", color: "#64748b", fontWeight: "500" }}>
+                  {config.title} pending assessment are listed below. Open the form to conduct a structured evaluation.
+                </p>
+              </div>
+              <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
+                {roleKey !== "SS" && (
+                  <button
+                    onClick={() => {
+                      setShowCategoriesPanel(true);
+                      setSelectedCategory(null);
+                      setSelectedHrmsIds([]);
+                      setRosterSearch("");
+                      setRosterStation("All");
+                      setRosterStatus("All");
+                      setRosterDate("");
+                      setViewUpcomingOnly(false);
                     }}
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label style={{ display: "block", fontSize: "12px", fontWeight: "700", color: "#334155", marginBottom: "6px" }}>Station</label>
-                <select 
-                  value={rosterStation}
-                  onChange={(e) => setRosterStation(e.target.value)}
-                  style={{
-                    width: "100%",
-                    padding: "10px 12px",
-                    borderRadius: "8px",
-                    border: "1px solid #cbd5e1",
-                    fontSize: "13px",
-                    fontWeight: "500",
-                    color: "#0f172a",
-                    boxSizing: "border-box"
-                  }}
-                >
-                  <option value="All">All Stations</option>
-                  {stations.filter(x => x !== "All").map(st => (
-                    <option key={st} value={st}>{st}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label style={{ display: "block", fontSize: "12px", fontWeight: "700", color: "#334155", marginBottom: "6px" }}>Exam Status</label>
-                <select 
-                  value={rosterStatus}
-                  onChange={(e) => setRosterStatus(e.target.value)}
-                  style={{
-                    width: "100%",
-                    padding: "10px 12px",
-                    borderRadius: "8px",
-                    border: "1px solid #cbd5e1",
-                    fontSize: "13px",
-                    fontWeight: "500",
-                    color: "#0f172a",
-                    boxSizing: "border-box"
-                  }}
-                >
-                  <option value="All">All Status</option>
-                  <option value="Pending">Pending</option>
-                  <option value="Exam Sent">Exam Sent</option>
-                  <option value="Exam Taken">Exam Taken</option>
-                  <option value="Submitted">Submitted</option>
-                  <option value="Rejected">Rejected</option>
-                </select>
-              </div>
-
-              <div>
-                <label style={{ display: "block", fontSize: "12px", fontWeight: "700", color: "#334155", marginBottom: "6px" }}>Last Assessed</label>
-                <div style={{ position: "relative" }}>
-                  <Calendar size={14} style={{ position: "absolute", right: "12px", top: "50%", transform: "translateY(-50%)", color: "#64748b" }} />
-                  <input 
-                    type="date"
-                    value={rosterDate}
-                    onChange={(e) => setRosterDate(e.target.value)}
                     style={{
-                      width: "100%",
-                      padding: "10px 36px 10px 12px",
+                      background: "#2563eb",
+                      border: "none",
+                      padding: "8px 16px",
                       borderRadius: "8px",
-                      border: "1px solid #cbd5e1",
                       fontSize: "13px",
-                      fontWeight: "500",
-                      color: "#0f172a",
-                      boxSizing: "border-box"
+                      fontWeight: "700",
+                      color: "#ffffff",
+                      cursor: "pointer",
+                      display: "inline-flex",
+                      alignItems: "center"
                     }}
-                  />
-                </div>
-              </div>
-
-              <div style={{ display: "flex", gap: "10px" }}>
-                <button 
-                  onClick={() => { setRosterSearch(""); setRosterStation("All"); setRosterStatus("All"); setRosterDate(""); }}
+                  >
+                    Categories View
+                  </button>
+                )}
+                <button
+                  onClick={() => { setAssessRole(null); setRosterSearch(""); setRosterStation("All"); setRosterStatus("All"); setRosterDate(""); setShowCategoriesPanel(false); }}
                   style={{
                     background: "#ffffff",
                     border: "1px solid #cbd5e1",
-                    padding: "10px 16px",
+                    padding: "8px 16px",
                     borderRadius: "8px",
                     fontSize: "13px",
                     fontWeight: "700",
-                    color: "#475569",
-                    cursor: "pointer"
-                  }}
-                >
-                  Reset
-                </button>
-                <button 
-                  style={{
-                    background: "#0f172a",
-                    border: "none",
-                    padding: "10px 20px",
-                    borderRadius: "8px",
-                    fontSize: "13px",
-                    fontWeight: "700",
-                    color: "#ffffff",
+                    color: "#334155",
                     display: "inline-flex",
                     alignItems: "center",
                     gap: "6px",
                     cursor: "pointer"
                   }}
                 >
-                  <Filter size={14} /> Apply Filters
+                  ← Back to Roles
                 </button>
               </div>
             </div>
-          </div>
 
-          <div 
-            style={{
-              background: "#ffffff",
-              border: "1px solid #e2e8f0",
-              borderRadius: "16px",
-              padding: "24px",
-              boxShadow: "0 1px 3px rgba(0,0,0,0.02)"
-            }}
-          >
-            <div style={{ overflowX: "auto" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                <thead>
-                  <tr style={{ borderBottom: "1.5px solid #e2e8f0", background: "#f8fafc", textAlign: "left" }}>
-                    <th style={{ padding: "12px 16px", fontSize: "11px", color: "#475569", fontWeight: "800", textTransform: "uppercase", letterSpacing: "0.5px" }}>
-                      {config.colHeader}
-                    </th>
-                    <th style={{ padding: "12px 16px", fontSize: "11px", color: "#475569", fontWeight: "800", textTransform: "uppercase", letterSpacing: "0.5px" }}>HRMS ID</th>
-                    <th style={{ padding: "12px 16px", fontSize: "11px", color: "#475569", fontWeight: "800", textTransform: "uppercase", letterSpacing: "0.5px" }}>STATION</th>
-                    <th style={{ padding: "12px 16px", fontSize: "11px", color: "#475569", fontWeight: "800", textTransform: "uppercase", letterSpacing: "0.5px" }}>LAST ASSESSED</th>
-                    <th style={{ padding: "12px 16px", fontSize: "11px", color: "#475569", fontWeight: "800", textTransform: "uppercase", letterSpacing: "0.5px" }}>SCORE</th>
-                    <th style={{ padding: "12px 16px", fontSize: "11px", color: "#475569", fontWeight: "800", textTransform: "uppercase", letterSpacing: "0.5px" }}>EXAM STATUS</th>
-                    <th style={{ padding: "12px 16px", fontSize: "11px", color: "#475569", fontWeight: "800", textTransform: "uppercase", letterSpacing: "0.5px", textAlign: "right" }}>ACTION</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredList.map((item) => {
-                    const grade = item.score ? getCat(item.score) : "—";
-                    const isVingh = item.name.includes("Singh");
-                    const scale = isVingh || item.name.includes("Verma") || item.name.includes("Dubey") ? "Junior Scale" : "Senior Scale";
-                    
-                    const stationCode = stationCodeMap[item.station] || "STN";
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: "16px", marginBottom: "24px" }}>
+              {[
+                { label: `Total ${config.title}`, value: totalStaff, subtitle: "In your jurisdiction", icon: Users, bg: "#f8fafc", color: "#475569", valColor: "#0f172a" },
+                { label: "Pending Assessments", value: pendingCount, subtitle: "Awaiting completion", icon: ClipboardList, bg: "#f8fafc", color: "#d97706", valColor: "#d97706" },
+                { label: "Completed This Month", value: completedCount, subtitle: "Assessments done", icon: Send, bg: "#f8fafc", color: "#16a34a", valColor: "#16a34a" },
+                { label: "Rejected", value: rejectedCount, subtitle: "Needs review", icon: AlertTriangle, bg: "#f8fafc", color: "#dc2626", valColor: "#dc2626" },
+                { label: "Last Updated", value: lastUpdatedDate, subtitle: "Recent activity", icon: Calendar, bg: "#f8fafc", color: "#64748b", valColor: "#0f172a" }
+              ].map((stat, idx) => (
+                <div
+                  key={idx}
+                  style={{
+                    background: "#ffffff",
+                    border: "1px solid #e2e8f0",
+                    borderRadius: "16px",
+                    padding: "20px",
+                    boxShadow: "0 1px 3px rgba(0,0,0,0.02)",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "16px"
+                  }}
+                >
+                  <div style={{ width: "40px", height: "40px", borderRadius: "8px", background: "#f1f5f9", display: "flex", alignItems: "center", justifyContent: "center", color: stat.color, flexShrink: 0 }}>
+                    <stat.icon size={20} />
+                  </div>
+                  <div>
+                    <div style={{ display: "flex", alignItems: "baseline", gap: "6px" }}>
+                      <span style={{ fontSize: "22px", fontWeight: "800", color: stat.valColor }}>{stat.value}</span>
+                    </div>
+                    <div style={{ fontSize: "12px", fontWeight: "700", color: "#334155", marginTop: "2px" }}>{stat.label}</div>
+                    <div style={{ fontSize: "11px", color: "#64748b", fontWeight: "500", marginTop: "1px" }}>{stat.subtitle}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
 
-                    const examStatusBadgeStyle = (status) => {
-                      if (status === "Exam Sent") return { bg: "#f3e8ff", color: "#6b21a8" };
-                      if (status === "Exam Taken") return { bg: "#dcfce7", color: "#166534" };
-                      if (status === "Submitted") return { bg: "#dbeafe", color: "#2563eb" };
-                      if (status === "Rejected") return { bg: "#fee2e2", color: "#dc2626" };
-                      return { bg: "#f1f5f9", color: "#475569" };
-                    };
+            <div
+              style={{
+                background: "#ffffff",
+                border: "1px solid #e2e8f0",
+                borderRadius: "16px",
+                padding: "20px",
+                marginBottom: "24px",
+                boxShadow: "0 1px 3px rgba(0,0,0,0.02)"
+              }}
+            >
+              <div style={{ display: "grid", gridTemplateColumns: "1.5fr 1fr 1fr 1fr auto", gap: "16px", alignItems: "end" }}>
+                <div>
+                  <label style={{ display: "block", fontSize: "12px", fontWeight: "700", color: "#334155", marginBottom: "6px" }}>
+                    {config.searchLabel}
+                  </label>
+                  <div style={{ position: "relative" }}>
+                    <Search size={14} style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", color: "#64748b" }} />
+                    <input
+                      type="text"
+                      placeholder="Name or HRMS ID..."
+                      value={rosterSearch}
+                      onChange={(e) => setRosterSearch(e.target.value)}
+                      style={{
+                        width: "100%",
+                        padding: "10px 12px 10px 36px",
+                        borderRadius: "8px",
+                        border: "1px solid #cbd5e1",
+                        fontSize: "13px",
+                        fontWeight: "500",
+                        color: "#0f172a",
+                        boxSizing: "border-box"
+                      }}
+                    />
+                  </div>
+                </div>
 
-                    const statusColors = examStatusBadgeStyle(item.status);
+                <div>
+                  <label style={{ display: "block", fontSize: "12px", fontWeight: "700", color: "#334155", marginBottom: "6px" }}>Station</label>
+                  <select
+                    value={rosterStation}
+                    onChange={(e) => setRosterStation(e.target.value)}
+                    style={{
+                      width: "100%",
+                      padding: "10px 12px",
+                      borderRadius: "8px",
+                      border: "1px solid #cbd5e1",
+                      fontSize: "13px",
+                      fontWeight: "500",
+                      color: "#0f172a",
+                      boxSizing: "border-box"
+                    }}
+                  >
+                    <option value="All">All Stations</option>
+                    {stations.filter(x => x !== "All").map(st => (
+                      <option key={st} value={st}>{st}</option>
+                    ))}
+                  </select>
+                </div>
 
-                    return (
-                      <tr key={item.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
-                        <td style={{ padding: "14px 16px" }}>
-                          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                            <div style={{ width: "36px", height: "36px", borderRadius: "50%", background: config.avatarBg, color: "#ffffff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: "700", fontSize: "14px" }}>
-                              {item.name.charAt(0)}
+                <div>
+                  <label style={{ display: "block", fontSize: "12px", fontWeight: "700", color: "#334155", marginBottom: "6px" }}>Exam Status</label>
+                  <select
+                    value={rosterStatus}
+                    onChange={(e) => setRosterStatus(e.target.value)}
+                    style={{
+                      width: "100%",
+                      padding: "10px 12px",
+                      borderRadius: "8px",
+                      border: "1px solid #cbd5e1",
+                      fontSize: "13px",
+                      fontWeight: "500",
+                      color: "#0f172a",
+                      boxSizing: "border-box"
+                    }}
+                  >
+                    <option value="All">All Status</option>
+                    <option value="Pending">Pending</option>
+                    <option value="Exam Sent">Exam Sent</option>
+                    <option value="Exam Taken">Exam Taken</option>
+                    <option value="Submitted">Submitted</option>
+                    <option value="Rejected">Rejected</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label style={{ display: "block", fontSize: "12px", fontWeight: "700", color: "#334155", marginBottom: "6px" }}>Last Assessed</label>
+                  <div style={{ position: "relative" }}>
+                    <Calendar size={14} style={{ position: "absolute", right: "12px", top: "50%", transform: "translateY(-50%)", color: "#64748b" }} />
+                    <input
+                      type="date"
+                      value={rosterDate}
+                      onChange={(e) => setRosterDate(e.target.value)}
+                      style={{
+                        width: "100%",
+                        padding: "10px 36px 10px 12px",
+                        borderRadius: "8px",
+                        border: "1px solid #cbd5e1",
+                        fontSize: "13px",
+                        fontWeight: "500",
+                        color: "#0f172a",
+                        boxSizing: "border-box"
+                      }}
+                    />
+                  </div>
+                </div>
+
+                <div style={{ display: "flex", gap: "10px" }}>
+                  <button
+                    onClick={() => { setRosterSearch(""); setRosterStation("All"); setRosterStatus("All"); setRosterDate(""); }}
+                    style={{
+                      background: "#ffffff",
+                      border: "1px solid #cbd5e1",
+                      padding: "10px 16px",
+                      borderRadius: "8px",
+                      fontSize: "13px",
+                      fontWeight: "700",
+                      color: "#475569",
+                      cursor: "pointer"
+                    }}
+                  >
+                    Reset
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div
+              style={{
+                background: "#ffffff",
+                border: "1px solid #e2e8f0",
+                borderRadius: "16px",
+                padding: "24px",
+                boxShadow: "0 1px 3px rgba(0,0,0,0.02)"
+              }}
+            >
+              <div style={{ overflowX: "auto" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                  <thead>
+                    <tr style={{ borderBottom: "1.5px solid #e2e8f0", background: "#f8fafc", textAlign: "left" }}>
+                      <th style={{ padding: "12px 16px", fontSize: "11px", color: "#475569", fontWeight: "800", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                        {config.colHeader}
+                      </th>
+                      <th style={{ padding: "12px 16px", fontSize: "11px", color: "#475569", fontWeight: "800", textTransform: "uppercase", letterSpacing: "0.5px" }}>HRMS ID</th>
+                      <th style={{ padding: "12px 16px", fontSize: "11px", color: "#475569", fontWeight: "800", textTransform: "uppercase", letterSpacing: "0.5px" }}>STATION</th>
+                      <th style={{ padding: "12px 16px", fontSize: "11px", color: "#475569", fontWeight: "800", textTransform: "uppercase", letterSpacing: "0.5px" }}>LAST ASSESSED</th>
+                      <th style={{ padding: "12px 16px", fontSize: "11px", color: "#475569", fontWeight: "800", textTransform: "uppercase", letterSpacing: "0.5px" }}>SCORE</th>
+                      <th style={{ padding: "12px 16px", fontSize: "11px", color: "#475569", fontWeight: "800", textTransform: "uppercase", letterSpacing: "0.5px" }}>EXAM STATUS</th>
+                      <th style={{ padding: "12px 16px", fontSize: "11px", color: "#475569", fontWeight: "800", textTransform: "uppercase", letterSpacing: "0.5px", textAlign: "right" }}>ACTION</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredList.map((item) => {
+                      const scale = "Senior Scale";
+                      const stationCode = stationCodeMap[item.station] || "STN";
+
+                      const examStatusBadgeStyle = (status) => {
+                        if (status === "Exam Sent") return { bg: "#f3e8ff", color: "#6b21a8" };
+                        if (status === "Exam Taken") return { bg: "#dcfce7", color: "#166534" };
+                        if (status === "Submitted") return { bg: "#dbeafe", color: "#2563eb" };
+                        if (status === "Rejected") return { bg: "#fee2e2", color: "#dc2626" };
+                        return { bg: "#f1f5f9", color: "#475569" };
+                      };
+
+                      const statusColors = examStatusBadgeStyle(item.status);
+
+                      return (
+                        <tr key={item.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
+                          <td style={{ padding: "14px 16px" }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                              <div style={{ width: "36px", height: "36px", borderRadius: "50%", background: config.avatarBg, color: "#ffffff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: "700", fontSize: "14px" }}>
+                                {item.name.charAt(0)}
+                              </div>
+                              <div>
+                                <div style={{ fontWeight: "700", color: "#0f172a", fontSize: "14px" }}>{item.name}</div>
+                                <div style={{ fontSize: "11px", color: "#64748b", fontWeight: "500", marginTop: "2px" }}>{scale}</div>
+                              </div>
                             </div>
-                            <div>
-                              <div style={{ fontWeight: "700", color: "#0f172a", fontSize: "14px" }}>{item.name}</div>
-                              <div style={{ fontSize: "11px", color: "#64748b", fontWeight: "500", marginTop: "2px" }}>{scale}</div>
+                          </td>
+                          <td style={{ padding: "14px 16px", color: "#475569", fontWeight: "600", fontSize: "13px", fontFamily: "monospace" }}>
+                            {item.hrmsId}
+                          </td>
+                          <td style={{ padding: "14px 16px" }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                              <span style={{ color: "#334155", fontSize: "13px", fontWeight: "500" }}>{item.station}</span>
+                              <span style={{ background: "#eff6ff", color: "#2563eb", padding: "2px 6px", borderRadius: "4px", fontSize: "10px", fontWeight: "700" }}>
+                                {stationCode}
+                              </span>
                             </div>
-                          </div>
-                        </td>
-                        <td style={{ padding: "14px 16px", color: "#475569", fontWeight: "600", fontSize: "13px", fontFamily: "monospace" }}>
-                          {item.hrmsId}
-                        </td>
-                        <td style={{ padding: "14px 16px" }}>
-                          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                            <span style={{ color: "#334155", fontSize: "13px", fontWeight: "500" }}>{item.station}</span>
-                            <span style={{ background: "#eff6ff", color: "#2563eb", padding: "2px 6px", borderRadius: "4px", fontSize: "10px", fontWeight: "700" }}>
-                              {stationCode}
-                            </span>
-                          </div>
-                        </td>
-                        <td style={{ padding: "14px 16px", color: "#64748b", fontSize: "13px", fontWeight: "500" }}>
-                          {item.lastDate || "—"}
-                        </td>
-                        <td style={{ padding: "14px 16px", color: "#0f172a", fontWeight: "800", fontSize: "14px" }}>
-                          {item.score !== undefined && item.score !== null ? `${item.score}/100` : (
-                            item.status === "Pending" ? "Not Attempted" : 
-                            item.status === "Exam Sent" ? "Pending Assessment" : "No Score"
-                          )}
-                        </td>
-                        <td style={{ padding: "14px 16px" }}>
-                          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                            <span style={{ background: statusColors.bg, color: statusColors.color, padding: "4px 10px", borderRadius: "6px", fontSize: "12px", fontWeight: "700" }}>
-                              {item.status}
-                            </span>
-                            {item.status === "Exam Sent" && (
-                              <span style={{ background: "#f3e8ff", color: "#6b21a8", padding: "4px 10px", borderRadius: "6px", fontSize: "12px", fontWeight: "700", display: "flex", alignItems: "center", gap: "4px" }}>
-                                <Clock size={12} /> Waiting for {roleKey} Response
+                          </td>
+                          <td style={{ padding: "14px 16px", color: "#64748b", fontSize: "13px", fontWeight: "500" }}>
+                            {item.lastDate || "—"}
+                          </td>
+                          <td style={{ padding: "14px 16px", color: "#0f172a", fontWeight: "800", fontSize: "14px" }}>
+                            {item.score !== undefined && item.score !== null ? `${item.score}/100` : "—"}
+                          </td>
+                          <td style={{ padding: "14px 16px" }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                              <span style={{ background: statusColors.bg, color: statusColors.color, padding: "4px 10px", borderRadius: "6px", fontSize: "12px", fontWeight: "700" }}>
+                                {item.status}
                               </span>
-                            )}
-                            {item.status === "Rejected" && (
-                              <span style={{ background: "#fee2e2", color: "#dc2626", padding: "4px 10px", borderRadius: "6px", fontSize: "12px", fontWeight: "700", display: "flex", alignItems: "center", gap: "4px" }}>
-                                <AlertTriangle size={12} /> Needs Review
-                              </span>
-                            )}
-                          </div>
-                        </td>
-                        <td style={{ padding: "14px 16px", textAlign: "right" }}>
-                          <div style={{ display: "flex", gap: "8px", alignItems: "center", justifyContext: "flex-end" }}>
-                            {item.status === "Pending" && (
-                              <>
-                                {config.sendAccess && (
-                                  <button 
-                                    onClick={() => config.sendAccess(item.id)}
+                            </div>
+                          </td>
+                          <td style={{ padding: "14px 16px", textAlign: "right" }}>
+                            <div style={{ display: "flex", gap: "8px", alignItems: "center", justifyContent: "flex-end" }}>
+                              {config.sendAccess && (item.status === "Pending" || item.status === "Exam Locked") && (
+                                <button
+                                  onClick={() => config.sendAccess(item.id)}
+                                  style={{
+                                    background: "#7c3aed",
+                                    border: "none",
+                                    color: "#ffffff",
+                                    padding: "6px 12px",
+                                    borderRadius: "8px",
+                                    fontSize: "12px",
+                                    fontWeight: "700",
+                                    cursor: "pointer"
+                                  }}
+                                >
+                                  Send Access
+                                </button>
+                              )}
+                              
+                              {(item.status === "Submitted" || item.status === "Exam Taken") ? (
+                                <>
+                                  <button
+                                    onClick={() => config.openForm(item.id)}
                                     style={{
-                                      background: "#7c3aed",
+                                      background: "#2563eb",
                                       border: "none",
                                       color: "#ffffff",
                                       padding: "6px 12px",
@@ -3980,10 +4267,26 @@ export default function TrafficInspectorModule({ user, onLogout }) {
                                       fontSize: "12px"
                                     }}
                                   >
-                                    Send Access
+                                    View Form
                                   </button>
-                                )}
-                                <button 
+                                  <button
+                                    onClick={() => config.openForm(item.id, true)}
+                                    style={{
+                                      background: "#ea580c",
+                                      border: "none",
+                                      color: "#ffffff",
+                                      padding: "6px 12px",
+                                      borderRadius: "8px",
+                                      cursor: "pointer",
+                                      fontWeight: "700",
+                                      fontSize: "12px"
+                                    }}
+                                  >
+                                    Edit
+                                  </button>
+                                </>
+                              ) : (
+                                <button
                                   onClick={() => config.openForm(item.id)}
                                   style={{
                                     background: "#ffffff",
@@ -4001,16 +4304,524 @@ export default function TrafficInspectorModule({ user, onLogout }) {
                                 >
                                   Open Form <ExternalLink size={12} />
                                 </button>
-                              </>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        );
+      }
+
+      // OTHERWISE (SM and TM roles): Render full Category-wise panel
+      const getEmpCategory = (p) => p.cat || getCat(p.score || 0);
+
+      // Filtering list by Traffic Inspector station jurisdiction
+      const rosterList = config.list;
+
+      const countA = rosterList.filter(p => getEmpCategory(p) === "A").length;
+      const countB = rosterList.filter(p => getEmpCategory(p) === "B").length;
+      const countC = rosterList.filter(p => getEmpCategory(p) === "C").length;
+      const countD = rosterList.filter(p => getEmpCategory(p) === "D").length;
+
+      const categoriesList = [
+        { id: "A", name: "Category A", count: countA, color: "#16a34a", bg: "#dcfce7" },
+        { id: "B", name: "Category B", count: countB, color: "#2563eb", bg: "#dbeafe" },
+        { id: "C", name: "Category C", count: countC, color: "#d97706", bg: "#fef3c7" },
+        { id: "D", name: "Category D", count: countD, color: "#dc2626", bg: "#fef2f2" }
+      ];
+
+      // Due stats dashboard logic
+      const statsSummary = {
+        overdue: 0,
+        dueToday: 0,
+        dueWeek: 0,
+        dueMonth: 0,
+        totalScheduled: 0
+      };
+
+      rosterList.forEach(p => {
+        const s = getEmployeeScheduleDetails(p, roleKey);
+        if (s.nextDueDate !== "Not Scheduled" && s.daysRemaining !== null) {
+          statsSummary.totalScheduled++;
+          if (s.daysRemaining < 0) {
+            statsSummary.overdue++;
+          } else if (s.daysRemaining === 0) {
+            statsSummary.dueToday++;
+          } else if (s.daysRemaining > 0 && s.daysRemaining <= 7) {
+            statsSummary.dueWeek++;
+          } else if (s.daysRemaining > 0 && s.daysRemaining <= 30) {
+            statsSummary.dueMonth++;
+          }
+        }
+      });
+
+      const categoryPms = selectedCategory 
+        ? rosterList.filter(p => getEmpCategory(p) === selectedCategory)
+        : [];
+
+      // Filter category roster by search query
+      const searchedCategoryPms = categoryPms.filter(p => {
+        const matchesSearch = !rosterSearch || 
+          p.name.toLowerCase().includes(rosterSearch.toLowerCase()) || 
+          p.hrmsId.toLowerCase().includes(rosterSearch.toLowerCase());
+        const matchesStation = rosterStation === "All" || p.station === rosterStation;
+        return matchesSearch && matchesStation;
+      });
+
+      // Add scheduling details to roster objects
+      const searchedCategoryPmsWithSched = searchedCategoryPms.map(p => ({
+        ...p,
+        sched: getEmployeeScheduleDetails(p, roleKey)
+      }));
+
+      // Filter by upcoming tests toggle
+      const filteredByUpcoming = viewUpcomingOnly
+        ? searchedCategoryPmsWithSched.filter(p => p.sched.nextDueDate !== "Not Scheduled")
+        : searchedCategoryPmsWithSched;
+
+      // Status text evaluator
+      const getEmpStatusText = (p) => {
+        const keyPrefix = roleKey === "SM" ? "sm" : "tm";
+        const mcqDataStr = localStorage.getItem(`${keyPrefix}_mcq_test_${p.hrmsId}`);
+        const mcqData = mcqDataStr ? JSON.parse(mcqDataStr) : null;
+        
+        const isApproved = p.status === 'Approved';
+        const isPending = p.status === 'Submitted'; // Submitted is Pending approval for TI -> AOM
+        const isCompleted = (mcqData && mcqData.completed) || p.status === 'Exam Taken';
+        const isActivated = localStorage.getItem(`${keyPrefix}_test_activated_${p.hrmsId}`) === "true" || p.status === 'Exam Sent';
+
+        if (isApproved) return { text: "Approved", type: "success" };
+        if (isPending) return { text: "Pending Approval", type: "info" };
+        if (isCompleted) return { text: "MCQ Completed", type: "success" };
+        if (isActivated) return { text: "Exam Active", type: "warning" };
+        return { text: "Exam Locked", type: "neutral" };
+      };
+
+      const isEligibleForActivation = (p) => {
+        const status = getEmpStatusText(p);
+        return status.text !== "Approved" && status.text !== "Pending Approval" && status.text !== "MCQ Completed";
+      };
+
+      const eligiblePms = searchedCategoryPms.filter(isEligibleForActivation);
+      const isAllSelected = eligiblePms.length > 0 && eligiblePms.every(p => selectedHrmsIds.includes(p.hrmsId));
+
+      const handleSelectAll = (e) => {
+        if (e.target.checked) {
+          const ids = eligiblePms.map(p => p.hrmsId);
+          setSelectedHrmsIds(ids);
+        } else {
+          setSelectedHrmsIds([]);
+        }
+      };
+
+      const handleSelectOne = (hrmsId, checked) => {
+        if (checked) {
+          setSelectedHrmsIds(prev => [...prev, hrmsId]);
+        } else {
+          setSelectedHrmsIds(prev => prev.filter(id => id !== hrmsId));
+        }
+      };
+
+      const stationOptions = ["All", ...new Set(rosterList.map(x => x.station))];
+
+      return (
+        <div className="ti2-page-body animate-fade-in" style={{ padding: "24px", background: "#f8fafc", minHeight: "100%" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
+            <div>
+              <h1 style={{ fontSize: "28px", fontWeight: "800", color: "#0f172a", margin: "0 0 4px" }}>
+                Assessments — {config.title}
+              </h1>
+              <p style={{ margin: 0, fontSize: "14px", color: "#64748b", fontWeight: "500" }}>
+                Select a category to view employees, search by HRMS ID, schedule tests, and activate assessment access in bulk.
+              </p>
+            </div>
+            <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
+              <button
+                onClick={() => {
+                  setShowCategoriesPanel(false);
+                  setSelectedCategory(null);
+                  setSelectedHrmsIds([]);
+                  setRosterSearch("");
+                  setRosterStation("All");
+                  setRosterStatus("All");
+                  setRosterDate("");
+                  setViewUpcomingOnly(false);
+                }}
+                style={{
+                  background: "#ffffff",
+                  border: "1px solid #cbd5e1",
+                  padding: "8px 16px",
+                  borderRadius: "8px",
+                  fontSize: "13px",
+                  fontWeight: "700",
+                  color: "#334155",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "6px",
+                  cursor: "pointer"
+                }}
+              >
+                ← Back to List
+              </button>
+              <button
+                onClick={() => { 
+                  setAssessRole(null); 
+                  setSelectedCategory(null);
+                  setSelectedHrmsIds([]);
+                  setRosterSearch(""); 
+                  setRosterStation("All"); 
+                  setRosterStatus("All"); 
+                  setRosterDate("");
+                  setViewUpcomingOnly(false);
+                  setShowCategoriesPanel(false);
+                }}
+                style={{
+                  background: "#ffffff",
+                  border: "1px solid #cbd5e1",
+                  padding: "8px 16px",
+                  borderRadius: "8px",
+                  fontSize: "13px",
+                  fontWeight: "700",
+                  color: "#334155",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "6px",
+                  cursor: "pointer"
+                }}
+              >
+                ← Back to Roles
+              </button>
+            </div>
+          </div>
+
+          {/* Stats Dashboard */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: "12px", marginBottom: "20px" }}>
+            <div style={{ background: "linear-gradient(135deg, #fee2e2 0%, #fef2f2 100%)", border: "1px solid #fca5a5", borderRadius: "12px", padding: "12px 16px", display: "flex", flexDirection: "column", gap: "4px" }}>
+              <span style={{ fontSize: "11px", fontWeight: "700", color: "#991b1b", textTransform: "uppercase", letterSpacing: "0.5px" }}>Overdue</span>
+              <span style={{ fontSize: "22px", fontWeight: "900", color: "#dc2626" }}>{statsSummary.overdue}</span>
+            </div>
+            <div style={{ background: "linear-gradient(135deg, #ffedd5 0%, #fff7ed 100%)", border: "1px solid #fdbb2d", borderRadius: "12px", padding: "12px 16px", display: "flex", flexDirection: "column", gap: "4px" }}>
+              <span style={{ fontSize: "11px", fontWeight: "700", color: "#9a3412", textTransform: "uppercase", letterSpacing: "0.5px" }}>Due Today</span>
+              <span style={{ fontSize: "22px", fontWeight: "900", color: "#ea580c" }}>{statsSummary.dueToday}</span>
+            </div>
+            <div style={{ background: "linear-gradient(135deg, #fffbeb 0%, #fffdf5 100%)", border: "1px solid #fde047", borderRadius: "12px", padding: "12px 16px", display: "flex", flexDirection: "column", gap: "4px" }}>
+              <span style={{ fontSize: "11px", fontWeight: "700", color: "#854d0e", textTransform: "uppercase", letterSpacing: "0.5px" }}>Due in 7 Days</span>
+              <span style={{ fontSize: "22px", fontWeight: "900", color: "#ca8a04" }}>{statsSummary.dueWeek}</span>
+            </div>
+            <div style={{ background: "linear-gradient(135deg, #eff6ff 0%, #f8fafc 100%)", border: "1px solid #93c5fd", borderRadius: "12px", padding: "12px 16px", display: "flex", flexDirection: "column", gap: "4px" }}>
+              <span style={{ fontSize: "11px", fontWeight: "700", color: "#1e3a8a", textTransform: "uppercase", letterSpacing: "0.5px" }}>Due in 30 Days</span>
+              <span style={{ fontSize: "22px", fontWeight: "900", color: "#2563eb" }}>{statsSummary.dueMonth}</span>
+            </div>
+            <div style={{ background: "linear-gradient(135deg, #f0fdf4 0%, #f8fafc 100%)", border: "1px solid #86efac", borderRadius: "12px", padding: "12px 16px", display: "flex", flexDirection: "column", gap: "4px" }}>
+              <span style={{ fontSize: "11px", fontWeight: "700", color: "#166534", textTransform: "uppercase", letterSpacing: "0.5px" }}>Total Scheduled</span>
+              <span style={{ fontSize: "22px", fontWeight: "900", color: "#16a34a" }}>{statsSummary.totalScheduled}</span>
+            </div>
+          </div>
+
+          {/* Categories Grid */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "16px", marginBottom: "24px" }}>
+            {categoriesList.map(cat => {
+              const isSelected = selectedCategory === cat.id;
+              return (
+                <button
+                  key={cat.id}
+                  onClick={() => {
+                    setSelectedCategory(cat.id);
+                    setSelectedHrmsIds([]);
+                    setRosterSearch("");
+                  }}
+                  style={{
+                    padding: "16px",
+                    borderRadius: "12px",
+                    border: isSelected ? `2.5px solid ${cat.color}` : "1.5px solid #e2e8f0",
+                    background: isSelected ? cat.bg : "#ffffff",
+                    color: "#0f172a",
+                    cursor: "pointer",
+                    textAlign: "center",
+                    boxShadow: isSelected ? `0 4px 12px ${cat.color}20` : "0 2px 4px rgba(0,0,0,0.02)",
+                    transition: "all 0.2s ease-in-out",
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: "6px"
+                  }}
+                >
+                  <span style={{ fontSize: "14px", fontWeight: "800", color: isSelected ? cat.color : "#475569" }}>
+                    {cat.name}
+                  </span>
+                  <span style={{ fontSize: "20px", fontWeight: "900", color: cat.color }}>
+                    ({cat.count})
+                  </span>
+                  <span style={{ fontSize: "11px", fontWeight: "600", color: "#64748b" }}>
+                    {cat.id === "A" || cat.id === "B" ? "Retest: 6M" : cat.id === "C" ? "Retest: 3M" : "Retest: 1M"}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          {selectedCategory && (
+            <div style={{ background: "#ffffff", border: "1px solid #e2e8f0", borderRadius: "16px", padding: "20px", boxShadow: "0 1px 3px rgba(0,0,0,0.02)" }}>
+              {/* Filter Bar */}
+              <div style={{ display: "flex", gap: "16px", marginBottom: "20px", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap" }}>
+                <div style={{ display: "flex", gap: "12px", alignItems: "center", flex: 1, minWidth: "300px" }}>
+                  <div style={{ position: "relative", flex: 1, maxWidth: "260px" }}>
+                    <Search size={14} style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", color: "#64748b" }} />
+                    <input
+                      type="text"
+                      placeholder="Name or HRMS ID..."
+                      value={rosterSearch}
+                      onChange={e => setRosterSearch(e.target.value)}
+                      style={{
+                        width: "100%",
+                        height: "40px",
+                        padding: "0 12px 0 36px",
+                        borderRadius: "8px",
+                        border: "1px solid #cbd5e1",
+                        fontSize: "13px",
+                        fontWeight: "600",
+                        boxSizing: "border-box",
+                        outline: "none"
+                      }}
+                    />
+                  </div>
+
+                  <div>
+                    <select
+                      value={rosterStation}
+                      onChange={(e) => setRosterStation(e.target.value)}
+                      style={{
+                        height: "40px",
+                        padding: "0 12px",
+                        borderRadius: "8px",
+                        border: "1px solid #cbd5e1",
+                        fontSize: "13px",
+                        fontWeight: "650",
+                        color: "#334155",
+                        boxSizing: "border-box"
+                      }}
+                    >
+                      <option value="All">All Stations</option>
+                      {stationOptions.filter(x => x !== "All").map(st => (
+                        <option key={st} value={st}>{st}</option>
+                      ))}
+                    </select>
+                  </div>
+                  
+                  {/* View Upcoming Tests Toggle */}
+                  <button
+                    type="button"
+                    onClick={() => setViewUpcomingOnly(!viewUpcomingOnly)}
+                    style={{
+                      height: "40px",
+                      padding: "0 14px",
+                      borderRadius: "8px",
+                      border: viewUpcomingOnly ? "1.5px solid #2563eb" : "1.5px solid #cbd5e1",
+                      background: viewUpcomingOnly ? "#eff6ff" : "#ffffff",
+                      color: viewUpcomingOnly ? "#2563eb" : "#475569",
+                      fontWeight: "700",
+                      fontSize: "13px",
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "6px",
+                      transition: "all 0.2s"
+                    }}
+                  >
+                    <Filter size={14} />
+                    {viewUpcomingOnly ? "Showing Scheduled Only" : "Show Scheduled Only"}
+                  </button>
+                </div>
+                
+                <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
+                  {selectedHrmsIds.length > 0 && (
+                    <>
+                      {/* Bulk Schedule Button */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditingEmployee("bulk");
+                          setScheduleDate("");
+                          setScheduleTime("10:00");
+                          setScheduleReason("");
+                        }}
+                        style={{
+                          height: "40px",
+                          padding: "0 16px",
+                          borderRadius: "8px",
+                          fontWeight: "700",
+                          border: "1.5px solid #2563eb",
+                          background: "#ffffff",
+                          color: "#2563eb",
+                          cursor: "pointer",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "6px",
+                          boxShadow: "0 2px 4px rgba(37,99,235,0.08)"
+                        }}
+                      >
+                        <Calendar size={14} />
+                        Schedule Selected ({selectedHrmsIds.length})
+                      </button>
+
+                      <button
+                        onClick={() => sendBatchExamAccess(roleKey, selectedHrmsIds)}
+                        style={{
+                          height: "40px",
+                          padding: "0 16px",
+                          borderRadius: "8px",
+                          fontWeight: "700",
+                          border: "none",
+                          background: "#2563eb",
+                          color: "#ffffff",
+                          cursor: "pointer",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "6px"
+                        }}
+                      >
+                        <ShieldCheck size={14} />
+                        Activate Access ({selectedHrmsIds.length})
+                      </button>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {/* Category-wise Table */}
+              <div className="sdom-table-wrap">
+                <table className="sdom-table" style={{ width: "100%", borderCollapse: "collapse" }}>
+                  <thead>
+                    <tr style={{ borderBottom: "1.5px solid #e2e8f0", background: "#f8fafc", textAlign: "left" }}>
+                      <th style={{ width: "40px", padding: "12px 16px" }}>
+                        <input
+                          type="checkbox"
+                          disabled={eligiblePms.length === 0}
+                          checked={isAllSelected}
+                          onChange={handleSelectAll}
+                          style={{ cursor: eligiblePms.length > 0 ? "pointer" : "not-allowed" }}
+                        />
+                      </th>
+                      <th style={{ padding: "12px 16px" }}>{config.colHeader}</th>
+                      <th style={{ padding: "12px 16px" }}>HRMS ID</th>
+                      <th style={{ padding: "12px 16px" }}>STATION</th>
+                      <th style={{ padding: "12px 16px" }}>FREQUENCY</th>
+                      <th style={{ padding: "12px 16px" }}>LAST ASSESSMENT</th>
+                      <th style={{ padding: "12px 16px" }}>NEXT DUE DATE</th>
+                      <th style={{ padding: "12px 16px" }}>DAYS REMAINING</th>
+                      <th style={{ padding: "12px 16px" }}>DUE STATUS</th>
+                      <th style={{ padding: "12px 16px" }}>EXAM STATUS</th>
+                      <th style={{ padding: "12px 16px", textAlign: "center" }}>ACTION</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredByUpcoming.map(p => {
+                      const status = getEmpStatusText(p);
+                      const isChecked = selectedHrmsIds.includes(p.hrmsId);
+                      const isEligible = isEligibleForActivation(p);
+                      const { frequency, lastAssessDate, nextDueDate, nextDueTime, daysRemaining, statusText, statusType } = p.sched;
+
+                      let badgeColor = "#475569";
+                      let badgeBg = "#f1f5f9";
+                      let badgeBorder = "1px solid #cbd5e1";
+                      if (status.type === "success") { badgeColor = "var(--success)"; badgeBg = "var(--success-bg)"; badgeBorder = "1px solid var(--success-border)"; }
+                      else if (status.type === "info") { badgeColor = "var(--info)"; badgeBg = "var(--info-bg)"; badgeBorder = "1px solid var(--info-border)"; }
+                      else if (status.type === "warning") { badgeColor = "var(--warning)"; badgeBg = "var(--warning-bg)"; badgeBorder = "1px solid var(--warning-border)"; }
+
+                      let daysColor = "var(--text-primary)";
+                      let statusClass = "sdom-badge-neutral";
+                      if (statusType === "danger") { daysColor = "var(--danger)"; statusClass = "sdom-badge-danger"; }
+                      else if (statusType === "warning") { daysColor = "var(--warning)"; statusClass = "sdom-badge-warning"; }
+                      else if (statusType === "success") { daysColor = "var(--success)"; statusClass = "sdom-badge-success"; }
+
+                      const isExamTaken = status.text === "MCQ Completed";
+                      const isExamSent = status.text === "Exam Active";
+                      const isExamApproved = status.text === "Approved";
+                      const isExamSubmitted = status.text === "Pending Approval";
+
+                      return (
+                        <tr key={p.hrmsId} style={{ borderBottom: "1px solid #f1f5f9" }}>
+                          <td style={{ padding: "14px 16px" }}>
+                            <input
+                              type="checkbox"
+                              disabled={!isEligible}
+                              checked={isChecked}
+                              onChange={(e) => handleSelectOne(p.hrmsId, e.target.checked)}
+                              style={{ cursor: isEligible ? "pointer" : "not-allowed" }}
+                            />
+                          </td>
+                          <td style={{ padding: "14px 16px" }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                              <div style={{ width: "36px", height: "36px", borderRadius: "50%", background: config.avatarBg, color: "#ffffff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: "700", fontSize: "14px" }}>
+                                {p.name.charAt(0)}
+                              </div>
+                              <div>
+                                <div style={{ fontWeight: "700", color: "#0f172a", fontSize: "14px" }}>{p.name}</div>
+                              </div>
+                            </div>
+                          </td>
+                          <td style={{ padding: "14px 16px", color: "#475569", fontWeight: "600", fontSize: "13px", fontFamily: "monospace" }}>{p.hrmsId}</td>
+                          <td style={{ padding: "14px 16px", color: "#475569", fontWeight: "600", fontSize: "13px" }}>{p.station}</td>
+                          <td style={{ padding: "14px 16px", color: "#475569", fontSize: "13px" }}>{frequency}</td>
+                          <td style={{ padding: "14px 16px", color: "#475569", fontSize: "13px" }}>{lastAssessDate}</td>
+                          <td style={{ padding: "14px 16px", fontSize: "13px" }}>
+                            <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+                              <span style={{ fontWeight: "600" }}>{nextDueDate}</span>
+                              {nextDueDate !== "Not Scheduled" && (
+                                <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>
+                                  🕒 {nextDueTime}
+                                </span>
+                              )}
+                            </div>
+                          </td>
+                          <td style={{ padding: "14px 16px", fontWeight: "600", color: daysColor, fontSize: "13px" }}>
+                            {daysRemaining !== null ? (
+                              daysRemaining === 0 ? "Today" : daysRemaining < 0 ? `${Math.abs(daysRemaining)} days overdue` : `${daysRemaining} days left`
+                            ) : (
+                              "—"
                             )}
-                            {item.status === "Exam Sent" && (
-                              <button 
-                                onClick={() => config.openForm(item.id)}
+                          </td>
+                          <td style={{ padding: "14px 16px", fontSize: "13px" }}>
+                            {nextDueDate !== "Not Scheduled" ? (
+                              <span className={`sdom-badge ${statusClass}`}>
+                                {statusText}
+                              </span>
+                            ) : (
+                              "—"
+                            )}
+                          </td>
+                          <td style={{ padding: "14px 16px", fontSize: "13px" }}>
+                            <span className={`sdom-badge`} style={{ background: badgeBg, color: badgeColor, border: badgeBorder }}>
+                              {status.text}
+                            </span>
+                          </td>
+                          <td style={{ padding: "14px 16px", textAlign: "center" }}>
+                            <div style={{ display: "flex", gap: "8px", justifyContent: "center", alignItems: "center" }}>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setEditingEmployee(p);
+                                  if (nextDueDate && nextDueDate !== "Not Scheduled") {
+                                    setScheduleDate(nextDueDate);
+                                    setScheduleTime(convertTo24Hour(nextDueTime));
+                                  } else {
+                                    setScheduleDate("");
+                                    setScheduleTime("10:00");
+                                  }
+                                  setScheduleReason("");
+                                }}
                                 style={{
                                   background: "#ffffff",
                                   border: "1px solid #cbd5e1",
-                                  padding: "5px 12px",
-                                  borderRadius: "8px",
+                                  padding: "5px 10px",
+                                  borderRadius: "6px",
                                   fontSize: "12px",
                                   fontWeight: "700",
                                   color: "#475569",
@@ -4020,157 +4831,143 @@ export default function TrafficInspectorModule({ user, onLogout }) {
                                   cursor: "pointer"
                                 }}
                               >
-                                Open Form <ExternalLink size={12} />
+                                <Calendar size={12} />
+                                {nextDueDate !== "Not Scheduled" ? "Reschedule" : "Schedule"}
                               </button>
-                            )}
-                            {item.status === "Exam Taken" && (
-                              <button 
-                                onClick={() => config.openForm(item.id)}
-                                style={{
-                                  background: "#16a34a",
-                                  border: "none",
-                                  color: "#ffffff",
-                                  padding: "6px 16px",
-                                  borderRadius: "8px",
-                                  cursor: "pointer",
-                                  fontWeight: "700",
-                                  fontSize: "12px"
-                                }}
-                              >
-                                Start Assessment
-                              </button>
-                            )}
-                            {item.status === "Submitted" && (
-                              <>
-                                <button 
-                                  onClick={() => config.openForm(item.id)}
+
+                              {isExamApproved && (
+                                <button
+                                  onClick={() => config.openForm(p.id)}
                                   style={{
-                                    background: "#2563eb",
-                                    border: "none",
-                                    color: "#ffffff",
-                                    padding: "6px 12px",
-                                    borderRadius: "8px",
-                                    cursor: "pointer",
+                                    background: "#ffffff",
+                                    border: "1px solid #cbd5e1",
+                                    padding: "5px 10px",
+                                    borderRadius: "6px",
+                                    fontSize: "12px",
                                     fontWeight: "700",
-                                    fontSize: "12px"
+                                    color: "#475569",
+                                    display: "inline-flex",
+                                    alignItems: "center",
+                                    gap: "4px",
+                                    cursor: "pointer"
                                   }}
                                 >
                                   View Form
                                 </button>
-                                <button 
-                                  onClick={() => config.openForm(item.id, true)}
+                              )}
+                              
+                              {isExamSubmitted && (
+                                <>
+                                  <button
+                                    onClick={() => config.openForm(p.id)}
+                                    style={{
+                                      background: "#2563eb",
+                                      border: "none",
+                                      color: "#ffffff",
+                                      padding: "6px 12px",
+                                      borderRadius: "6px",
+                                      cursor: "pointer",
+                                      fontWeight: "700",
+                                      fontSize: "12px"
+                                    }}
+                                  >
+                                    View Form
+                                  </button>
+                                  <button
+                                    onClick={() => config.openForm(p.id, true)}
+                                    style={{
+                                      background: "#ea580c",
+                                      border: "none",
+                                      color: "#ffffff",
+                                      padding: "6px 12px",
+                                      borderRadius: "6px",
+                                      cursor: "pointer",
+                                      fontWeight: "700",
+                                      fontSize: "12px"
+                                    }}
+                                  >
+                                    Edit
+                                  </button>
+                                </>
+                              )}
+
+                              {isExamTaken && (
+                                <button
+                                  onClick={() => config.openForm(p.id)}
                                   style={{
-                                    background: "#ea580c",
+                                    background: "#16a34a",
                                     border: "none",
                                     color: "#ffffff",
                                     padding: "6px 12px",
-                                    borderRadius: "8px",
+                                    borderRadius: "6px",
                                     cursor: "pointer",
                                     fontWeight: "700",
                                     fontSize: "12px"
                                   }}
                                 >
-                                  Edit
+                                  Start Assessment
                                 </button>
-                              </>
-                            )}
-                            {item.status === "Rejected" && (
-                              <button 
-                                onClick={() => config.openForm(item.id)}
-                                style={{
-                                  background: "#ffffff",
-                                  border: "1px solid #cbd5e1",
-                                  padding: "5px 12px",
-                                  borderRadius: "8px",
-                                  fontSize: "12px",
-                                  fontWeight: "700",
-                                  color: "#475569",
-                                  display: "inline-flex",
-                                  alignItems: "center",
-                                  gap: "4px",
-                                  cursor: "pointer"
-                                }}
-                              >
-                                Open Form <ExternalLink size={12} />
-                              </button>
-                            )}
-                          </div>
+                              )}
+
+                              {isExamSent && (
+                                <button
+                                  onClick={() => config.openForm(p.id)}
+                                  style={{
+                                    background: "#ffffff",
+                                    border: "1px solid #cbd5e1",
+                                    padding: "5px 10px",
+                                    borderRadius: "6px",
+                                    fontSize: "12px",
+                                    fontWeight: "700",
+                                    color: "#475569",
+                                    display: "inline-flex",
+                                    alignItems: "center",
+                                    gap: "4px",
+                                    cursor: "pointer"
+                                  }}
+                                >
+                                  Open Form <ExternalLink size={12} />
+                                </button>
+                              )}
+
+                              {!isExamApproved && !isExamSubmitted && !isExamTaken && !isExamSent && (
+                                <button
+                                  onClick={() => config.openForm(p.id)}
+                                  style={{
+                                    background: "#ffffff",
+                                    border: "1px solid #cbd5e1",
+                                    padding: "5px 10px",
+                                    borderRadius: "6px",
+                                    fontSize: "12px",
+                                    fontWeight: "700",
+                                    color: "#475569",
+                                    display: "inline-flex",
+                                    alignItems: "center",
+                                    gap: "4px",
+                                    cursor: "pointer"
+                                  }}
+                                >
+                                  Open Form <ExternalLink size={12} />
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                    {filteredByUpcoming.length === 0 && (
+                      <tr>
+                        <td colSpan={11} style={{ padding: "30px", textAlign: "center", color: "#64748b", fontSize: "14px" }}>
+                          No {config.title.toLowerCase()} found in this category matching search filters.
                         </td>
                       </tr>
-                    );
-                  })}
-                  {filteredList.length === 0 && (
-                    <tr>
-                      <td colSpan={7} style={{ padding: "40px", textAlign: "center", color: "#64748b", fontSize: "14px", fontWeight: "500" }}>
-                        No {config.title.toLowerCase()} match your current filters.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "20px", borderTop: "1px solid #f1f5f9", paddingTop: "16px" }}>
-              <div style={{ fontSize: "13px", color: "#64748b", fontWeight: "500" }}>
-                Showing 1 to {filteredList.length} of {filteredList.length} entries
-              </div>
-              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                <button 
-                  disabled
-                  style={{
-                    background: "#ffffff",
-                    border: "1px solid #cbd5e1",
-                    width: "32px",
-                    height: "32px",
-                    borderRadius: "6px",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    color: "#cbd5e1",
-                    cursor: "not-allowed"
-                  }}
-                >
-                  &lt;
-                </button>
-                <button 
-                  style={{
-                    background: "#0f172a",
-                    border: "none",
-                    width: "32px",
-                    height: "32px",
-                    borderRadius: "6px",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    color: "#ffffff",
-                    fontWeight: "700",
-                    fontSize: "13px"
-                  }}
-                >
-                  1
-                </button>
-                <button 
-                  disabled
-                  style={{
-                    background: "#ffffff",
-                    border: "1px solid #cbd5e1",
-                    width: "32px",
-                    height: "32px",
-                    borderRadius: "6px",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    color: "#cbd5e1",
-                    cursor: "not-allowed"
-                  }}
-                >
-                  &gt;
-                </button>
+                    )}
+                  </tbody>
+                </table>
               </div>
             </div>
-
-          </div>
-
+          )}
+          {renderScheduleModal(roleKey)}
         </div>
       );
     };
@@ -4211,7 +5008,7 @@ export default function TrafficInspectorModule({ user, onLogout }) {
 
     return (
       <div className="ti2-page-body animate-fade-in" style={{ padding: "24px", background: "#f8fafc", minHeight: "100%" }}>
-        
+
         {/* Title and Subtitle */}
         <div style={{ marginBottom: "24px" }}>
           <h1 style={{ fontSize: "28px", fontWeight: "800", color: "#0f172a", margin: "0 0 4px" }}>Assessments</h1>
@@ -4221,7 +5018,7 @@ export default function TrafficInspectorModule({ user, onLogout }) {
         {/* 3 Grid Cards */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "24px", marginBottom: "24px" }}>
           {roles.map(role => (
-            <div 
+            <div
               key={role.key}
               style={{
                 background: "#ffffff",
@@ -4270,7 +5067,7 @@ export default function TrafficInspectorModule({ user, onLogout }) {
 
                 {/* Open button */}
                 <div style={{ display: "flex", justifyContent: "flex-end" }}>
-                  <button 
+                  <button
                     onClick={() => setAssessRole(role.key)}
                     style={{
                       background: "none",
@@ -4295,7 +5092,7 @@ export default function TrafficInspectorModule({ user, onLogout }) {
         </div>
 
         {/* Quick Stats Strip (5 Columns) */}
-        <div 
+        <div
           style={{
             display: "grid",
             gridTemplateColumns: "repeat(5, 1fr)",
@@ -4315,7 +5112,7 @@ export default function TrafficInspectorModule({ user, onLogout }) {
             { label: "Submitted This Month", value: 2, icon: Send, bg: "#dbeafe", iconColor: "#2563eb", valColor: "#2563eb" },
             { label: "Current Assessment Cycle", value: "May 2026", icon: Calendar, bg: "#f1f5f9", iconColor: "#475569", valColor: "#0f172a" }
           ].map((stat, idx) => (
-            <div 
+            <div
               key={idx}
               style={{
                 display: "flex",
@@ -4337,7 +5134,7 @@ export default function TrafficInspectorModule({ user, onLogout }) {
         </div>
 
         {/* Recent Assessments Card */}
-        <div 
+        <div
           style={{
             background: "#ffffff",
             border: "1px solid #e2e8f0",
@@ -4351,7 +5148,7 @@ export default function TrafficInspectorModule({ user, onLogout }) {
               <h2 style={{ fontSize: "18px", fontWeight: "800", color: "#0f172a", margin: "0 0 4px 0" }}>Recent Assessments</h2>
               <p style={{ margin: 0, fontSize: "13px", color: "#64748b", fontWeight: "500" }}>Latest assessment activities across all categories</p>
             </div>
-            <button 
+            <button
               type="button"
               onClick={() => alert("Redirecting to full assessment ledger...")}
               style={{
@@ -4416,7 +5213,7 @@ export default function TrafficInspectorModule({ user, onLogout }) {
                       <td style={{ padding: "14px 16px", color: "#475569", fontSize: "13px", fontWeight: "600" }}>{row.by}</td>
                       <td style={{ padding: "14px 16px", color: "#64748b", fontSize: "13px" }}>{row.date}</td>
                       <td style={{ padding: "14px 16px", textAlign: "right" }}>
-                        <button 
+                        <button
                           type="button"
                           onClick={() => {
                             if (row.type?.includes("Pointsman")) {
@@ -4466,20 +5263,20 @@ export default function TrafficInspectorModule({ user, onLogout }) {
 
 
   /* ── REPORTS ── */
-  const renderReports = ()=>{
+  const renderReports = () => {
     const ROLE_MAP = { pointsmen: "Pointsman", sm: "Station Master", ss: "Station Superintendent", tm: "Train Manager", ti: "Traffic Inspector", Pointsman: "Pointsman", "Station Master": "Station Master", "Station Superintendent": "Station Superintendent", "Train Manager": "Train Manager", "Traffic Inspector": "Traffic Inspector" };
-    
+
     if (selectedReportUserId) {
       const u = users.find(x => x.id === selectedReportUserId);
       if (!u) return null;
 
       const getCat = s => (s === 0 || s === undefined || s === null || isNaN(s)) ? "Untested" : (s >= 80 ? "A" : s >= 50 ? "B" : s >= 26 ? "C" : "D");
       const cat = u.cat || getCat(u.score || 0);
-      
-      const CAT_C  = { A: "#16a34a", B: "#2563eb", C: "#d97706", D: "#dc2626" };
-      const CAT_B  = { A: "#dcfce7", B: "#dbeafe", C: "#fef3c7", D: "#fee2e2" };
+
+      const CAT_C = { A: "#16a34a", B: "#2563eb", C: "#d97706", D: "#dc2626" };
+      const CAT_B = { A: "#dcfce7", B: "#dbeafe", C: "#fef3c7", D: "#fee2e2" };
       const RISK_C = { High: "#dc2626", Medium: "#d97706", Low: "#16a34a" };
-      
+
       const isHighRisk = u.pmeStatus === "Overdue" || u.refStatus === "Expired" || (u.score !== undefined && u.score !== null && u.score < 50);
       const risk = (u.score === undefined || u.score === null) ? "Untested" : isHighRisk ? "High" : (u.score >= 80 ? "Low" : "Medium");
       const pmeVal = u.pmeStatus === "Fit" ? "FIT" : u.pmeStatus === "Pending" ? "PENDING" : u.pmeStatus === "Overdue" ? "OVERDUE" : "UNFIT";
@@ -4555,25 +5352,25 @@ export default function TrafficInspectorModule({ user, onLogout }) {
 
               {/* Action button */}
               <button className="ti2-primary-btn" onClick={() => alert("Exporting Dossier PDF...")} style={{ width: "100%", height: "42px", justifyContent: "center", background: "linear-gradient(135deg, #1e293b 0%, #0f172a 100%)", borderRadius: "8px", fontWeight: "700", cursor: "pointer", border: "none", color: "#ffffff", display: "flex", alignItems: "center", gap: "6px" }}>
-                <FileText size={16}/> Export Assessment Dossier (PDF)
+                <FileText size={16} /> Export Assessment Dossier (PDF)
               </button>
             </div>
 
             {/* Right side Performance Breakdown */}
             <div style={{ background: "#ffffff", border: "1px solid #cbd5e1", borderRadius: "14px", padding: "18px" }}>
               <h3 style={{ margin: "0 0 16px 0", fontSize: "13px", fontWeight: "800", color: "#0f172a", textTransform: "uppercase", letterSpacing: "0.5px", borderBottom: "1.5px solid #e2edf8", paddingBottom: "8px" }}>Sectional Competency Breakdown</h3>
-              
+
               {u.role === "Pointsman" || u.role === "pointsmen" ? (
                 /* Pointsman sections competency progress bars */
                 <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
                   {(() => {
                     const secs = pmAssess?.finalSections || pmAssess?.originalSections || [
-                      { title: "Knowledge of Rules", score: Math.round(u.score * 0.23), max: 25 },
-                      { title: "Alertness & Observation", score: Math.round(u.score * 0.22), max: 25 },
-                      { title: "Safety Record", score: Math.round(u.score * 0.14), max: 15 },
-                      { title: "Leadership & Management", score: Math.round(u.score * 0.13), max: 15 },
-                      { title: "Discipline", score: Math.round(u.score * 0.09), max: 10 },
-                      { title: "Appearance & Neatness", score: Math.round(u.score * 0.09), max: 10 },
+                      { title: "Knowledge of Rules (MCQ)", score: Math.round(u.score * 0.25), max: 25 },
+                      { title: "Alertness and Observation of Rules", score: Math.round(u.score * 0.25), max: 25 },
+                      { title: "Safety Record", score: Math.round(u.score * 0.15), max: 15 },
+                      { title: "Leadership and Management", score: Math.round(u.score * 0.15), max: 15 },
+                      { title: "Discipline", score: Math.round(u.score * 0.10), max: 10 },
+                      { title: "Appearance and Neatness", score: Math.round(u.score * 0.10), max: 10 },
                     ];
                     return secs.map(s => {
                       const pct = Math.round((s.score / s.max) * 100);
@@ -4584,7 +5381,7 @@ export default function TrafficInspectorModule({ user, onLogout }) {
                             <strong>{s.score} / {s.max} ({pct}%)</strong>
                           </div>
                           <div style={{ height: "8px", background: "#f1f5f9", borderRadius: "999px", overflow: "hidden" }}>
-                            <div style={{ height: "100%", width: `${pct}%`, background: pct >= 80 ? "#16a34a" : pct >= 50 ? "#2563eb" : "#dc2626", borderRadius: "999px" }}/>
+                            <div style={{ height: "100%", width: `${pct}%`, background: pct >= 80 ? "#16a34a" : pct >= 50 ? "#2563eb" : "#dc2626", borderRadius: "999px" }} />
                           </div>
                         </div>
                       );
@@ -4595,20 +5392,22 @@ export default function TrafficInspectorModule({ user, onLogout }) {
                 /* Station Master sections competency progress bars */
                 <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
                   {(() => {
-                    let totalYes = smForm ? smForm.stationMgmt.filter(v => v === "Yes").length +
-                                           smForm.safety.filter(v => v === "Yes").length +
-                                           smForm.staffSupervision.filter(v => v === "Yes").length +
-                                           smForm.documentation.filter(v => v === "Yes").length +
-                                           smForm.emergency.filter(v => v === "Yes").length : 12;
-                    let knowledgeMarks = smForm ? Math.min(parseInt(smForm.knowledgeMarks) || 0, 25) : Math.max(0, u.score - 60);
+                    let totalYes = smForm ? (
+                      (smForm.alertness || []).filter(v => v === "Yes").length +
+                      (smForm.safetyRecord || []).filter(v => v === "Yes").length +
+                      (smForm.leadership || []).filter(v => v === "Yes").length +
+                      (smForm.discipline || []).filter(v => v === "Yes").length +
+                      (smForm.appearance || []).filter(v => v === "Yes").length
+                    ) : 12;
+                    let knowledgeMarks = smForm ? Math.min(parseInt(smForm.knowledgeMarks) || 0, 25) : Math.max(0, u.score - 65);
 
                     const secs = [
-                      { title: "Station Management", score: smForm ? smForm.stationMgmt.filter(v => v === "Yes").length * 5 : Math.round(totalYes * 5 * 0.25), max: 25 },
-                      { title: "Safety & Compliance", score: smForm ? smForm.safety.filter(v => v === "Yes").length * 4 : Math.round(totalYes * 4 * 0.25), max: 20 },
-                      { title: "Staff Supervision", score: smForm ? smForm.staffSupervision.filter(v => v === "Yes").length * 3 : Math.round(totalYes * 3 * 0.20), max: 15 },
-                      { title: "Documentation & Reporting", score: smForm ? smForm.documentation.filter(v => v === "Yes").length * 3 : Math.round(totalYes * 3 * 0.15), max: 15 },
-                      { title: "Emergency Handling", score: smForm ? smForm.emergency.filter(v => v === "Yes").length * 5 : Math.round(totalYes * 5 * 0.25), max: 25 },
-                      { title: "Knowledge (Safety Exam)", score: knowledgeMarks, max: 25 }
+                      { title: "Knowledge of Rules (MCQ)", score: knowledgeMarks, max: 25 },
+                      { title: "Alertness and Observation of Rules", score: smForm ? (smForm.alertness || []).filter(v => v === "Yes").length * 5 : Math.round(totalYes * 5 * 0.25), max: 25 },
+                      { title: "Safety Record", score: smForm ? (smForm.safetyRecord || []).filter(v => v === "Yes").length * 3 : Math.round(totalYes * 3 * 0.20), max: 15 },
+                      { title: "Leadership and Management", score: smForm ? (smForm.leadership || []).filter(v => v === "Yes").length * 3 : Math.round(totalYes * 3 * 0.20), max: 15 },
+                      { title: "Discipline", score: smForm ? (smForm.discipline || []).filter(v => v === "Yes").length * 2 : Math.round(totalYes * 2 * 0.15), max: 10 },
+                      { title: "Appearance and Neatness", score: smForm ? (smForm.appearance || []).filter(v => v === "Yes").length * 2 : Math.round(totalYes * 2 * 0.15), max: 10 }
                     ];
 
                     return secs.map(s => {
@@ -4620,7 +5419,7 @@ export default function TrafficInspectorModule({ user, onLogout }) {
                             <strong>{s.score} / {s.max} ({pct}%)</strong>
                           </div>
                           <div style={{ height: "8px", background: "#f1f5f9", borderRadius: "999px", overflow: "hidden" }}>
-                            <div style={{ height: "100%", width: `${pct}%`, background: pct >= 80 ? "#16a34a" : pct >= 50 ? "#2563eb" : "#dc2626", borderRadius: "999px" }}/>
+                            <div style={{ height: "100%", width: `${pct}%`, background: pct >= 80 ? "#16a34a" : pct >= 50 ? "#2563eb" : "#dc2626", borderRadius: "999px" }} />
                           </div>
                         </div>
                       );
@@ -4635,24 +5434,24 @@ export default function TrafficInspectorModule({ user, onLogout }) {
     }
 
     const divSummary = [
-      { label: "Average Division Score",  val: 87    },
-      { label: "Safety Compliance %",     val: "91%" },
-      { label: "High-Risk Staff",         val: 18    },
-      { label: "Pending Approvals",       val: 246   },
-      { label: "Total Reports Generated", val: 6245  },
+      { label: "Average Division Score", val: 87 },
+      { label: "Safety Compliance %", val: "91%" },
+      { label: "High-Risk Staff", val: 18 },
+      { label: "Pending Approvals", val: 246 },
+      { label: "Total Reports Generated", val: 6245 },
     ];
 
     const STATION_OPTS = ["All", ...stations.map(s => s.name)];
-    const TI_OPTS      = ["All", user?.name || "TI Area"];
-    const ROLE_OPTS    = ["All","Pointsman","Station Master","Station Superintendent","Train Manager"];
+    const TI_OPTS = ["All", user?.name || "TI Area"];
+    const ROLE_OPTS = ["All", "Pointsman", "Station Master", "Station Superintendent", "Train Manager"];
 
     const getTiArea = (st) => user?.name || "TI Area";
 
     const getCat = s => (s === 0 || s === undefined || s === null || isNaN(s)) ? "Untested" : (s >= 80 ? "A" : s >= 50 ? "B" : s >= 26 ? "C" : "D");
 
     const repFiltered = users.filter(s => {
-      const matchesSearch = !repF.search || 
-        (s.name || "").toLowerCase().includes(repF.search.toLowerCase()) || 
+      const matchesSearch = !repF.search ||
+        (s.name || "").toLowerCase().includes(repF.search.toLowerCase()) ||
         (s.id || "").toLowerCase().includes(repF.search.toLowerCase());
       const matchesRole = repF.role === "All" || (s.role || "").toLowerCase() === repF.role.toLowerCase() || (s.designation || "").toLowerCase().includes(repF.role.toLowerCase());
       const matchesStation = repF.station === "All" || s.station === repF.station;
@@ -4687,12 +5486,12 @@ export default function TrafficInspectorModule({ user, onLogout }) {
           <div className="sdom-filter-field" style={{ display: "flex", flexDirection: "column", gap: "6px", flex: 2, minWidth: "200px" }}>
             <label style={{ fontSize: "11px", fontWeight: "800", color: "#475569", textTransform: "uppercase" }}>Search by Name/HRMS ID</label>
             <div style={{ position: "relative" }}>
-              <Search size={15} style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", color: "#64748b" }}/>
-              <input 
-                type="text" 
-                placeholder="Type name or HRMS ID..." 
-                value={repF.search || ""} 
-                onChange={e => setRepF(p => ({ ...p, search: e.target.value }))} 
+              <Search size={15} style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", color: "#64748b" }} />
+              <input
+                type="text"
+                placeholder="Type name or HRMS ID..."
+                value={repF.search || ""}
+                onChange={e => setRepF(p => ({ ...p, search: e.target.value }))}
                 style={{ width: "100%", height: "42px", padding: "0 12px 0 36px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "13px", fontWeight: "600", outline: "none" }}
               />
             </div>
@@ -4723,7 +5522,7 @@ export default function TrafficInspectorModule({ user, onLogout }) {
           </div>
           <div>
             <button className="sdom-btn-primary" style={{ height: "42px", display: "flex", alignItems: "center", gap: "8px", background: "#2563eb", color: "white", padding: "0 20px", border: "none", borderRadius: "8px", fontWeight: "700", cursor: "pointer", fontSize: "13px" }}>
-              <Search size={16}/> Search
+              <Search size={16} /> Search
             </button>
           </div>
         </div>
@@ -4771,33 +5570,33 @@ export default function TrafficInspectorModule({ user, onLogout }) {
     );
   };
 
-  /* ═══════════════════════════════════════════
+  /* ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ 
      RENDER: CONTENT ROUTER
-  ═══════════════════════════════════════════ */
-  const renderContent = ()=>{
-    switch(activePage){
-      case "dashboard":    return renderDashboard();
-      case "profile":      return renderProfile();
-      case "stations":     return renderStations();
-      case "pointsmen":              return renderRoleView("Pointsman", "Pointsman");
-      case "stationMasters":         return renderRoleView("Station Master", "Station Master");
+  ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═  */
+  const renderContent = () => {
+    switch (activePage) {
+      case "dashboard": return renderDashboard();
+      case "profile": return renderProfile();
+      case "stations": return renderStations();
+      case "pointsmen": return renderRoleView("Pointsman", "Pointsman");
+      case "stationMasters": return renderRoleView("Station Master", "Station Master");
       case "stationSuperintendents": return renderRoleView("Station Superintendent", "Station Superintendent");
-      case "trainManagers":          return renderRoleView("Train Manager", "Train Manager");
-      case "approvals":    return renderApprovals();
-      case "assessments":  return renderAssessments();
+      case "trainManagers": return renderRoleView("Train Manager", "Train Manager");
+      case "approvals": return renderApprovals();
+      case "assessments": return renderAssessments();
       case "myAssessment": return renderMyAssessment();
-      case "pmePosition":  return renderPmePosition();
-      case "refPosition":  return renderRefPosition();
-      case "inspections":  return renderInspections();
-      case "counselling":  return renderCounselling();
-      case "reports":      return renderReports();
-      default:             return renderDashboard();
+      case "pmePosition": return renderPmePosition();
+      case "refPosition": return renderRefPosition();
+      case "inspections": return renderInspections();
+      case "counselling": return renderCounselling();
+      case "reports": return renderReports();
+      default: return renderDashboard();
     }
   };
 
-  /* ═══════════════════════════════════════════
+  /* ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ 
      SHELL LAYOUT
-  ═══════════════════════════════════════════ */
+  ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═  */
   return (
     <div className="ti2-layout">
       <input type="checkbox" id="sdom-sidebar-toggle" className="sdom-sidebar-checkbox" style={{ display: "none" }} />
@@ -4810,23 +5609,23 @@ export default function TrafficInspectorModule({ user, onLogout }) {
         <div className="ti2-topbar-brand" style={{ marginRight: "auto", marginLeft: "16px" }}>
           <div className="ti2-topbar-logo"><img src="/logo.webp" alt="IR Logo" style={{ width: "100%", height: "100%", borderRadius: "inherit", objectFit: "cover" }} /></div>
           <div>
-            <h1>Indian Railway Evaluation Command</h1>
-            <p><span className="desktop-only-txt">Operations Workspace: </span>Traffic Inspector<span className="desktop-only-txt"> Module</span></p>
+            <h1>{t("Indian Railway Evaluation System")}</h1>
+            <p><span className="desktop-only-txt">Operations Workspace: </span>{t("Traffic Inspector")}<span className="desktop-only-txt"> Module</span></p>
           </div>
         </div>
 
-        <div className="ti2-user-strip">
-          
+        <div className="ti2-user-strip" style={{ gap: "12px", alignItems: "center" }}>
+
           {/* Dynamic Real-Time Notifications Bell Dropdown */}
           <div style={{ position: "relative", marginRight: "6px" }}>
             <button
               onClick={() => setBellDropdownOpen(!bellDropdownOpen)}
               style={{ background: "none", border: "none", color: "#e2edf8", cursor: "pointer", position: "relative", display: "flex", alignItems: "center", padding: "6px", borderRadius: "50%" }}
             >
-              <Bell size={20}/>
-              {notifications.filter(n=>!n.read).length > 0 && (
+              <Bell size={20} />
+              {notifications.filter(n => !n.read).length > 0 && (
                 <span style={{ position: "absolute", top: "-2px", right: "-2px", width: "16px", height: "16px", borderRadius: "50%", background: "#dc2626", color: "#ffffff", fontSize: "9px", fontWeight: "900", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  {notifications.filter(n=>!n.read).length}
+                  {notifications.filter(n => !n.read).length}
                 </span>
               )}
             </button>
@@ -4835,7 +5634,7 @@ export default function TrafficInspectorModule({ user, onLogout }) {
               <div style={{ position: "absolute", top: "36px", right: 0, width: "320px", background: "#ffffff", border: "1px solid #cbd5e1", borderRadius: "14px", boxShadow: "0 10px 25px rgba(15, 23, 42, 0.15)", zIndex: 1000, overflow: "hidden", color: "#0f172a" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 16px", background: "#f8fafc", borderBottom: "1px solid #e2edf8" }}>
                   <h4 style={{ margin: 0, fontSize: "13px", fontWeight: "800" }}>Operations Alerts</h4>
-                  {notifications.filter(n=>!n.read).length > 0 && (
+                  {notifications.filter(n => !n.read).length > 0 && (
                     <button onClick={markAllNotificationsRead} style={{ background: "none", border: "none", color: "#2563eb", fontWeight: "700", fontSize: "11px", cursor: "pointer" }}>Mark all read</button>
                   )}
                 </div>
@@ -4861,7 +5660,7 @@ export default function TrafficInspectorModule({ user, onLogout }) {
             <span>HRMS ID: {tiId}</span>
           </div>
           <button className="ti2-logout-btn" onClick={onLogout}>
-            <LogOut size={14}/> Logout
+            <LogOut size={14} /> {t("Logout")}
           </button>
         </div>
       </header>
@@ -4869,25 +5668,25 @@ export default function TrafficInspectorModule({ user, onLogout }) {
       {/* Main layout shell */}
       <div className="ti2-shell">
         <aside className="ti2-sidebar">
-          {NAV.map(item=>{
-            const Icon=item.icon;
+          {NAV.map(item => {
+            const Icon = item.icon;
             const active = activePage === item.key;
             return (
-              <button key={item.key} className={`ti2-nav-item${active?" active":""}`}
-                onClick={()=>goTo(item.key)}>
-                <Icon size={16}/><span>{item.label}</span>
+              <button key={item.key} className={`ti2-nav-item${active ? " active" : ""}`}
+                onClick={() => goTo(item.key)}>
+                <Icon size={16} /><span>{t(item.label)}</span>
               </button>
             );
           })}
-          
+
 
         </aside>
 
         <main className="ti2-main">
           {statusMsg && (
             <div className="ti2-status-banner">
-              <CheckCircle2 size={13}/> {statusMsg}
-              <button className="ti2-dismiss" onClick={()=>setStatusMsg("")}>×</button>
+              <CheckCircle2 size={13} /> {statusMsg}
+              <button className="ti2-dismiss" onClick={() => setStatusMsg("")}>×</button>
             </div>
           )}
           <div className="ti2-page-wrap">{renderContent()}</div>
@@ -4902,14 +5701,14 @@ export default function TrafficInspectorModule({ user, onLogout }) {
             <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
               <div className="sm2-fullscreen-icon-wrap">
                 {fullscreenChart === "station" && <Building2 size={18} color="#93c5fd" />}
-                {fullscreenChart === "trend"   && <TrendingUp size={18} color="#a78bfa" />}
-                {fullscreenChart === "grade"   && <BarChart3  size={18} color="#34d399" />}
+                {fullscreenChart === "trend" && <TrendingUp size={18} color="#a78bfa" />}
+                {fullscreenChart === "grade" && <BarChart3 size={18} color="#34d399" />}
               </div>
               <div>
                 <h2>
                   {fullscreenChart === "station" && "Station-wise Safety & Performance — Deep Dive"}
-                  {fullscreenChart === "trend"   && "Compliance & Assessment Trends — Deep Dive"}
-                  {fullscreenChart === "grade"   && "Staff Grade Distribution (Pointsmen) — Deep Dive"}
+                  {fullscreenChart === "trend" && "Compliance & Assessment Trends — Deep Dive"}
+                  {fullscreenChart === "grade" && "Staff Grade Distribution (Pointsmen) — Deep Dive"}
                 </h2>
                 <p>Indian Railway Evaluation Command · Operations Workspace</p>
               </div>
@@ -4954,7 +5753,7 @@ export default function TrafficInspectorModule({ user, onLogout }) {
                 <>Showing <strong>{filteredFsStations.length}</strong> of {stationStats.length} stations</>
               )}
               {fullscreenChart === "grade" && (
-                <>Showing <strong>{filteredFsUsers.length}</strong> of {users.filter(u=>u.role==="Pointsman").length} Pointsmen</>
+                <>Showing <strong>{filteredFsUsers.length}</strong> of {users.filter(u => u.role === "Pointsman").length} Pointsmen</>
               )}
               {fullscreenChart === "trend" && (
                 <>Displaying all <strong>{MONTHLY.length}</strong> monthly cycles</>
@@ -4964,14 +5763,14 @@ export default function TrafficInspectorModule({ user, onLogout }) {
 
           {/* Content */}
           <div className="sm2-fullscreen-content">
-            
+
             {/* KPI Cards Row */}
             <div className="sm2-fs-kpi-row">
               {fullscreenChart === "station" && (
                 <>
                   {[
-                    { label: "Avg Performance Score", value: filteredFsStations.length ? Math.round(filteredFsStations.reduce((s,x)=>s+x.avgScore,0)/filteredFsStations.length) + "%" : "—", color: "#2563eb", glowColor: "rgba(37,99,235,0.15)" },
-                    { label: "Avg Safety Compliance", value: filteredFsStations.length ? Math.round(filteredFsStations.reduce((s,x)=>s+x.safetyPct,0)/filteredFsStations.length) + "%" : "—", color: "#7c3aed", glowColor: "rgba(124,58,237,0.15)" },
+                    { label: "Avg Performance Score", value: filteredFsStations.length ? Math.round(filteredFsStations.reduce((s, x) => s + x.avgScore, 0) / filteredFsStations.length) + "%" : "—", color: "#2563eb", glowColor: "rgba(37,99,235,0.15)" },
+                    { label: "Avg Safety Compliance", value: filteredFsStations.length ? Math.round(filteredFsStations.reduce((s, x) => s + x.safetyPct, 0) / filteredFsStations.length) + "%" : "—", color: "#7c3aed", glowColor: "rgba(124,58,237,0.15)" },
                     { label: "High-Risk Stations", value: filteredFsStations.filter(st => st.highRisk >= 2).length, color: "#dc2626", glowColor: "rgba(220,38,38,0.15)" },
                     { label: "Grade A Stations", value: filteredFsStations.filter(st => getCat(st.avgScore) === "A").length, color: "#16a34a", glowColor: "rgba(22,163,74,0.15)" },
                     { label: "Total Filtered Stations", value: filteredFsStations.length, color: "#0891b2", glowColor: "rgba(8,145,178,0.15)" },
@@ -4987,10 +5786,10 @@ export default function TrafficInspectorModule({ user, onLogout }) {
               {fullscreenChart === "trend" && (
                 <>
                   {[
-                    { label: "Total Tests Taken", value: MONTHLY.reduce((s,x)=>s+x.assessments,0), color: "#2563eb", glowColor: "rgba(37,99,235,0.15)" },
-                    { label: "Overall Score Average", value: (MONTHLY.length > 0 ? Math.round(MONTHLY.reduce((s,x)=>s+x.avgScore,0)/MONTHLY.length) : 0) + "%", color: "#0891b2", glowColor: "rgba(8,145,178,0.15)" },
-                    { label: "Overall Safety Average", value: (MONTHLY.length > 0 ? Math.round(MONTHLY.reduce((s,x)=>s+x.safetyAvg,0)/MONTHLY.length) : 0) + "%", color: "#16a34a", glowColor: "rgba(22,163,74,0.15)" },
-                    { label: "Safety Compliance Peak", value: (MONTHLY.length > 0 ? Math.max(...MONTHLY.map(m=>m.safetyAvg)) : 0) + "%", color: "#7c3aed", glowColor: "rgba(124,58,237,0.15)" },
+                    { label: "Total Tests Taken", value: MONTHLY.reduce((s, x) => s + x.assessments, 0), color: "#2563eb", glowColor: "rgba(37,99,235,0.15)" },
+                    { label: "Overall Score Average", value: (MONTHLY.length > 0 ? Math.round(MONTHLY.reduce((s, x) => s + x.avgScore, 0) / MONTHLY.length) : 0) + "%", color: "#0891b2", glowColor: "rgba(8,145,178,0.15)" },
+                    { label: "Overall Safety Average", value: (MONTHLY.length > 0 ? Math.round(MONTHLY.reduce((s, x) => s + x.safetyAvg, 0) / MONTHLY.length) : 0) + "%", color: "#16a34a", glowColor: "rgba(22,163,74,0.15)" },
+                    { label: "Safety Compliance Peak", value: (MONTHLY.length > 0 ? Math.max(...MONTHLY.map(m => m.safetyAvg)) : 0) + "%", color: "#7c3aed", glowColor: "rgba(124,58,237,0.15)" },
                     { label: "Evaluation Cycles Logged", value: MONTHLY.length, color: "#475569", glowColor: "rgba(71,85,105,0.15)" },
                   ].map(k => (
                     <div key={k.label} className="sm2-fs-kpi-card" style={{ "--glow": k.glowColor }}>
@@ -5004,7 +5803,7 @@ export default function TrafficInspectorModule({ user, onLogout }) {
               {fullscreenChart === "grade" && (
                 <>
                   {[
-                    { label: "Avg Personnel Score", value: filteredFsUsers.length ? Math.round(filteredFsUsers.reduce((s,x)=>s+x.score,0)/filteredFsUsers.length) + "%" : "—", color: "#2563eb", glowColor: "rgba(37,99,235,0.15)" },
+                    { label: "Avg Personnel Score", value: filteredFsUsers.length ? Math.round(filteredFsUsers.reduce((s, x) => s + x.score, 0) / filteredFsUsers.length) + "%" : "—", color: "#2563eb", glowColor: "rgba(37,99,235,0.15)" },
                     { label: "Fit (PME Status)", value: filteredFsUsers.filter(u => u.pmeStatus === "Fit").length, color: "#16a34a", glowColor: "rgba(22,163,74,0.15)" },
                     { label: "Cleared (REF Status)", value: filteredFsUsers.filter(u => u.refStatus === "Cleared").length, color: "#0891b2", glowColor: "rgba(8,145,178,0.15)" },
                     { label: "Grade A Personnel", value: filteredFsUsers.filter(u => getCat(u.score) === "A").length, color: "#7c3aed", glowColor: "rgba(124,58,237,0.15)" },
@@ -5023,38 +5822,38 @@ export default function TrafficInspectorModule({ user, onLogout }) {
             <div className="sm2-fs-chart-container" style={{ background: "#ffffff", padding: "24px", borderRadius: "14px", border: "1px solid #e2e8f0" }}>
               <h3 style={{ margin: "0 0 16px 0", fontSize: "15px", fontWeight: "700", display: "flex", alignItems: "center", gap: "8px", color: "#0f172a" }}>
                 {fullscreenChart === "station" && "📊 Station-wise Safety Compliance & Performance Comparison"}
-                {fullscreenChart === "trend"   && "📈 Monthly Safety Audits & Compliance Volumes"}
-                {fullscreenChart === "grade"   && "ðŸ… Staff Grading Allocation Matrix"}
+                {fullscreenChart === "trend" && "📈 Monthly Safety Audits & Compliance Volumes"}
+                {fullscreenChart === "grade" && "ðŸ… Staff Grading Allocation Matrix"}
               </h3>
               <div className="sm2-fs-chart-wrapper" style={{ width: "100%", height: "380px" }}>
                 <ResponsiveContainer width="100%" height="100%">
                   {fullscreenChart === "station" ? (
                     <BarChart data={fsStBarData} margin={{ top: 8, right: 10, left: -10, bottom: 4 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false}/>
-                      <XAxis dataKey="name" tick={{ fontSize: 11, fill: "#64748b", fontWeight: 700 }}/>
-                      <YAxis domain={[0, 100]} tick={{ fontSize: 11, fill: "#64748b" }} tickLine={false} axisLine={false}/>
-                      <Tooltip content={<TiTooltip/>}/>
-                      <Legend verticalAlign="top" height={36} wrapperStyle={{ fontSize: 12 }}/>
-                      <Bar dataKey="avgScore" name="Avg Performance Score (%)" fill="#2563eb" radius={[4, 4, 0, 0]} maxBarSize={38}/>
-                      <Bar dataKey="safetyPct" name="Safety Compliance Rate (%)" fill="#7c3aed" radius={[4, 4, 0, 0]} maxBarSize={38}/>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                      <XAxis dataKey="name" tick={{ fontSize: 11, fill: "#64748b", fontWeight: 700 }} />
+                      <YAxis domain={[0, 100]} tick={{ fontSize: 11, fill: "#64748b" }} tickLine={false} axisLine={false} />
+                      <Tooltip content={<TiTooltip />} />
+                      <Legend verticalAlign="top" height={36} wrapperStyle={{ fontSize: 12 }} />
+                      <Bar dataKey="avgScore" name="Avg Performance Score (%)" fill="#2563eb" radius={[4, 4, 0, 0]} maxBarSize={38} />
+                      <Bar dataKey="safetyPct" name="Safety Compliance Rate (%)" fill="#7c3aed" radius={[4, 4, 0, 0]} maxBarSize={38} />
                     </BarChart>
                   ) : fullscreenChart === "trend" ? (
                     <LineChart data={MONTHLY} margin={{ top: 8, right: 10, left: -24, bottom: 4 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false}/>
-                      <XAxis dataKey="month" tick={{ fontSize: 11, fill: "#64748b", fontWeight: 600 }}/>
-                      <YAxis tick={{ fontSize: 11, fill: "#64748b" }} tickLine={false} axisLine={false}/>
-                      <Tooltip content={<TiTooltip/>}/>
-                      <Legend verticalAlign="top" height={36} wrapperStyle={{ fontSize: 12 }}/>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                      <XAxis dataKey="month" tick={{ fontSize: 11, fill: "#64748b", fontWeight: 600 }} />
+                      <YAxis tick={{ fontSize: 11, fill: "#64748b" }} tickLine={false} axisLine={false} />
+                      <Tooltip content={<TiTooltip />} />
+                      <Legend verticalAlign="top" height={36} wrapperStyle={{ fontSize: 12 }} />
                       <Line type="monotone" dataKey="assessments" name="Tests Taken" stroke="#2563eb" strokeWidth={3} dot={{ r: 5 }} activeDot={{ r: 7 }} />
                       <Line type="monotone" dataKey="safetyAvg" name="Safety Compliance Avg" stroke="#16a34a" strokeWidth={3} dot={{ r: 4 }} />
                     </LineChart>
                   ) : (
                     <PieChart>
                       <Pie data={fsPieData} cx="50%" cy="50%" innerRadius={80} outerRadius={120} dataKey="value" paddingAngle={4}>
-                        {fsPieData.map((e,i)=><Cell key={e.name} fill={PIE_C[i]}/>)}
+                        {fsPieData.map((e, i) => <Cell key={e.name} fill={PIE_C[i]} />)}
                       </Pie>
-                      <Tooltip formatter={(v,n,p)=>[`${v} Staff`,`Category ${p.payload.name}`]}/>
-                      <Legend formatter={(v,e)=>`Grade ${e.payload.name} — ${e.payload.value} staff`} iconType="circle" iconSize={10} wrapperStyle={{ fontSize: 13 }}/>
+                      <Tooltip formatter={(v, n, p) => [`${v} Staff`, `Category ${p.payload.name}`]} />
+                      <Legend formatter={(v, e) => `Grade ${e.payload.name} — ${e.payload.value} staff`} iconType="circle" iconSize={10} wrapperStyle={{ fontSize: 13 }} />
                     </PieChart>
                   )}
                 </ResponsiveContainer>
@@ -5066,7 +5865,7 @@ export default function TrafficInspectorModule({ user, onLogout }) {
               <h3 style={{ margin: "0 0 16px 0", fontSize: "15px", fontWeight: "700", color: "#0f172a" }}>
                 🔎 Detailed Evaluation Ledger
               </h3>
-              
+
               {fullscreenChart === "station" && (
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: "16px" }}>
                   {filteredFsStations.map(st => {
