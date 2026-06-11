@@ -99,7 +99,9 @@ export function useAomState(user, onLogout) {
         reportingSm: data.reportingSm || "",
         workLocation: data.workLocation || "",
         shift: data.shift || "",
-        jurisdiction: data.jurisdiction || ""
+        jurisdiction: data.jurisdiction || "",
+        pmeStatus: data.pmeStatus || "Fit",
+        refStatus: data.refStatus || "Cleared"
       };
       await saDataService.saveUser(modalData, pmModal.mode);
       setPmModal(null);
@@ -922,6 +924,9 @@ export function useAomState(user, onLogout) {
   };
 
   const getPmRisk = (pm) => {
+    if (pm.risk === "Untested" || pm.riskLevel === "Untested") return "Untested";
+    if (pm.riskLevel) return pm.riskLevel;
+    if (pm.risk) return pm.risk;
     if (pm.safetyScore < 60 || pm.lastScore < 50) return "High";
     if (pm.safetyScore < 75 || pm.lastScore < 65) return "Medium";
     return "Low";
@@ -1144,15 +1149,15 @@ export function useAomState(user, onLogout) {
         role: "pointsmen",
         stationName: p.stationName,
         stationCode: p.stationCode,
-        division: p.stationCode === "NGP" ? "Nagpur" : p.stationCode === "PUNE" ? "Pune" : "Mumbai",
+        division: p.division || "Nagpur",
         zone: p.zone || "CR",
-        category: getPmCat(p.lastScore),
-        riskLevel: getPmRisk(p),
+        category: p.cat || getPmCat(p.lastScore),
+        riskLevel: p.risk || getPmRisk(p),
         assessmentStatus: p.approvalStatus,
         lastScore: p.lastScore,
         safetyScore: p.safetyScore,
         totalAssessments: p.totalAssessments,
-        lastAssessedDate: p.lastAssessDate || "2026-03-28",
+        lastAssessedDate: p.lastAssessDate || p.lastAssessedDate || p.doj || "2026-03-28",
         monitoringStatus: deactivatedUserIds.has(p.hrmsId) ? "Deactivated" : (p.monitoringStatus || "Active"),
         contactNumber: p.contact || "—",
         emailId: p.email || `${p.hrmsId.toLowerCase()}@rail.in`,
@@ -1176,13 +1181,13 @@ export function useAomState(user, onLogout) {
           stationCode: sm.stationCode,
           division: sm.division,
           zone: sm.zone || "CR",
-          category: sm.category || "A",
-          riskLevel: sm.riskLevel || (idx % 3 === 0 ? "Medium" : "Low"),
-          assessmentStatus: sm.assessmentStatus || (idx % 2 === 0 ? "Approved" : "Pending"),
+          category: sm.cat || "A",
+          riskLevel: sm.riskLevel || sm.risk || "Low",
+          assessmentStatus: sm.approvalStatus || "Approved",
           lastScore: sm.lastScore || sm.score || 85,
           safetyScore: sm.safetyScore || 90,
           totalAssessments: sm.totalAssessments || 10,
-          lastAssessedDate: sm.lastAssessedDate || sm.lastAssessDate || "2026-04-12",
+          lastAssessedDate: sm.lastAssessedDate || sm.lastAssessDate || sm.doj || "2026-04-12",
           monitoringStatus: deactivatedUserIds.has(smHrmsId) ? "Deactivated" : (sm.monitoringStatus || "Active"),
           contactNumber: sm.contactNumber || sm.contact || "—",
           emailId: sm.emailId || sm.email || `${smHrmsId.toLowerCase()}@rail.in`,
@@ -1202,16 +1207,16 @@ export function useAomState(user, onLogout) {
         designation: "Station Superintendent",
         role: "ss",
         stationName: ss.station,
-        stationCode: ss.station === "Nagpur Junction" ? "NGP" : "PBN",
+        stationCode: ss.stationCode || (ss.station === "Nagpur Junction" ? "NGP" : "PBN"),
         division: ss.division,
         zone: ss.zone || "CR",
         category: ss.cat || "A",
         riskLevel: ss.risk || "Low",
-        assessmentStatus: ss.status || "Approved",
+        assessmentStatus: ss.status || ss.approvalStatus || "Approved",
         lastScore: ss.score,
         safetyScore: ss.score + 4,
         totalAssessments: 11,
-        lastAssessedDate: ss.lastDate || "2026-04-18",
+        lastAssessedDate: ss.lastDate || ss.doj || "2026-04-18",
         monitoringStatus: deactivatedUserIds.has(ss.employeeId) ? "Deactivated" : "Active",
         contactNumber: ss.contact || "—",
         emailId: ss.email || `${ss.employeeId.toLowerCase()}@rail.in`,
@@ -1230,16 +1235,16 @@ export function useAomState(user, onLogout) {
         designation: "Train Manager",
         role: "tm",
         stationName: tm.station,
-        stationCode: tm.station === "Nagpur Junction" ? "NGP" : "AMLA",
+        stationCode: tm.stationCode || (tm.station === "Nagpur Junction" ? "NGP" : "AMLA"),
         division: tm.division,
         zone: tm.zone || "CR",
         category: tm.cat || "A",
         riskLevel: tm.risk || "Low",
-        assessmentStatus: tm.status || "Approved",
+        assessmentStatus: tm.status || tm.approvalStatus || "Approved",
         lastScore: tm.score,
         safetyScore: tm.score + 3,
         totalAssessments: 8,
-        lastAssessedDate: tm.lastDate || "2026-04-14",
+        lastAssessedDate: tm.lastDate || tm.doj || "2026-04-14",
         monitoringStatus: deactivatedUserIds.has(tm.employeeId) ? "Deactivated" : "Active",
         contactNumber: tm.contact || "—",
         emailId: tm.email || `${tm.employeeId.toLowerCase()}@rail.in`,
@@ -1260,19 +1265,19 @@ export function useAomState(user, onLogout) {
         basePay: "₹68,000",
         designation: "Traffic Inspector",
         role: "ti",
-        stationName: ti.stationName || "Division HQ",
-        stationCode: ti.stationName === "Nagpur Junction" ? "NGP" : ti.stationName === "Parbhani Junction" ? "PBN" : "AMLA",
+        stationName: ti.stationName || ti.station || "Division HQ",
+        stationCode: ti.stationCode || (ti.stationName === "Nagpur Junction" ? "NGP" : ti.stationName === "Parbhani Junction" ? "PBN" : "AMLA"),
         division: ti.division || "Nagpur",
-        zone: "CR",
-        category: ti.category || "A",
-        riskLevel: ti.riskLevel || "Low",
-        assessmentStatus: ti.assessmentStatus === "Completed" ? "Approved" : (ti.assessmentStatus === "Pending" ? "Pending" : "Approved"),
-        lastScore: ti.lastScore || 88,
+        zone: ti.zone || "CR",
+        category: ti.cat || ti.category || "A",
+        riskLevel: ti.risk || ti.riskLevel || "Low",
+        assessmentStatus: ti.status || ti.approvalStatus || "Approved",
+        lastScore: ti.lastScore || ti.score || 88,
         safetyScore: 95,
         totalAssessments: 8,
-        lastAssessedDate: "2026-03-15",
+        lastAssessedDate: ti.lastDate || ti.doj || "2026-03-15",
         monitoringStatus: deactivatedUserIds.has(ti.employeeId) ? "Deactivated" : "Active",
-        contactNumber: ti.phone || "—",
+        contactNumber: ti.contact || ti.phone || "—",
         emailId: ti.email || `${ti.employeeId.toLowerCase()}@rail.in`,
         pmeStatus: ti.pmeStatus || "Fit",
         pmeDueDate: ti.pmeDueDate || null,
@@ -1370,7 +1375,7 @@ export function useAomState(user, onLogout) {
       return (quizMarks !== null && quizMarks !== undefined) ? Number(quizMarks) : (answers.knowledgeOfRules === "yes" || answers.knowledgeOfRules === "Yes" ? 25 : 0);
     }
     let weight = 0;
-    
+
     const tmCrit = TI_TM_CRITERIA.find(c => c.key === criterionKey);
     if (tmCrit) {
       weight = 3;
@@ -1743,7 +1748,7 @@ export function useAomState(user, onLogout) {
     if (!hrmsId || !date) return { success: false, error: "Missing required fields" };
     try {
       const today = new Date().toISOString().slice(0, 10);
-      
+
       // Resolve AOM User UUID
       let aomUserUuid = user?.userId;
       const isValidUUID = (v) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
@@ -2952,7 +2957,7 @@ export function useAomState(user, onLogout) {
         <div className="add-user-grid station-grid">
           <div className="add-user-col">
             <h3 style={{ margin: "0 0 15px 0", color: "#1e293b", fontSize: "1rem", borderBottom: "1px solid #e2e8f0", paddingBottom: "5px" }}>Station Information</h3>
-            
+
             <div className="form-group">
               <label>Station Name *</label>
               <input
@@ -3234,7 +3239,7 @@ export function useAomState(user, onLogout) {
             </div>
             <div style={{ textAlign: "center" }}>
               <span style={{ display: "block", fontSize: "9px", color: "#94a3b8", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "4px" }}>Safety Score</span>
-              <strong style={{ fontSize: "18px", fontWeight: "800", color: "#0f172a" }}>{pm.safetyScore}%</strong>
+              <strong style={{ fontSize: "18px", fontWeight: "800", color: "#0f172a" }}>{pm.safetyScore}/100</strong>
             </div>
             <div style={{ textAlign: "center" }}>
               <span style={{ display: "block", fontSize: "9px", color: "#94a3b8", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "4px" }}>Assessments</span>
@@ -3420,7 +3425,7 @@ export function useAomState(user, onLogout) {
               <div style={{ flex: 1, height: "8px", background: "#e2e8f0", borderRadius: "9999px", overflow: "hidden" }}>
                 <div style={{ width: `${pm.safetyScore}%`, height: "100%", background: "#16a34a", borderRadius: "9999px" }}></div>
               </div>
-              <span style={{ fontSize: "13px", fontWeight: "800", color: "#16a34a", marginLeft: "12px" }}>{pm.safetyScore}%</span>
+              <span style={{ fontSize: "13px", fontWeight: "800", color: "#16a34a", marginLeft: "12px" }}>{pm.safetyScore}/100</span>
             </div>
           </div>
         </div>
@@ -4316,53 +4321,46 @@ export function useAomState(user, onLogout) {
       ...aomPointsmen.map(p => ({
         hrmsId: p.hrmsId,
         name: p.name,
-        gender: p.gender,
-        age: p.age,
+        gender: p.gender || "Male",
+        age: p.age || 35,
         doj: p.doj,
-        basePay: p.basePay,
+        basePay: p.basePay || "₹28,500",
         designation: "Pointsman",
         stationName: p.stationName,
         stationCode: p.stationCode,
-        division: p.stationCode === "NGP" ? "Nagpur" : p.stationCode === "PUNE" ? "Pune" : "Mumbai",
-        zone: "CR",
-        category: getPmCat(p.lastScore),
-        riskLevel: getPmRisk(p),
+        division: p.division || "Nagpur",
+        zone: p.zone || "CR",
+        category: p.cat || getPmCat(p.lastScore),
+        riskLevel: p.risk || getPmRisk(p),
         assessmentStatus: p.approvalStatus,
         lastScore: p.lastScore,
         safetyScore: p.safetyScore,
         totalAssessments: p.totalAssessments,
-        lastAssessedDate: p.hrmsId === "PM_1001" ? "2026-03-28" :
-          p.hrmsId === "PM_1102" ? "2026-03-10" :
-            p.hrmsId === "PM_1103" ? "2026-02-15" :
-              p.hrmsId === "PM_1104" ? "2026-03-18" :
-                p.hrmsId === "PM_1105" ? "2026-01-20" :
-                  p.hrmsId === "PM_1106" ? "2026-03-05" :
-                    p.hrmsId === "PM_1107" ? "2026-03-20" :
-                      p.hrmsId === "PM_1108" ? "2026-02-01" : "—",
+        lastAssessedDate: p.lastAssessDate || p.lastAssessedDate || p.doj || "2026-03-28",
         monitoringStatus: deactivatedUserIds.has(p.hrmsId) ? "Deactivated" : (p.monitoringStatus || "Active")
       })),
       ...stationMastersDirectory.map((sm, idx) => {
-        const smHrmsId = `SM_${1001 + idx}`;
+        const smHrmsId = sm.hrmsId || sm.id || `SM_${1001 + idx}`;
         return {
           hrmsId: smHrmsId,
           name: sm.name,
-          gender: "Male",
-          age: 42,
-          doj: "2010-05-15",
-          basePay: "₹56,000",
+          gender: sm.gender || "Male",
+          age: sm.age || 42,
+          doj: sm.doj || "2010-05-15",
+          basePay: sm.basePay || "₹56,000",
           designation: "Station Master",
           stationName: sm.stationName,
           stationCode: sm.stationCode,
           division: sm.division,
           zone: sm.zone || "CR",
-          category: sm.category || "A",
-          riskLevel: idx % 3 === 0 ? "Medium" : "Low",
-          assessmentStatus: idx % 2 === 0 ? "Approved" : "Pending",
-          lastScore: 85 - (idx * 4),
-          safetyScore: 92 - (idx * 2),
-          totalAssessments: 10,
-          lastAssessedDate: "2026-04-12",
-          monitoringStatus: deactivatedUserIds.has(smHrmsId) ? "Deactivated" : (idx % 3 === 0 ? "On Duty" : "Active")
+          category: sm.cat || "A",
+          riskLevel: sm.riskLevel || sm.risk || "Low",
+          assessmentStatus: sm.approvalStatus || "Approved",
+          lastScore: sm.lastScore || sm.score || 85,
+          safetyScore: sm.safetyScore || 90,
+          totalAssessments: sm.totalAssessments || 10,
+          lastAssessedDate: sm.lastAssessedDate || sm.lastAssessDate || sm.doj || "2026-04-12",
+          monitoringStatus: deactivatedUserIds.has(smHrmsId) ? "Deactivated" : (sm.monitoringStatus || "Active")
         };
       }),
       ...trafficInspectors.map((ti, idx) => ({
@@ -4373,18 +4371,18 @@ export function useAomState(user, onLogout) {
         doj: "2006-11-20",
         basePay: "₹68,000",
         designation: "Traffic Inspector",
-        stationName: "Division HQ",
-        stationCode: "HQ",
+        stationName: ti.stationName || ti.station || "Division HQ",
+        stationCode: ti.stationCode || "HQ",
         division: ti.division || "Nagpur",
-        zone: "CR",
-        category: ti.category || "Senior TI",
-        riskLevel: "Low",
-        assessmentStatus: ti.assessmentStatus === "Completed" ? "Approved" : "Pending",
-        lastScore: 88,
+        zone: ti.zone || "CR",
+        category: ti.cat || ti.category || "Senior TI",
+        riskLevel: ti.risk || ti.riskLevel || "Low",
+        assessmentStatus: ti.status || ti.approvalStatus || "Approved",
+        lastScore: ti.lastScore || ti.score || 88,
         safetyScore: 95,
         totalAssessments: 8,
-        lastAssessedDate: "2026-03-15",
-        monitoringStatus: deactivatedUserIds.has(ti.employeeId) ? "Deactivated" : "Active"
+        lastAssessedDate: ti.lastDate || ti.doj || "2026-03-15",
+        monitoringStatus: deactivatedUserIds.has(ti.employeeId) ? "Deactivated" : (ti.monitoringStatus || "Active")
       }))
     ];
 
@@ -5082,7 +5080,7 @@ export function useAomState(user, onLogout) {
               </div>
             </div>
             <div className="sdom-station-header-stats">
-              <div className="sdom-station-header-stat"><span className="val">{s.lastScore || "–"}</span><span className="lbl">Latest Score</span></div>
+              <div className="sdom-station-header-stat"><span className="val">{s.category === "Untested" ? "Not Given Test" : (s.lastScore || "–")}</span><span className="lbl">Latest Score</span></div>
               <div style={{ width: 1, height: 60, background: "rgba(255,255,255,0.15)" }} />
               <div className="sdom-station-header-stat"><span className="val">{s.contactNumber || "—"}</span><span className="lbl">Contact</span></div>
               <div style={{ width: 1, height: 60, background: "rgba(255,255,255,0.15)" }} />
@@ -5287,13 +5285,13 @@ export function useAomState(user, onLogout) {
           <div className="sdom-filter-field">
             <label>Category</label>
             <select value={roleFilterCat} onChange={e => setRoleFilterCat(e.target.value)}>
-              <option>All</option><option>A</option><option>B</option><option>C</option><option>D</option>
+              <option>All</option><option>A</option><option>B</option><option>C</option><option>D</option><option>Untested</option>
             </select>
           </div>
           <div className="sdom-filter-field">
             <label>Risk Level</label>
             <select value={roleFilterRisk} onChange={e => setRoleFilterRisk(e.target.value)}>
-              <option>All</option><option>Low</option><option>Medium</option><option>High</option>
+              <option>All</option><option>Low</option><option>Medium</option><option>High</option><option>Untested</option>
             </select>
           </div>
         </div>
@@ -5413,7 +5411,7 @@ export function useAomState(user, onLogout) {
                       <td>{s.division}</td>
                       <td>{renderCategoryBadge(s.category)}</td>
                       <td>{renderRiskBadge(s.riskLevel)}</td>
-                      <td style={{ fontWeight: 700 }}>{s.lastScore || "–"}</td>
+                      <td style={{ fontWeight: 700 }}>{s.category === "Untested" ? "Not Given Test" : (s.lastScore || "–")}</td>
                       <td>{renderStatusBadge(s.assessmentStatus)}</td>
                       <td>
                         <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
@@ -5830,6 +5828,7 @@ export function useAomState(user, onLogout) {
         contact: x.contact,
         emailId: x.email,
         email: x.email,
+        pfNumber: x.pfNumber || "—",
         designation: ROLE_MAP[x.role] || x.role,
         role: x.role,
         division: x.division,

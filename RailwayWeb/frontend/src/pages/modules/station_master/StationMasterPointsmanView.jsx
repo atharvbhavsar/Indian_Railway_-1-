@@ -1,15 +1,15 @@
 import React from 'react';
-import { 
+import {
   ArrowLeft, Activity, Calendar, PlayCircle, UserPlus, ShieldCheck, TrendingUp
 } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { getCat, getCatColor, getCatBg, riskLevel, riskColor } from '../../../utils/scoreCalculator';
 import { useLanguage } from '../../../contexts/LanguageContext';
 
-const CAT_BG = { A: "#dcfce7", B: "#dbeafe", C: "#fef3c7", D: "#fee2e2" };
-const CAT_COLOR = { A: "#16a34a", B: "#2563eb", C: "#d97706", D: "#dc2626" };
-const RISK_BG = { Low: "#dcfce7", Medium: "#fef3c7", High: "#fee2e2" };
-const RISK_COLOR = { Low: "#16a34a", Medium: "#d97706", High: "#dc2626" };
+const CAT_BG = { A: "#dcfce7", B: "#dbeafe", C: "#fef3c7", D: "#fee2e2", Untested: "#f3f4f6" };
+const CAT_COLOR = { A: "#16a34a", B: "#2563eb", C: "#d97706", D: "#dc2626", Untested: "#4b5563" };
+const RISK_BG = { Low: "#dcfce7", Medium: "#fef3c7", High: "#fee2e2", Untested: "#f3f4f6" };
+const RISK_COLOR = { Low: "#16a34a", Medium: "#d97706", High: "#dc2626", Untested: "#4b5563" };
 
 const CustomTooltip = ({ active, payload, label }) => {
   const { t } = useLanguage();
@@ -37,11 +37,11 @@ export function StationMasterPointsmanView(props) {
     setInspectRecord
   } = props;
 
-  const cat  = getCat(pm.lastScore);
-  const risk = riskLevel(pm);
+  const cat = pm.cat || "Untested";
+  const risk = cat === "Untested" ? "Untested" : riskLevel(pm);
   const safetyPct = pm.safetyScore;
   const hist = pmAssessmentHistory[pm.id] || [];
-  
+
   return (
     <section className="sm2-card">
       <div className="sm2-card-hdr">
@@ -56,20 +56,20 @@ export function StationMasterPointsmanView(props) {
           <h3>{pm.name}</h3>
           <span>{pm.hrmsId} · {t(pm.designation || "Pointsman")} · {t(pm.station || smProfile.station)}</span>
           <div className="sm2-pm-badges">
-            <span className="sm2-badge" style={{background:CAT_BG[cat],color:CAT_COLOR[cat]}}>{t("Category")} {cat}</span>
-            <span className="sm2-badge" style={{background:RISK_BG[risk],color:RISK_COLOR[risk]}}>{t(risk)} {t("Risk")}</span>
+            <span className="sm2-badge" style={{ background: CAT_BG[cat], color: CAT_COLOR[cat] }}>{cat === "Untested" ? t("Untested") : `${t("Category")} ${cat}`}</span>
+            <span className="sm2-badge" style={{ background: RISK_BG[risk], color: RISK_COLOR[risk] }}>{risk === "Untested" ? t("Untested") : `${t(risk)} ${t("Risk")}`}</span>
             <span className={`sm2-status-pill sm2-status-${pm.approvalStatus.toLowerCase()}`}>{t(pm.approvalStatus)}</span>
           </div>
         </div>
         <div className="sm2-pm-quick-stats">
-          <div><label>{t("Latest Score")}</label><strong>{pm.lastScore}/100</strong></div>
-          <div><label>{t("Safety Score")}</label><strong>{pm.safetyScore}%</strong></div>
+          <div><label>{t("Latest Score")}</label><strong>{cat === "Untested" ? t("Not Given Test") : `${pm.lastScore}/100`}</strong></div>
+          <div><label>{t("Safety Score")}</label><strong>{pm.safetyScore}/100</strong></div>
           <div><label>{t("Assessments")}</label><strong>{pm.totalAssessments}</strong></div>
         </div>
       </div>
 
       {/* Personal Info */}
-      <dl className="sm2-dl-grid" style={{marginBottom:20}}>
+      <dl className="sm2-dl-grid" style={{ marginBottom: 20 }}>
         <div><dt>{t("Gender")}</dt><dd>{t(pm.gender)}</dd></div>
         <div><dt>{t("Age")}</dt><dd>{pm.age} {t("yrs")}</dd></div>
         <div><dt>{t("Date of Joining")}</dt><dd>{pm.doj}</dd></div>
@@ -99,48 +99,48 @@ export function StationMasterPointsmanView(props) {
         }}>
           <Activity size={16} color="#0d2c4d" /> {t("Monitoring Status")}
         </h4>
-        
+
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: "12px" }}>
           {[
-            { 
-              status: "Active", 
-              color: "#16a34a", 
-              bg: "#dcfce7", 
+            {
+              status: "Active",
+              color: "#16a34a",
+              bg: "#dcfce7",
               icon: (
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                   <circle cx="12" cy="12" r="10" strokeOpacity="0.25" fill="#16a34a" fillOpacity="0.2" />
                   <circle cx="12" cy="12" r="3" fill="#16a34a" />
                 </svg>
               ),
-              desc: t("Available for yard operations") 
+              desc: t("Available for yard operations")
             },
-            { 
-              status: "On Duty", 
-              color: "#d97706", 
-              bg: "#fef3c7", 
+            {
+              status: "On Duty",
+              color: "#d97706",
+              bg: "#fef3c7",
               icon: (
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#d97706" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                   <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
                 </svg>
               ),
-              desc: t("Currently executing track tasks") 
+              desc: t("Currently executing track tasks")
             },
-            { 
-              status: "Off Duty", 
-              color: "#64748b", 
-              bg: "#f1f5f9", 
+            {
+              status: "Off Duty",
+              color: "#64748b",
+              bg: "#f1f5f9",
               icon: (
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                   <circle cx="12" cy="12" r="10" />
                   <polyline points="12 6 12 12 16 14" />
                 </svg>
               ),
-              desc: t("Resting / Shift ended") 
+              desc: t("Resting / Shift ended")
             },
-            { 
-              status: "Absent", 
-              color: "#dc2626", 
-              bg: "#fee2e2", 
+            {
+              status: "Absent",
+              color: "#dc2626",
+              bg: "#fee2e2",
               icon: (
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#dc2626" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
@@ -148,7 +148,7 @@ export function StationMasterPointsmanView(props) {
                   <line x1="12" y1="17" x2="12.01" y2="17" />
                 </svg>
               ),
-              desc: t("Unexcused leave of absence") 
+              desc: t("Unexcused leave of absence")
             }
           ].map(item => {
             const isActive = (pm.monitoringStatus || "Active") === item.status;
@@ -212,28 +212,28 @@ export function StationMasterPointsmanView(props) {
       <div className="sm2-safety-block">
         <h4>{t("Safety Compliance")}</h4>
         <div className="sm2-safety-grid">
-          <div className="sm2-safety-item"><span>{t("PME Status")}</span><strong className={pm.pmeStatus==="Fit"?"text-green":"text-red"}>{t(pm.pmeStatus || "Fit")}</strong></div>
-          <div className="sm2-safety-item"><span>{t("REF Status")}</span><strong className={pm.refStatus==="Cleared"?"text-green":"text-amber"}>{t(pm.refStatus || "Cleared")}</strong></div>
-          <div className="sm2-safety-item"><span>{t("Disciplinary")}</span><strong className={pm.disciplinary==="None"?"text-green":"text-red"}>{t(pm.disciplinary || "None")}</strong></div>
-          <div className="sm2-safety-item"><span>{t("Incidents")}</span><strong className={pm.incidents===0?"text-green":"text-red"}>{pm.incidents} {t("reported")}</strong></div>
+          <div className="sm2-safety-item"><span>{t("PME Status")}</span><strong className={pm.pmeStatus === "Fit" ? "text-green" : "text-red"}>{t(pm.pmeStatus || "Fit")}</strong></div>
+          <div className="sm2-safety-item"><span>{t("REF Status")}</span><strong className={pm.refStatus === "Cleared" ? "text-green" : "text-amber"}>{t(pm.refStatus || "Cleared")}</strong></div>
+          <div className="sm2-safety-item"><span>{t("Disciplinary")}</span><strong className={pm.disciplinary === "None" ? "text-green" : "text-red"}>{t(pm.disciplinary || "None")}</strong></div>
+          <div className="sm2-safety-item"><span>{t("Incidents")}</span><strong className={pm.incidents === 0 ? "text-green" : "text-red"}>{pm.incidents} {t("reported")}</strong></div>
         </div>
         <div className="sm2-compliance-bar-wrap">
           <div className="sm2-compliance-label">
             <span>{t("Overall Safety Compliance")}</span>
-            <strong style={{color: safetyPct >= 75 ? "#16a34a" : safetyPct >= 50 ? "#d97706" : "#dc2626"}}>{safetyPct}%</strong>
+            <strong style={{ color: safetyPct >= 75 ? "#16a34a" : safetyPct >= 50 ? "#d97706" : "#dc2626" }}>{safetyPct}/100</strong>
           </div>
           <div className="sm2-compliance-track">
             <div className="sm2-compliance-fill" style={{
-              width:`${safetyPct}%`,
+              width: `${safetyPct}%`,
               background: safetyPct >= 75 ? "#16a34a" : safetyPct >= 50 ? "#d97706" : "#dc2626"
-            }}/>
+            }} />
           </div>
         </div>
       </div>
 
       {/* 📈 PERFORMANCE TREND & SAFETY COMPETENCY breakdown */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(360px, 1fr))", gap: "20px", marginTop: "20px" }}>
-        
+
         {/* Performance Improvement Trend Chart */}
         <div style={{
           background: "#ffffff",
@@ -249,7 +249,7 @@ export function StationMasterPointsmanView(props) {
             <p style={{ color: "#64748b", fontStyle: "italic", fontSize: "13px" }}>{t("No history to plot trend.")}</p>
           ) : (
             <ResponsiveContainer width="100%" height={200}>
-              <LineChart data={[...hist].reverse().map((h, i) => ({ attempt: `Eval ${i+1}`, score: h.total, date: h.date }))} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
+              <LineChart data={[...hist].reverse().map((h, i) => ({ attempt: `Eval ${i + 1}`, score: h.total, date: h.date }))} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                 <XAxis dataKey="attempt" tick={{ fontSize: 10, fill: "#64748b" }} />
                 <YAxis domain={[0, 100]} tick={{ fontSize: 10, fill: "#64748b" }} />
@@ -326,25 +326,25 @@ export function StationMasterPointsmanView(props) {
       </div>
 
       {/* Assessment History */}
-      <div style={{marginTop:20}}>
-        <h4 style={{margin:"0 0 12px",fontSize:14,color:"#0f172a"}}>{t("Assessment History")}</h4>
+      <div style={{ marginTop: 20 }}>
+        <h4 style={{ margin: "0 0 12px", fontSize: 14, color: "#0f172a" }}>{t("Assessment History")}</h4>
         {hist.length === 0 ? <p className="sm2-empty">{t("No assessments recorded yet.")}</p> : (
           <div className="sm2-table-wrap">
             <div className="sm2-hist-head sm2-hist-row-6">
-              {["Date","Test Marks","Add. Marks","Total","Grade","Status"].map(h => <span key={h}>{t(h)}</span>)}
+              {["Date", "Test Marks", "Add. Marks", "Total", "Grade", "Status"].map(h => <span key={h}>{t(h)}</span>)}
             </div>
             {hist.map(r => {
-              const hCat = getCat(r.total);
+              const hCat = r.category || getCat(r.total);
               return (
                 <div key={r.id} className="sm2-hist-row-6 sm2-hist-data-row">
                   <span>{r.date}</span>
                   <span>{r.testMarks}</span>
                   <span>{r.addMarks}</span>
                   <span><strong>{r.total}</strong></span>
-                  <span><span className="sm2-badge" style={{background:CAT_BG[hCat],color:CAT_COLOR[hCat]}}>{t("Cat.")} {hCat}</span></span>
+                  <span><span className="sm2-badge" style={{ background: CAT_BG[hCat], color: CAT_COLOR[hCat] }}>{t("Cat.")} {hCat}</span></span>
                   <span>
                     <span className={`sm2-status-pill sm2-status-${r.approvalStatus.toLowerCase()}`}>{t(r.approvalStatus)}</span>
-                    {r.tiRemarks && <div style={{fontSize:11,color:"#dc2626",marginTop:2}}>{t(r.tiRemarks)}</div>}
+                    {r.tiRemarks && <div style={{ fontSize: 11, color: "#dc2626", marginTop: 2 }}>{t(r.tiRemarks)}</div>}
                   </span>
                 </div>
               );

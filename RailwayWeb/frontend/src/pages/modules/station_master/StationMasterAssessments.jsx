@@ -256,7 +256,7 @@ export function StationMasterAssessments(props) {
             <div>
               <span style={{color:"#166534", display:"block"}}>{t("Last Exam Score")}</span>
               <strong style={{color:"#14532d", fontSize:13}}>
-                {smMcqTest ? `${smMcqTest.correctCount}/25 (${smMcqTest.percentage}%)` : (hasHistory ? `${smAssessmentHistory[0].sections?.find(s=>s.title.includes("MCQ"))?.marks || 0}/25` : t("N/A"))}
+                {smMcqTest ? `${smMcqTest.correctCount}/25` : (hasHistory ? `${smAssessmentHistory[0].sections?.find(s=>s.title.includes("MCQ"))?.marks || 0}/25` : t("N/A"))}
               </strong>
             </div>
             {hasHistory && (

@@ -5,14 +5,14 @@ import { PerformanceTrendChart } from "../../../components/charts/PerformanceTre
 import { CategoryDistributionChart } from "../../../components/charts/CategoryDistributionChart";
 import { useLanguage } from "../../../contexts/LanguageContext";
 
-export function PointsmanDashboard({ 
-  latestScore, 
+export function PointsmanDashboard({
+  latestScore,
   latestOutOf,
-  averageScore, 
-  latestCategory, 
-  historyLength, 
-  trendData, 
-  pieData 
+  averageScore,
+  latestCategory,
+  historyLength,
+  trendData,
+  pieData
 }) {
   const { t } = useLanguage();
 
@@ -36,7 +36,7 @@ export function PointsmanDashboard({
           </div>
           <div>
             <label>{t("Average Score")}</label>
-            <strong>{Math.round(averageScore)}%</strong>
+            <strong>{Math.round(averageScore)}/100</strong>
           </div>
         </article>
 
@@ -73,10 +73,10 @@ export function PointsmanDashboard({
           {trendData.length === 0 ? (
             <p className="pm-empty-state">{t("No assessment history available yet.")}</p>
           ) : (
-            <PerformanceTrendChart 
-              data={trendData} 
-              xAxisKey="date" 
-              yAxisKey="score" 
+            <PerformanceTrendChart
+              data={trendData}
+              xAxisKey="date"
+              yAxisKey="score"
             />
           )}
         </div>
@@ -90,8 +90,8 @@ export function PointsmanDashboard({
           {pieData.length === 0 ? (
             <p className="pm-empty-state">{t("No data.")}</p>
           ) : (
-            <CategoryDistributionChart 
-              data={pieData} 
+            <CategoryDistributionChart
+              data={pieData}
               colors={{
                 "A": "#16a34a",
                 "B": "#f59e0b",

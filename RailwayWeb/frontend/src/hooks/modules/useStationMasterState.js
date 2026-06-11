@@ -1,8 +1,8 @@
 import { useMemo, useState, useEffect } from "react";
 import { getCat, riskLevel } from '../../utils/scoreCalculator';
-import { 
-  YN_SECTIONS, defaultAssessForm, 
-  smTestQuestions 
+import {
+  YN_SECTIONS, defaultAssessForm,
+  smTestQuestions, smAssessmentHistory
 } from '../../data/mockStationMasterData';
 import { saDataService } from '../../services/saDataService';
 import { monitoringService } from '../../services/monitoringService';
@@ -11,20 +11,20 @@ import { assessmentService } from "../../services/assessmentService";
 
 export function useStationMasterState(user, onLogout) {
 
-  const [activeTab, setActiveTab]         = useState("dashboard");
-  const [pageMode, setPageMode]           = useState("default");
-  const [statusMsg, setStatusMsg]         = useState("");
-  const [pointsmen, setPointsmen]         = useState([]);
+  const [activeTab, setActiveTab] = useState("dashboard");
+  const [pageMode, setPageMode] = useState("default");
+  const [statusMsg, setStatusMsg] = useState("");
+  const [pointsmen, setPointsmen] = useState([]);
   const [counsellingQueue, setCounsellingQueue] = useState([]);
-  const [drafts, setDrafts]               = useState([]);
+  const [drafts, setDrafts] = useState([]);
   const [submittedAssessments, setSubmittedAssessments] = useState([]);
-  const [selectedPm, setSelectedPm]       = useState(null);
-  const [assessTarget, setAssessTarget]   = useState(null);
-  const [assessForm, setAssessForm]       = useState(defaultAssessForm);
-  const [assessLocked, setAssessLocked]   = useState(false);
+  const [selectedPm, setSelectedPm] = useState(null);
+  const [assessTarget, setAssessTarget] = useState(null);
+  const [assessForm, setAssessForm] = useState(defaultAssessForm);
+  const [assessLocked, setAssessLocked] = useState(false);
   const [myAssessSelected, setMyAssessSelected] = useState(null);
-  const [pmFilter, setPmFilter]           = useState({ search:"", grade:"All", status:"All", risk:"All" });
-  const [reportFilter, setReportFilter]   = useState({ search:"", grade:"All", risk:"All", sortBy:"date-desc" });
+  const [pmFilter, setPmFilter] = useState({ search: "", grade: "All", status: "All", risk: "All" });
+  const [reportFilter, setReportFilter] = useState({ search: "", grade: "All", risk: "All", sortBy: "date-desc" });
   const [activatedTests, setActivatedTests] = useState(() => {
     const saved = localStorage.getItem("sm_pm_activated_tests");
     return saved ? JSON.parse(saved) : {};
@@ -49,7 +49,7 @@ export function useStationMasterState(user, onLogout) {
   const [assignedTi, setAssignedTi] = useState(null);
 
   const smName = user?.name || "—";
-  const smId   = user?.hrmsId || "—";
+  const smId = user?.hrmsId || "—";
 
   const fetchLiveDatabaseData = async () => {
     try {
@@ -110,9 +110,9 @@ export function useStationMasterState(user, onLogout) {
             .select(`
               *,
               employee:USERS!employee_id (hrms_id),
-              TEST_ATTEMPT (obtained_marks, total_marks)
+              TEST_ATTEMPT (obtained_marks, total_marks, category, answers)
             `);
-          
+
           if (assessList) {
             setAllDbAssessments(assessList);
             dbSubmitted = assessList
@@ -121,7 +121,7 @@ export function useStationMasterState(user, onLogout) {
               .filter(a => filtered.some(p => p.hrmsId === a.employee.hrms_id))
               .map(a => ({
                 pmId: a.employee.hrms_id,
-                date: a.assessment_date ? new Date(a.assessment_date).toISOString().slice(0, 10) : new Date(a.created_at).toISOString().slice(0,10),
+                date: a.assessment_date ? new Date(a.assessment_date).toISOString().slice(0, 10) : new Date(a.created_at).toISOString().slice(0, 10),
                 score: a.TEST_ATTEMPT?.[0]?.obtained_marks || 0,
                 totalMarks: a.TEST_ATTEMPT?.[0]?.total_marks || 100
               }));
@@ -145,7 +145,7 @@ export function useStationMasterState(user, onLogout) {
                   const answers = ta?.answers || {};
                   const isApproved = a.status === "Approved";
                   const isOnlineExam = ta?.total_marks === 25 || (a.assessment_type || "").includes("MCQ") || !isApproved;
-                  
+
                   let sections = answers.sections || [];
                   if (isOnlineExam && sections.length === 0) {
                     sections = [
@@ -166,13 +166,13 @@ export function useStationMasterState(user, onLogout) {
                     isOnlineExam: isOnlineExam
                   };
                 });
-                
+
                 // Merge with any locally stored ones not in DB (like current unsubmitted CBT)
                 const localStr = localStorage.getItem(`sm_history_${smId}`);
                 const localHist = localStr ? JSON.parse(localStr) : [];
                 const mergedHist = [...mappedHistory, ...localHist.filter(lh => lh.isOnlineExam && !mappedHistory.some(mh => mh.date === lh.date))];
-                
-                setHistory(mergedHist.sort((a,b) => new Date(b.date) - new Date(a.date)));
+
+                setHistory(mergedHist.sort((a, b) => new Date(b.date) - new Date(a.date)));
               }
             }
           }
@@ -226,6 +226,8 @@ export function useStationMasterState(user, onLogout) {
         pmeStatus: "Fit",
         refStatus: "Cleared",
         contact: "",
+        email: "",
+        pfNumber: "",
         joiningDate: new Date().toISOString().split('T')[0],
         doj: new Date().toISOString().split('T')[0],
         gender: "Male",
@@ -234,7 +236,9 @@ export function useStationMasterState(user, onLogout) {
         approvalStatus: "Approved",
         reportingSm: user?.name || "",
         workLocation: "Yard",
-        shift: "Morning Shift (06:00 - 14:00)"
+        shift: "Morning Shift (06:00 - 14:00)",
+        password: "",
+        confirmPassword: ""
       }
     });
   };
@@ -242,7 +246,15 @@ export function useStationMasterState(user, onLogout) {
   const openPmEdit = (pm) => {
     setPmModal({
       mode: "edit",
-      data: { ...pm }
+      data: {
+        ...pm,
+        pmeStatus: pm.pmeStatus || "Fit",
+        refStatus: pm.refStatus || "Cleared",
+        doj: pm.lastDate || pm.doj || new Date().toISOString().split('T')[0],
+        reportingSm: pm.reportingSm || user?.name || "",
+        pfNumber: pm.pfNumber || "",
+        email: pm.email || ""
+      }
     });
   };
 
@@ -258,6 +270,33 @@ export function useStationMasterState(user, onLogout) {
       alert("Name and HRMS ID are required.");
       return;
     }
+    if (!pmModal.data.pfNumber) {
+      alert("PF Number is required.");
+      return;
+    }
+    if (!pmModal.data.email) {
+      alert("Email Address is required.");
+      return;
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(pmModal.data.email)) {
+      alert("Please enter a valid Email Address.");
+      return;
+    }
+    if (pmModal.mode === "add") {
+      if (!pmModal.data.password) {
+        alert("Password is required.");
+        return;
+      }
+      if (pmModal.data.password.length < 6) {
+        alert("Password must be at least 6 characters long.");
+        return;
+      }
+    }
+    if (!pmModal.data.doj) {
+      alert("Joining Date is required.");
+      return;
+    }
     try {
       const data = pmModal.data;
       const modalData = {
@@ -265,16 +304,20 @@ export function useStationMasterState(user, onLogout) {
         name: data.name,
         contact: data.contact || data.phone || data.contactNumber,
         email: data.email || data.emailId,
+        pfNumber: data.pfNumber,
         role: pmModal.mode === "shift" ? pmModal.role : "Pointsman",
         station: data.stationName || data.station || data.smStation,
         division: data.division || data.smDivision || data.tiArea,
         lastDate: data.doj || data.lastDate,
         score: data.lastScore || data.score,
         cat: data.cat || data.category,
-        reportingSm: data.reportingSm,
+        reportingSm: data.reportingSm || user?.name || "",
         workLocation: data.workLocation,
         shift: data.shift,
-        jurisdiction: data.jurisdiction
+        jurisdiction: data.jurisdiction,
+        password: data.password || "",
+        pmeStatus: data.pmeStatus || "Fit",
+        refStatus: data.refStatus || "Cleared"
       };
       await saDataService.saveUser(modalData, pmModal.mode);
       setPmModal(null);
@@ -297,11 +340,11 @@ export function useStationMasterState(user, onLogout) {
 
   // Fullscreen Analytics States
   const [fullscreenChart, setFullscreenChart] = useState(null); // 'monthly' | 'safety' | 'performance' | null
-  const [fsStartDate, setFsStartDate]         = useState("");
-  const [fsEndDate, setFsEndDate]             = useState("");
-  const [fsCategory, setFsCategory]           = useState("All");
-  const [fsRisk, setFsRisk]                   = useState("All");
-  const [fsSearch, setFsSearch]               = useState("");
+  const [fsStartDate, setFsStartDate] = useState("");
+  const [fsEndDate, setFsEndDate] = useState("");
+  const [fsCategory, setFsCategory] = useState("All");
+  const [fsRisk, setFsRisk] = useState("All");
+  const [fsSearch, setFsSearch] = useState("");
 
   // Reactively Filtered Pointsmen for Fullscreen View
   const filteredFsPointsmen = useMemo(() => {
@@ -310,13 +353,13 @@ export function useStationMasterState(user, onLogout) {
       const matchSearch = !q || p.name.toLowerCase().includes(q) || p.hrmsId.toLowerCase().includes(q);
       const matchCategory = fsCategory === "All" || getCat(p.lastScore) === fsCategory;
       const matchRisk = fsRisk === "All" || riskLevel(p) === fsRisk;
-      
+
       const pmHistoryList = [];
       const mostRecentDate = pmHistoryList.length > 0 ? pmHistoryList[0].date : p.doj;
       let matchDate = true;
       if (fsStartDate) matchDate = matchDate && mostRecentDate >= fsStartDate;
       if (fsEndDate) matchDate = matchDate && mostRecentDate <= fsEndDate;
-      
+
       return matchSearch && matchCategory && matchRisk && matchDate;
     });
   }, [pointsmen, fsSearch, fsCategory, fsRisk, fsStartDate, fsEndDate]);
@@ -337,10 +380,10 @@ export function useStationMasterState(user, onLogout) {
       let count = 0;
 
       filteredFsPointsmen.forEach(p => {
-        const pmHistoryList = [];
+        const pmHistoryList = submittedAssessments.filter(sa => sa.pmId === p.hrmsId);
         const matches = pmHistoryList.filter(h => h.date >= m.start && h.date <= m.end);
         matches.forEach(h => {
-          totalScore += h.total;
+          totalScore += h.score;
           totalSafety += p.safetyScore;
           count++;
         });
@@ -353,7 +396,7 @@ export function useStationMasterState(user, onLogout) {
         safetyAvg: count > 0 ? Math.round(totalSafety / count) : 0
       };
     });
-  }, [filteredFsPointsmen]);
+  }, [filteredFsPointsmen, submittedAssessments]);
 
   // History State
   const [history, setHistory] = useState(() => {
@@ -366,7 +409,7 @@ export function useStationMasterState(user, onLogout) {
     } catch (e) {
       console.error("Error reading SM history:", e);
     }
-    return [];
+    return smAssessmentHistory || [];
   });
 
   // MCQ Test State
@@ -489,7 +532,7 @@ export function useStationMasterState(user, onLogout) {
     const percentage = Math.round((correctCount / 25) * 100);
     const passStatus = percentage >= 60 ? "PASSED" : "FAILED";
     const today = new Date().toISOString().slice(0, 10);
-    
+
     // Save to local storage for SM
     const testResult = {
       completed: true,
@@ -567,11 +610,11 @@ export function useStationMasterState(user, onLogout) {
 
   /* ─── Derived: stats ─── */
   const stats = useMemo(() => {
-    const total     = pointsmen.length;
-    const pending   = drafts.length;
+    const total = pointsmen.length;
+    const pending = drafts.length;
     const completed = submittedAssessments.length;
-    const highRisk  = pointsmen.filter(p => riskLevel(p) === "High").length;
-    const safetyPct = pointsmen.length > 0 
+    const highRisk = pointsmen.filter(p => riskLevel(p) === "High").length;
+    const safetyPct = pointsmen.length > 0
       ? Math.round(pointsmen.reduce((s, p) => s + (p.safetyScore || 0), 0) / pointsmen.length)
       : 0;
     return { total, pending, completed, highRisk, safetyPct };
@@ -579,19 +622,19 @@ export function useStationMasterState(user, onLogout) {
 
   /* ─── Pie: category dist ─── */
   const pieData = useMemo(() => {
-    const counts = { A:0, B:0, C:0, D:0 };
-    pointsmen.forEach(p => { 
-      const c = getCat(p.lastScore);
-      if (counts[c] !== undefined) counts[c]++; 
+    const counts = { A: 0, B: 0, C: 0, D: 0 };
+    pointsmen.forEach(p => {
+      const c = p.cat;
+      if (counts[c] !== undefined) counts[c]++;
     });
-    return Object.entries(counts).filter(([,c]) => c > 0)
+    return Object.entries(counts).filter(([, c]) => c > 0)
       .map(([cat, count]) => ({ name: cat, value: count }));
   }, [pointsmen]);
 
   /* ─── Bottom performers ─── */
   const lowPerformers = useMemo(() =>
-    [...pointsmen].filter(p => p.lastScore > 0).sort((a,b) => a.lastScore - b.lastScore).slice(0,4)
-  , [pointsmen]);
+    [...pointsmen].filter(p => p.lastScore > 0).sort((a, b) => a.lastScore - b.lastScore).slice(0, 4)
+    , [pointsmen]);
 
   /* ─── Filtered pointsmen list ─── */
   const filteredPm = useMemo(() => {
@@ -605,7 +648,7 @@ export function useStationMasterState(user, onLogout) {
         const s = pmF.name.toLowerCase();
         if (!p.name.toLowerCase().includes(s) && !p.hrmsId.toLowerCase().includes(s)) return false;
       }
-      if (pmF.cat !== "All" && getCat(p.lastScore) !== pmF.cat) return false;
+      if (pmF.cat !== "All" && p.cat !== pmF.cat) return false;
       if (pmF.risk !== "All" && riskLevel(p) !== pmF.risk) return false;
       return true;
     });
@@ -616,20 +659,20 @@ export function useStationMasterState(user, onLogout) {
     let list = pointsmen.filter(p => {
       const q = reportFilter.search.toLowerCase();
       const srch = !q || p.name.toLowerCase().includes(q) || p.hrmsId.toLowerCase().includes(q);
-      const grade = reportFilter.grade === "All" || getCat(p.lastScore) === reportFilter.grade;
-      const risk  = reportFilter.risk === "All" || riskLevel(p) === reportFilter.risk;
+      const grade = reportFilter.grade === "All" || p.cat === reportFilter.grade;
+      const risk = reportFilter.risk === "All" || riskLevel(p) === reportFilter.risk;
       return srch && grade && risk;
     });
-    if (reportFilter.sortBy === "score-desc") list = [...list].sort((a,b) => b.lastScore - a.lastScore);
-    else if (reportFilter.sortBy === "score-asc") list = [...list].sort((a,b) => a.lastScore - b.lastScore);
+    if (reportFilter.sortBy === "score-desc") list = [...list].sort((a, b) => b.lastScore - a.lastScore);
+    else if (reportFilter.sortBy === "score-asc") list = [...list].sort((a, b) => a.lastScore - b.lastScore);
     return list;
   }, [pointsmen, reportFilter]);
 
   /* ─── Navigation ─── */
-  const switchTab = (tab) => { 
-    setActiveTab(tab); 
-    setPageMode("default"); 
-    setStatusMsg(""); 
+  const switchTab = (tab) => {
+    setActiveTab(tab);
+    setPageMode("default");
+    setStatusMsg("");
     setSelectedReportUserId(null);
     setRepApplied(false);
   };
@@ -640,7 +683,7 @@ export function useStationMasterState(user, onLogout) {
   /* ─── Open assess form ─── */
   const openAssessForm = (draft) => {
     setAssessTarget(draft);
-    
+
     // Load MCQ score if it exists in localStorage
     const mcqDataStr = localStorage.getItem(`pm_mcq_test_${draft.hrmsId}`);
     const mcqData = mcqDataStr ? JSON.parse(mcqDataStr) : null;
@@ -698,14 +741,14 @@ export function useStationMasterState(user, onLogout) {
         }
       });
       if (
-        !allAnswered || 
-        !assessForm.alcoholicStatus || 
-        !assessForm.pmeStatus || 
-        !assessForm.refStatus || 
-        !assessForm.automaticTraining || 
-        !assessForm.counselling || 
-        !assessForm.dateOfAppointment || 
-        !assessForm.workingSince || 
+        !allAnswered ||
+        !assessForm.alcoholicStatus ||
+        !assessForm.pmeStatus ||
+        !assessForm.refStatus ||
+        !assessForm.automaticTraining ||
+        !assessForm.counselling ||
+        !assessForm.dateOfAppointment ||
+        !assessForm.workingSince ||
         !assessForm.remarks.trim()
       ) {
         alert("Please answer all checklist questions and complete all additional details (Alcoholic Status, PME Status, REF Status, Automatic Training, Counselling, Date of Appointment, Working Since, and Remarks) before submitting.");
@@ -713,10 +756,10 @@ export function useStationMasterState(user, onLogout) {
       }
     }
 
-    const today = new Date().toISOString().slice(0,10);
+    const today = new Date().toISOString().slice(0, 10);
     const scoreVal = scoreObj.total;
     let computedCat = getCat(scoreVal);
-    
+
     if (assessForm.alcoholicStatus === "Alcoholic") {
       computedCat = "D";
     }
@@ -772,7 +815,7 @@ export function useStationMasterState(user, onLogout) {
           .select("user_id")
           .eq("hrms_id", pm.hrmsId)
           .single();
-        
+
         if (pmErr || !pmUser) {
           throw new Error(`Failed to resolve Pointsman UUID for HRMS ID ${pm.hrmsId}`);
         }
@@ -788,7 +831,7 @@ export function useStationMasterState(user, onLogout) {
 
         const assessmentType = "Checklist Evaluation"; // Matches what TI filters for pointsmen!
         const assessmentStatus = isDraft ? "Draft" : "Pending";
-        
+
         // Check if there is an existing draft/available assessment to update, or insert new
         const { data: existingAssess } = await supabase
           .from("ASSESSMENT")
@@ -844,6 +887,14 @@ export function useStationMasterState(user, onLogout) {
               obtained_marks: scoreVal,
               percentage: scoreVal,
               category: computedCat,
+              answers: {
+                ...assessForm,
+                sections: YN_SECTIONS.map(s => ({
+                  title: s.title,
+                  marks: (assessForm[s.key] || []).filter(x => x === "Yes").length * s.weight,
+                  outOf: s.outOf || (s.criteria.length * s.weight)
+                }))
+              },
               submitted_at: new Date().toISOString()
             })
             .eq("attempt_id", existingAttempt.attempt_id);
@@ -857,9 +908,17 @@ export function useStationMasterState(user, onLogout) {
               obtained_marks: scoreVal,
               percentage: scoreVal,
               category: computedCat,
+              answers: {
+                ...assessForm,
+                sections: YN_SECTIONS.map(s => ({
+                  title: s.title,
+                  marks: (assessForm[s.key] || []).filter(x => x === "Yes").length * s.weight,
+                  outOf: s.outOf || (s.criteria.length * s.weight)
+                }))
+              },
               submitted_at: new Date().toISOString()
             }]);
-          
+
           if (attemptErr) throw attemptErr;
         }
 
@@ -891,10 +950,10 @@ export function useStationMasterState(user, onLogout) {
   const sendBatchAssessmentAccess = async (hrmsIds) => {
     if (!hrmsIds || hrmsIds.length === 0) return;
     setStatusMsg("Sending assessment access...");
-    
+
     try {
       const today = new Date().toISOString().slice(0, 10);
-      
+
       // Resolve Station Master UUID
       let smUserUuid = user?.userId;
       if (isSupabaseConfigured && (!smUserUuid || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(smUserUuid))) {
@@ -970,13 +1029,13 @@ export function useStationMasterState(user, onLogout) {
 
       // Dispatch storage event to sync browser tabs
       window.dispatchEvent(new Event("storage"));
-      
+
       // Clear selection
       setSelectedHrmsIds([]);
-      
+
       // Refresh DB data
       await fetchLiveDatabaseData();
-      
+
       setStatusMsg(`Successfully activated assessment access for ${hrmsIds.length} employee(s).`);
     } catch (err) {
       console.error("Error in batch activation:", err);
@@ -992,7 +1051,7 @@ export function useStationMasterState(user, onLogout) {
       if (!pm) throw new Error("Employee not found.");
 
       const today = new Date().toISOString().slice(0, 10);
-      
+
       // Resolve SM UUID
       let smUserUuid = user?.userId;
       if (isSupabaseConfigured && (!smUserUuid || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(smUserUuid))) {
@@ -1095,9 +1154,9 @@ export function useStationMasterState(user, onLogout) {
         .select('user_id')
         .eq('hrms_id', employeeHrmsId)
         .single();
-      
+
       if (uErr || !uData?.user_id) throw new Error("Employee not found in database.");
-      
+
       const userId = uData.user_id;
       const res = await monitoringService.logPmeRecord(userId, pmeData);
       if (res && res.success) {
@@ -1181,7 +1240,7 @@ export function useStationMasterState(user, onLogout) {
         .select('user_id')
         .eq('hrms_id', employeeHrmsId)
         .single();
-      
+
       if (uErr || !uData?.user_id) throw new Error("Employee not found in database.");
 
       const res = await assessmentService.updateMonitoringRecord(uData.user_id, {

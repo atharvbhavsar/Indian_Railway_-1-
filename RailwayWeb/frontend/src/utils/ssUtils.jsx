@@ -1,7 +1,18 @@
 export const getCat = s => s >= 80 ? "A" : s >= 50 ? "B" : s >= 26 ? "C" : "D";
 
 export const getUserRisk = (u) => {
-  return u.pmeStatus === "Overdue" || u.refStatus === "Expired" || u.score < 50 ? "High" : u.score >= 80 ? "Low" : "Medium";
+  const category = u.cat || u.category;
+  if (category === "Untested") return "Untested";
+  if (category === "A") return "Low";
+  if (category === "B") return "Low";
+  if (category === "C") return "Medium";
+  if (category === "D") return "High";
+  
+  const score = u.score !== undefined && u.score !== null ? u.score : 0;
+  if (score >= 80) return "Low";
+  if (score >= 50) return "Low";
+  if (score >= 26) return "Medium";
+  return "High";
 };
 
 export function getCategory(score) {

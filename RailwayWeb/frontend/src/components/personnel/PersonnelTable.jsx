@@ -8,16 +8,33 @@ import { getCat, getUserRisk } from "../../utils/trafficInspectorUtils";
 
 // Badge Renderers
 const renderCatBadge = (grade) => {
+  if (grade === "Untested") {
+    return (
+      <span
+        style={{
+          background: "#f3f4f6",
+          color: "#4b5563",
+          padding: "3px 10px",
+          borderRadius: "999px",
+          fontWeight: "800",
+          fontSize: "11px",
+          display: "inline-block"
+        }}
+      >
+        Untested
+      </span>
+    );
+  }
   const catBg = grade === "A" ? "#eff6ff" : grade === "B" ? "#f5f3ff" : grade === "C" ? "#fffbeb" : "#fdf2f8";
   const catColor = grade === "A" ? "#1e40af" : grade === "B" ? "#5b21b6" : grade === "C" ? "#92400e" : "#9d174d";
   return (
-    <span 
-      style={{ 
-        background: catBg, 
-        color: catColor, 
-        padding: "3px 10px", 
-        borderRadius: "999px", 
-        fontWeight: "800", 
+    <span
+      style={{
+        background: catBg,
+        color: catColor,
+        padding: "3px 10px",
+        borderRadius: "999px",
+        fontWeight: "800",
         fontSize: "11px",
         display: "inline-block"
       }}
@@ -28,16 +45,33 @@ const renderCatBadge = (grade) => {
 };
 
 const renderRiskBadge = (risk) => {
+  if (risk === "Untested") {
+    return (
+      <span
+        style={{
+          background: "#f3f4f6",
+          color: "#4b5563",
+          padding: "3px 10px",
+          borderRadius: "999px",
+          fontWeight: "850",
+          fontSize: "11px",
+          display: "inline-block"
+        }}
+      >
+        Untested
+      </span>
+    );
+  }
   const riskColor = risk === "High" ? "#ef4444" : risk === "Medium" ? "#ea580c" : "#16a34a";
   const riskBg = risk === "High" ? "#fef2f2" : risk === "Medium" ? "#fff7ed" : "#dcfce7";
   return (
-    <span 
-      style={{ 
-        background: riskBg, 
-        color: riskColor, 
-        padding: "3px 10px", 
-        borderRadius: "999px", 
-        fontWeight: "850", 
+    <span
+      style={{
+        background: riskBg,
+        color: riskColor,
+        padding: "3px 10px",
+        borderRadius: "999px",
+        fontWeight: "850",
         fontSize: "11px",
         display: "inline-block"
       }}
@@ -51,13 +85,13 @@ const renderStatusBadge = (status) => {
   const statusBg = status === "Approved" ? "#dcfce7" : status === "Pending" ? "#fff7ed" : "#fee2e2";
   const statusColor = status === "Approved" ? "#15803d" : status === "Pending" ? "#c2410c" : "#b91c1c";
   return (
-    <span 
-      style={{ 
-        background: statusBg, 
-        color: statusColor, 
-        padding: "3px 10px", 
-        borderRadius: "999px", 
-        fontWeight: "800", 
+    <span
+      style={{
+        background: statusBg,
+        color: statusColor,
+        padding: "3px 10px",
+        borderRadius: "999px",
+        fontWeight: "800",
         fontSize: "11px",
         display: "inline-block"
       }}
@@ -85,34 +119,47 @@ export default function PersonnelTable({
   const filtered = users.filter(s => {
     const isRoleMatch = s.role === roleKey;
     if (!isRoleMatch) return false;
-    
-    const userTi = stationTiMap[s.station] || "TI NGP";
-    const userCat = s.cat || getCat(s.score);
-    const isHighRisk = s.pmeStatus === "Overdue" || s.refStatus === "Expired" || s.score < 50;
-    const userRisk = isHighRisk ? "High" : s.score >= 80 ? "Low" : "Medium";
-    
+
+    const userTi = s.ti && s.ti !== "—" ? s.ti : "Not Assigned";
+    const userCat = s.cat || s.category || getCat(s.score);
+    const isUntested = userCat === "Untested";
+    const isHighRisk = !isUntested && (s.pmeStatus === "Overdue" || s.refStatus === "Expired" || s.score < 50);
+    const userRisk = isUntested ? "Untested" : isHighRisk ? "High" : s.score >= 80 ? "Low" : "Medium";
+
     return (
       (roleF.station === "All" || s.station === roleF.station) &&
-      (roleF.ti      === "All" || userTi    === roleF.ti)      &&
-      (roleF.cat     === "All" || userCat   === roleF.cat)     &&
-      (roleF.risk    === "All" || userRisk  === roleF.risk)    &&
-      (!roleF.name   || s.name.toLowerCase().includes(roleF.name.toLowerCase()) ||
-                        s.id.toLowerCase().includes(roleF.name.toLowerCase()))
+      (roleF.ti === "All" || userTi === roleF.ti) &&
+      (roleF.cat === "All" || userCat === roleF.cat) &&
+      (roleF.risk === "All" || userRisk === roleF.risk) &&
+      (!roleF.name || s.name.toLowerCase().includes(roleF.name.toLowerCase()) ||
+        s.id.toLowerCase().includes(roleF.name.toLowerCase()))
     );
   });
 
   const STATION_OPTS = ["All", ...stations.map(s => s.name)];
-  const TI_OPTS      = ["All", "TI PAR", "TI AMLA", "TI NGP"];
+  const TI_OPTS = React.useMemo(() => {
+    const tis = new Set();
+    users.forEach(u => {
+      const isTi = u.role === "Traffic Inspector" || u.role === "ti";
+      if (isTi && u.name) {
+        tis.add(`${u.name} (${u.hrmsId || u.id})`);
+      }
+      if (u.ti && u.ti !== "—" && u.ti !== "Not Assigned") {
+        tis.add(u.ti);
+      }
+    });
+    return ["All", ...Array.from(tis)];
+  }, [users]);
 
   return (
     <div className="ti2-page-body animate-fade-in">
       <div className="sdom-fade">
         {/* Page Header */}
-        <div 
-          style={{ 
-            display: "flex", 
-            justifyContent: "space-between", 
-            alignItems: "center", 
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
             marginBottom: "24px",
             flexWrap: "wrap",
             gap: "16px"
@@ -122,7 +169,7 @@ export default function PersonnelTable({
             <h1 className="sdom-page-title">{title} Management</h1>
             <p className="sdom-page-subtitle">Search, filter and manage all {title.toLowerCase()}s in the division.</p>
           </div>
-          <button className="sdom-btn-primary" onClick={onAdd}>
+          <button className="sdom-btn-primary" onClick={() => onAdd(roleKey)}>
             <Plus size={16} /> Add New {title}
           </button>
         </div>
@@ -131,10 +178,10 @@ export default function PersonnelTable({
         <div className="sdom-filter-bar">
           <div className="sdom-filter-field" style={{ minWidth: "200px" }}>
             <label>Name / ID</label>
-            <input 
-              value={roleF.name} 
-              onChange={e => setRoleF(p => ({ ...p, name: e.target.value }))} 
-              placeholder="Search by name or HRMS ID..." 
+            <input
+              value={roleF.name}
+              onChange={e => setRoleF(p => ({ ...p, name: e.target.value }))}
+              placeholder="Search by name or HRMS ID..."
             />
           </div>
           <div className="sdom-filter-field">
@@ -157,6 +204,7 @@ export default function PersonnelTable({
               <option value="B">Cat. B</option>
               <option value="C">Cat. C</option>
               <option value="D">Cat. D</option>
+              <option value="Untested">Untested</option>
             </select>
           </div>
           <div className="sdom-filter-field">
@@ -166,6 +214,7 @@ export default function PersonnelTable({
               <option value="Low">Low</option>
               <option value="Medium">Medium</option>
               <option value="High">High</option>
+              <option value="Untested">Untested</option>
             </select>
           </div>
         </div>
@@ -175,7 +224,7 @@ export default function PersonnelTable({
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
             <span style={{ fontWeight: 700, color: "#1e293b" }}>{filtered.length} staff found</span>
           </div>
-          
+
           {/* Desktop Table View */}
           <div className="sdom-table-wrap table-desktop">
             <table className="sdom-table">
@@ -201,7 +250,7 @@ export default function PersonnelTable({
                   </tr>
                 ) : (
                   filtered.map(s => {
-                    const grade = s.cat || getCat(s.score);
+                    const grade = s.cat || s.category || getCat(s.score);
                     const computedRisk = getUserRisk(s);
                     const computedStatus = s.pmeStatus === "Unfit" ? "Rejected" : s.refStatus === "Expired" ? "Pending" : "Approved";
                     return (
@@ -209,43 +258,43 @@ export default function PersonnelTable({
                         <td style={{ fontWeight: 700 }}>{s.name}</td>
                         <td style={{ color: "#64748b", fontSize: "0.85rem" }}>{s.id}</td>
                         <td>{s.station}</td>
-                        <td>{stationTiMap[s.station] || "TI NGP"}</td>
+                        <td>{s.ti && s.ti !== "—" ? s.ti : "Not Assigned"}</td>
                         <td>{renderCatBadge(grade)}</td>
                         <td>{renderRiskBadge(computedRisk)}</td>
-                        <td style={{ fontWeight: 700 }}>{s.score}%</td>
+                        <td style={{ fontWeight: 700 }}>{grade === "Untested" ? "Not Given Test" : `${s.score}/100`}</td>
                         <td>{renderStatusBadge(computedStatus)}</td>
                         <td>
                           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", alignItems: "center" }}>
-                            <button 
-                              className="sdom-btn-outline" 
-                              style={{ padding: "5px 10px", fontSize: "0.8rem" }} 
+                            <button
+                              className="sdom-btn-outline"
+                              style={{ padding: "5px 10px", fontSize: "0.8rem" }}
                               onClick={() => onView(s)}
                             >
                               View
                             </button>
-                            <button 
-                              className="sdom-icon-btn" 
-                              title="Edit" 
-                              onClick={() => onEdit(s)} 
+                            <button
+                              className="sdom-icon-btn"
+                              title="Edit"
+                              onClick={() => onEdit(s)}
                               style={{ background: "none", border: "none", cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center" }}
                             >
-                              <Edit size={15} color="#2563eb"/>
+                              <Edit size={15} color="#2563eb" />
                             </button>
-                            <button 
-                              className="sdom-icon-btn" 
-                              title="Transfer Station" 
-                              onClick={() => onTransfer(s)} 
+                            <button
+                              className="sdom-icon-btn"
+                              title="Transfer Station"
+                              onClick={() => onTransfer(s)}
                               style={{ background: "none", border: "none", cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center" }}
                             >
-                              <RefreshCw size={15} color="#d97706"/>
+                              <RefreshCw size={15} color="#d97706" />
                             </button>
-                            <button 
-                              className="sdom-icon-btn" 
-                              title="Remove" 
-                              onClick={() => onDelete(s.id, s.name)} 
+                            <button
+                              className="sdom-icon-btn"
+                              title="Remove"
+                              onClick={() => onDelete(s.id, s.name)}
                               style={{ background: "none", border: "none", cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center" }}
                             >
-                              <Trash2 size={15} color="#dc2626"/>
+                              <Trash2 size={15} color="#dc2626" />
                             </button>
                           </div>
                         </td>
@@ -265,19 +314,19 @@ export default function PersonnelTable({
                 .mobile-cards-container { display: flex !important; flex-direction: column; gap: 16px; }
               }
             `}</style>
-            
+
             {filtered.length === 0 ? (
               <div style={{ textAlign: "center", padding: "32px", color: "#64748b", background: "#f8fafc", borderRadius: "12px", border: "1px solid #e2e8f0" }}>
                 No records found matching current search.
               </div>
             ) : (
               filtered.map(s => {
-                const grade = s.cat || getCat(s.score);
+                const grade = s.cat || s.category || getCat(s.score);
                 const computedRisk = getUserRisk(s);
                 const computedStatus = s.pmeStatus === "Unfit" ? "Rejected" : s.refStatus === "Expired" ? "Pending" : "Approved";
-                
+
                 return (
-                  <div 
+                  <div
                     key={s.id}
                     style={{
                       background: "#f8fafc",
@@ -304,7 +353,7 @@ export default function PersonnelTable({
                       </div>
                       <div>
                         <span style={{ color: "#64748b", fontSize: "11px", display: "block", fontWeight: "600" }}>TI AREA</span>
-                        <strong>{stationTiMap[s.station] || "TI NGP"}</strong>
+                        <strong>{s.ti && s.ti !== "—" ? s.ti : "Not Assigned"}</strong>
                       </div>
                       <div>
                         <span style={{ color: "#64748b", fontSize: "11px", display: "block", fontWeight: "600" }}>RISK LEVEL</span>
@@ -312,7 +361,7 @@ export default function PersonnelTable({
                       </div>
                       <div>
                         <span style={{ color: "#64748b", fontSize: "11px", display: "block", fontWeight: "600" }}>LAST SCORE</span>
-                        <strong style={{ fontSize: "14px", color: "#0f172a" }}>{s.score}%</strong>
+                        <strong style={{ fontSize: "14px", color: "#0f172a" }}>{grade === "Untested" ? "Not Given Test" : `${s.score}/100`}</strong>
                       </div>
                     </div>
 
@@ -321,32 +370,32 @@ export default function PersonnelTable({
                         <span style={{ color: "#64748b", fontSize: "11px", display: "block", fontWeight: "600", marginBottom: "2px" }}>STATUS</span>
                         {renderStatusBadge(computedStatus)}
                       </div>
-                      
+
                       <div style={{ display: "flex", gap: "6px" }}>
-                        <button 
-                          className="sdom-btn-outline" 
-                          style={{ padding: "6px 12px", fontSize: "12px", fontWeight: "700" }} 
+                        <button
+                          className="sdom-btn-outline"
+                          style={{ padding: "6px 12px", fontSize: "12px", fontWeight: "700" }}
                           onClick={() => onView(s)}
                         >
                           View Details
                         </button>
-                        <button 
+                        <button
                           onClick={() => onEdit(s)}
                           style={{ background: "#eff6ff", border: "1px solid #bfdbfe", padding: "6px 10px", borderRadius: "6px", display: "inline-flex", alignItems: "center", cursor: "pointer" }}
                         >
-                          <Edit size={14} color="#2563eb"/>
+                          <Edit size={14} color="#2563eb" />
                         </button>
-                        <button 
+                        <button
                           onClick={() => onTransfer(s)}
                           style={{ background: "#fff7ed", border: "1px solid #fed7aa", padding: "6px 10px", borderRadius: "6px", display: "inline-flex", alignItems: "center", cursor: "pointer" }}
                         >
-                          <RefreshCw size={14} color="#ea580c"/>
+                          <RefreshCw size={14} color="#ea580c" />
                         </button>
-                        <button 
+                        <button
                           onClick={() => onDelete(s.id, s.name)}
                           style={{ background: "#fef2f2", border: "1px solid #fecaca", padding: "6px 10px", borderRadius: "6px", display: "inline-flex", alignItems: "center", cursor: "pointer" }}
                         >
-                          <Trash2 size={14} color="#dc2626"/>
+                          <Trash2 size={14} color="#dc2626" />
                         </button>
                       </div>
                     </div>

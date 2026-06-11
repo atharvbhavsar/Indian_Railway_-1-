@@ -47,12 +47,14 @@ import {
 } from "recharts";
 import "./sdom.css";
 import { dbService, supabase, isSupabaseConfigured } from "./supabaseClient";
+import { saDataService } from "./services/saDataService";
+import { assessmentService } from "./services/assessmentService";
 
 /* â”€â”€â”€ Navigation â”€â”€â”€ */
 const navItems = [
-  { key: "dashboard",    label: "Dashboard",     icon: Gauge },
-  { key: "myAssessment", label: "My Assessment",  icon: FileBarChart2 },
-  { key: "profile",      label: "My Profile",     icon: UserCircle2 }
+  { key: "dashboard", label: "Dashboard", icon: Gauge },
+  { key: "myAssessment", label: "My Assessment", icon: FileBarChart2 },
+  { key: "profile", label: "My Profile", icon: UserCircle2 }
 ];
 
 import {
@@ -82,8 +84,12 @@ import { useEmergencyAlarm } from "./hooks/useEmergencyAlarm";
 /* â”€â”€â”€ Main component â”€â”€â”€ */
 function TrainManagerModule({ user, onLogout }) {
   const { t } = useLanguage();
-  const fullName = user?.name || "Train Manager";
-  const employeeId = user?.hrmsId || "TM_1001";
+  const [liveUser, setLiveUser] = useState(user);
+  const [activeMonitoring, setActiveMonitoring] = useState(null);
+  const [counsellingHistory, setCounsellingHistory] = useState([]);
+
+  const fullName = liveUser?.name || user?.name || "Train Manager";
+  const employeeId = liveUser?.hrmsId || user?.hrmsId || "TM_1001";
 
   const { startAlarmSound, stopAlarmSound } = useEmergencyAlarm();
 
@@ -102,11 +108,29 @@ function TrainManagerModule({ user, onLogout }) {
     }
     return [];
   });
-  
+
   useEffect(() => {
     async function loadHistory() {
       if (employeeId) {
         try {
+          const uData = await saDataService.fetchUsers();
+          const found = uData.find(x => x.id?.toLowerCase() === employeeId.toLowerCase());
+          if (found) {
+            setLiveUser({
+              ...found,
+              mobile: found.contact,
+              hrmsId: found.id
+            });
+          }
+
+          if (isSupabaseConfigured) {
+            const res = await assessmentService.getUserCounsellingAndMonitoring(employeeId);
+            if (res) {
+              setCounsellingHistory(res.counsellingHistory || []);
+              setActiveMonitoring(res.monitoring || null);
+            }
+          }
+
           const data = await dbService.getTestHistory(employeeId);
           if (data && data.length > 0) {
             const mapped = data.map(attempt => {
@@ -114,7 +138,7 @@ function TrainManagerModule({ user, onLogout }) {
               const type = attempt.ASSESSMENT?.assessment_type || "";
               let parsedAnswers = attempt.answers || attempt.ANSWER_HISTORY;
               if (typeof parsedAnswers === "string") {
-                try { parsedAnswers = JSON.parse(parsedAnswers); } catch (e) {}
+                try { parsedAnswers = JSON.parse(parsedAnswers); } catch (e) { }
               }
               if (Array.isArray(parsedAnswers)) {
                 parsedAnswers = [...parsedAnswers].sort((a, b) => {
@@ -132,10 +156,10 @@ function TrainManagerModule({ user, onLogout }) {
               }
 
               const responses = (parsedAnswers && Array.isArray(parsedAnswers)) ? parsedAnswers.map(a => a.selectedOption || a.selected_option) : [];
-              
+
               const ans = parsedAnswers || {};
               const countYes = arr => (arr && Array.isArray(arr)) ? arr.filter(v => v === "Yes").length : 0;
-              
+
               let s1 = 0, s2 = 0, s3 = 0, s4 = 0, s5 = 0, mcqScore = 0;
               if (isOnlineExam && Array.isArray(parsedAnswers)) {
                 parsedAnswers.forEach((item, idx) => {
@@ -177,18 +201,18 @@ function TrainManagerModule({ user, onLogout }) {
               }
 
               const sections = !isOnlineExam ? [
-                { title: "Train Safety & Brake Inspection",   marks: s1, outOf: 15 },
-                { title: "Signaling & Whistle Compliance",    marks: s2, outOf: 15 },
-                { title: "Shunting & Coupling Ops",           marks: s3, outOf: 15 },
-                { title: "Train Log & Guard Certificates",     marks: s4, outOf: 15 },
-                { title: "Emergency Train Protection",        marks: s5, outOf: 15 },
-                { title: "Written Exam (Knowledge)",          marks: mcqScore, outOf: 25 }
+                { title: "Train Safety & Brake Inspection", marks: s1, outOf: 15 },
+                { title: "Signaling & Whistle Compliance", marks: s2, outOf: 15 },
+                { title: "Shunting & Coupling Ops", marks: s3, outOf: 15 },
+                { title: "Train Log & Guard Certificates", marks: s4, outOf: 15 },
+                { title: "Emergency Train Protection", marks: s5, outOf: 15 },
+                { title: "Written Exam (Knowledge)", marks: mcqScore, outOf: 25 }
               ] : [
-                { title: "Signal Rules",          marks: Array.isArray(parsedAnswers) ? s1 : Math.round(totalScoreVal * 0.20), outOf: 5 },
-                { title: "Track Handling",         marks: Array.isArray(parsedAnswers) ? s2 : Math.round(totalScoreVal * 0.20), outOf: 5 },
-                { title: "Communication",          marks: Array.isArray(parsedAnswers) ? s3 : Math.round(totalScoreVal * 0.20), outOf: 5 },
-                { title: "Safety Response",        marks: Array.isArray(parsedAnswers) ? s4 : Math.round(totalScoreVal * 0.20), outOf: 5 },
-                { title: "Operational Judgement",  marks: Array.isArray(parsedAnswers) ? s5 : Math.round(totalScoreVal * 0.20), outOf: 5 }
+                { title: "Signal Rules", marks: Array.isArray(parsedAnswers) ? s1 : Math.round(totalScoreVal * 0.20), outOf: 5 },
+                { title: "Track Handling", marks: Array.isArray(parsedAnswers) ? s2 : Math.round(totalScoreVal * 0.20), outOf: 5 },
+                { title: "Communication", marks: Array.isArray(parsedAnswers) ? s3 : Math.round(totalScoreVal * 0.20), outOf: 5 },
+                { title: "Safety Response", marks: Array.isArray(parsedAnswers) ? s4 : Math.round(totalScoreVal * 0.20), outOf: 5 },
+                { title: "Operational Judgement", marks: Array.isArray(parsedAnswers) ? s5 : Math.round(totalScoreVal * 0.20), outOf: 5 }
               ];
 
               // Use AOM-approved category from DB if approved, else calculate
@@ -395,21 +419,20 @@ function TrainManagerModule({ user, onLogout }) {
     return getCategory(getScaledScore(r));
   };
 
-  // Latest attempt is the most recent (first in array — sorted desc by date)
-  // Prefer the most recent field evaluation (non-online) for dashboard display
-  const latestFieldAttempt = history.find(h => !h.isOnlineExam) || history[0];
-  const latestAttempt = latestFieldAttempt || history[0];
+  // Latest attempt is the most recent approved/completed field or online exam
+  const latestApprovedAttempt = history.find(h => h.approvalStatus === "Approved" || h.approvalStatus === "Completed");
+  const latestAttempt = latestApprovedAttempt || history[0];
 
   // Latest score: show AOM-finalized mark / total
   const latestScore = latestAttempt
     ? (latestAttempt.isOnlineExam
-        ? `${latestAttempt.totalScore}/25`
-        : `${latestAttempt.totalScore}/100`)
+      ? `${latestAttempt.totalScore}/25`
+      : `${latestAttempt.totalScore}/100`)
     : null;
 
   // Latest category: use AOM-approved dbCategory if available
-  const latestCategory = latestAttempt
-    ? getEffectiveCategory(latestAttempt)
+  const latestCategory = latestApprovedAttempt
+    ? getEffectiveCategory(latestApprovedAttempt)
     : "—";
 
   // Average score: only from non-online (field evaluation) records, using final marks
@@ -417,8 +440,8 @@ function TrainManagerModule({ user, onLogout }) {
   const averageScore = fieldHistory.length
     ? Math.round(fieldHistory.reduce((s, r) => s + r.totalScore, 0) / fieldHistory.length)
     : (history.length
-        ? Math.round(history.reduce((s, r) => s + getScaledScore(r), 0) / history.length)
-        : 0);
+      ? Math.round(history.reduce((s, r) => s + getScaledScore(r), 0) / history.length)
+      : 0);
 
   /* ——— Chart data ——— */
   const trendData = useMemo(() =>
@@ -442,7 +465,7 @@ function TrainManagerModule({ user, onLogout }) {
         value: Math.round((count / total) * 100),
         count
       }));
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [history]);
 
 
@@ -500,7 +523,7 @@ function TrainManagerModule({ user, onLogout }) {
     setEmergencyActive(true);
     setAlarmMuted(false);
     startAlarmSound();
-    
+
     logActivity("EMERGENCY", `CRITICAL: Pulse emergency alert triggered! Type: ${emergencyType} at ${emergencyLocation}`);
     triggerNotification("danger", `ðŸš¨ BROADCAST ACTIVE: ${emergencyType} at ${emergencyLocation}. Dispatching rescue!`);
     setStatusText("EMERGENCY BROADCAST TRANSMITTING SYSTEM-WIDE!");
@@ -536,7 +559,7 @@ function TrainManagerModule({ user, onLogout }) {
      RENDER: DASHBOARD
   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
   const renderDashboardPage = () => (
-    <TMDashboard 
+    <TMDashboard
       latestScore={latestScore}
       averageScore={averageScore}
       latestCategory={latestCategory}
@@ -553,16 +576,18 @@ function TrainManagerModule({ user, onLogout }) {
     <TMProfile
       fullName={fullName}
       employeeId={employeeId}
-      user={user}
+      user={liveUser}
       latestCategory={latestCategory}
       latestScore={latestScore}
       history={history}
+      activeMonitoring={activeMonitoring}
+      counsellingHistory={counsellingHistory}
     />
   );
 
-    /* â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• 
-     RENDER: MY ASSESSMENT
-  â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â•  */
+  /* â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• 
+   RENDER: MY ASSESSMENT
+â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â•  */
   const renderMyAssessment = () => (
     <TMMyAssessment
       employeeId={employeeId}
@@ -596,7 +621,7 @@ function TrainManagerModule({ user, onLogout }) {
     <div className={`pm-layout ${emergencyActive ? "emergency-glow-active" : ""}`}>
       <input type="checkbox" id="sdom-sidebar-toggle" className="sdom-sidebar-checkbox" style={{ display: "none" }} />
       <label htmlFor="sdom-sidebar-toggle" className="sdom-sidebar-close-backdrop"></label>
-      
+
       {/* — Flashing Emergency Alert Banner — */}
       {emergencyActive && (
         <div className="pm-emergency-siren-banner">
@@ -629,7 +654,7 @@ function TrainManagerModule({ user, onLogout }) {
         </div>
 
         <div className="pm-user-strip" style={{ gap: "12px", alignItems: "center" }}>
-          
+
           {/* ── Real-Time Notifications Bell Dropdown ── */}
           <div className="pm-notification-bell-container">
             <button className="pm-bell-btn" onClick={() => setBellDropdownOpen(!bellDropdownOpen)}>
@@ -701,7 +726,7 @@ function TrainManagerModule({ user, onLogout }) {
               <h2 className="pm-main-title">
                 {screenMode === "scorecard" ? "Detailed Evaluation scorecard"
                   : screenMode === "attempt" ? "Competency Examination Attempt"
-                  : navItems.find(i => i.key === activeNav)?.label || "Workspace"}
+                    : navItems.find(i => i.key === activeNav)?.label || "Workspace"}
               </h2>
             </div>
             <div className="pm-header-kpis">
@@ -713,7 +738,7 @@ function TrainManagerModule({ user, onLogout }) {
                 <Gauge size={14} />
                 <span>Avg {averageScore}</span>
               </div>
-              {latestCategory !== "Untested" && (
+              {latestCategory !== "Untested" && latestCategory !== "—" && (
                 <div className="pm-hkpi" style={{ color: getCategoryColor(latestCategory) }}>
                   <ShieldCheck size={14} />
                   <span>Cat. {latestCategory}</span>
@@ -753,13 +778,13 @@ function TrainManagerModule({ user, onLogout }) {
                   <option value="Hot Axle Fire Spark">Hot Axle / Spark Smoke in Incoming train</option>
                   <option value="Other Danger">Other Major Track Danger</option>
                 </select>
-                
+
                 <label>Vulnerable Location / Track</label>
-                <input 
-                  type="text" 
-                  value={emergencyLocation} 
-                  onChange={e => setEmergencyLocation(e.target.value)} 
-                  placeholder="e.g. Line 2 Loop Siding, KM 102/4" 
+                <input
+                  type="text"
+                  value={emergencyLocation}
+                  onChange={e => setEmergencyLocation(e.target.value)}
+                  placeholder="e.g. Line 2 Loop Siding, KM 102/4"
                 />
               </div>
             </div>

@@ -71,6 +71,9 @@ import { smProfile, initialPointsmen, pmAssessmentHistory, initialDrafts, YN_SEC
 import { useLanguage } from "./contexts/LanguageContext";
 import { LanguageSelector } from "./components/LanguageSelector";
 
+const CAT_BG = { A: "#dcfce7", B: "#dbeafe", C: "#fef3c7", D: "#fee2e2", Untested: "#f1f5f9" };
+const CAT_COLOR = { A: "#15803d", B: "#1d4ed8", C: "#b45309", D: "#b91c1c", Untested: "#64748b" };
+
 function StationMasterModule({ user, onLogout }) {
   const { t } = useLanguage();
   const state = useStationMasterState(user, onLogout);
@@ -270,7 +273,7 @@ function StationMasterModule({ user, onLogout }) {
     <StationMasterPointsmanDetail
       smName={smName}
       smId={smId}
-      smProfile={stationSms.find(s => s.hrmsId === smId) || user}
+      smProfile={stationSms.find(s => s.hrmsId === smId) || { ...smProfile, ...user }}
       history={history}
     />
   );
@@ -413,6 +416,7 @@ function StationMasterModule({ user, onLogout }) {
       setRepF={setRepF}
       pointsmen={pointsmen}
       smProfile={user}
+      allDbAssessments={allDbAssessments}
     />
   );
 
@@ -1046,12 +1050,12 @@ function StationMasterModule({ user, onLogout }) {
             
             <div style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: "12px" }}>
               {[
-                { label: "Total Category D Staff", val: pointsmen.filter(p => getCat(p.lastScore) === 'D').length, bg: "#ffffff", border: "1px solid #fee2e2", color: "#dc2626" },
+                { label: "Total Category D Staff", val: pointsmen.filter(p => p.cat === 'D').length, bg: "#ffffff", border: "1px solid #fee2e2", color: "#dc2626" },
                 { label: "Pending Counselling", val: counsellingQueue.filter(c => c.status === 'Pending').length, bg: "#ffffff", border: "1px solid #fee2e2", color: "#d97706" },
                 { label: "Scheduled Counselling", val: counsellingQueue.filter(c => c.status === 'Scheduled').length, bg: "#ffffff", border: "1px solid #fee2e2", color: "#2563eb" },
                 { label: "Completed Counselling", val: counsellingQueue.filter(c => c.status === 'Completed').length, bg: "#ffffff", border: "1px solid #fee2e2", color: "#16a34a" },
                 { label: "Absent Staff Records", val: counsellingQueue.filter(c => c.status === 'Absent').length, bg: "#ffffff", border: "1px solid #fee2e2", color: "#9333ea" },
-                { label: "Active Monitoring Cases", val: pointsmen.filter(p => p.monitoringStatus === "High Risk" || p.risk === "High" || getCat(p.lastScore) === 'D').length, bg: "#ffffff", border: "1px solid #fee2e2", color: "#7f1d1d" }
+                { label: "Active Monitoring Cases", val: pointsmen.filter(p => p.monitoringStatus === "High Risk" || riskLevel(p) === "High" || p.cat === 'D').length, bg: "#ffffff", border: "1px solid #fee2e2", color: "#7f1d1d" }
               ].map((card, i) => (
                 <div key={i} style={{ background: card.bg, border: card.border, padding: "14px", borderRadius: "10px", textAlign: "center" }}>
                   <div style={{ fontSize: "20px", fontWeight: "800", color: card.color }}>{card.val}</div>
@@ -1585,10 +1589,10 @@ function StationMasterModule({ user, onLogout }) {
               {/* KPI Summary Row */}
               <div className="sm2-fs-kpi-row">
                 {[
-                  { label: "Avg Score", value: filteredFsPointsmen.length ? Math.round(filteredFsPointsmen.reduce((s,p)=>s+p.lastScore,0)/filteredFsPointsmen.length) + "%" : "—", color: "#60a5fa", glowColor: "rgba(96,165,250,0.15)" },
-                  { label: "Avg Safety", value: filteredFsPointsmen.length ? Math.round(filteredFsPointsmen.reduce((s,p)=>s+p.safetyScore,0)/filteredFsPointsmen.length) + "%" : "—", color: "#a78bfa", glowColor: "rgba(167,139,250,0.15)" },
+                  { label: "Avg Score", value: filteredFsPointsmen.length ? Math.round(filteredFsPointsmen.reduce((s,p)=>s+p.lastScore,0)/filteredFsPointsmen.length) + "/100" : "—", color: "#60a5fa", glowColor: "rgba(96,165,250,0.15)" },
+                  { label: "Avg Safety", value: filteredFsPointsmen.length ? Math.round(filteredFsPointsmen.reduce((s,p)=>s+p.safetyScore,0)/filteredFsPointsmen.length) + "/100" : "—", color: "#a78bfa", glowColor: "rgba(167,139,250,0.15)" },
                   { label: "High Risk", value: filteredFsPointsmen.filter(p=>riskLevel(p)==="High").length, color: "#f87171", glowColor: "rgba(248,113,113,0.15)" },
-                  { label: "Cat A Staff", value: filteredFsPointsmen.filter(p=>getCat(p.lastScore)==="A").length, color: "#34d399", glowColor: "rgba(52,211,153,0.15)" },
+                  { label: "Cat A Staff", value: filteredFsPointsmen.filter(p=>p.cat==="A").length, color: "#34d399", glowColor: "rgba(52,211,153,0.15)" },
                   { label: "Fit (PME)", value: filteredFsPointsmen.filter(p=>p.pmeStatus==="Fit").length, color: "#fbbf24", glowColor: "rgba(251,191,36,0.15)" },
                 ].map(k => (
                   <div key={k.label} className="sm2-fs-kpi-card" style={{ "--glow": k.glowColor }}>
@@ -1632,7 +1636,7 @@ function StationMasterModule({ user, onLogout }) {
                         <Pie
                           data={(() => {
                             const counts = {A:0,B:0,C:0,D:0};
-                            filteredFsPointsmen.forEach(p => { counts[getCat(p.lastScore)]++; });
+                            filteredFsPointsmen.forEach(p => { counts[p.cat || "Untested"]++; });
                             return Object.entries(counts).filter(([,c])=>c>0).map(([cat,count])=>({name:`${t("Cat.")} ${cat}`,value:count}));
                           })()}
                           cx="50%" cy="50%" innerRadius={90} outerRadius={140}
@@ -1658,9 +1662,9 @@ function StationMasterModule({ user, onLogout }) {
                     .sort((a,b)=>a.lastScore-b.lastScore)
                     .slice(0,6)
                     .map(p => {
-                      const cat  = getCat(p.lastScore);
+                      const cat  = p.cat;
                       const risk = riskLevel(p);
-                      const rColor = risk==="High"?"#f87171":risk==="Medium"?"#fbbf24":"#34d399";
+                      const rColor = risk==="High"?"#f87171":risk==="Medium"?"#fbbf24":risk==="Untested"?"#94a3b8":"#34d399";
                       return (
                         <div key={p.id} className="sm2-fs-card" style={{ "--border-color": rColor }} onClick={() => {
                           setFullscreenChart(null);
@@ -1695,7 +1699,7 @@ function StationMasterModule({ user, onLogout }) {
                           <div className="sm2-fs-card-progress-item" style={{ marginTop: 10 }}>
                             <div className="sm2-fs-card-progress-lbl">
                               <span>{t("Safety Score")}</span>
-                              <span style={{color:p.safetyScore<60?"#f87171":"#a78bfa"}}>{p.safetyScore}%</span>
+                              <span style={{color:p.safetyScore<60?"#f87171":"#a78bfa"}}>{p.safetyScore}/100</span>
                             </div>
                             <div className="sm2-fs-card-progress-track">
                               <div className="sm2-fs-card-progress-bar" style={{ width: `${p.safetyScore}%`, background: p.safetyScore<60?"#f87171":"#a78bfa" }}/>

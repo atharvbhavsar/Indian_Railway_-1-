@@ -4,7 +4,7 @@ import { ROLE_OPTS, TI_OPTS, ROLE_MAP } from "../../../utils/saConstants";
 import { catBadge, riskBadge, statusBadge } from "../../../utils/saUtils";
 
 export function SAReportsAnalytics({ staff, STATION_OPTS }) {
-  const [repF, setRepF] = useState({ role:"All", station:"All", cat:"All", risk:"All", ti:"All" });
+  const [repF, setRepF] = useState({ role: "All", station: "All", cat: "All", risk: "All", ti: "All" });
   const [repApplied, setRepApplied] = useState(true);
   const [selectedReportUserId, setSelectedReportUserId] = useState(null);
 
@@ -12,11 +12,11 @@ export function SAReportsAnalytics({ staff, STATION_OPTS }) {
     if (!repApplied) return null;
     return staff.filter(s => {
       const roleLabel = ROLE_MAP[s.role] || s.role;
-      return (repF.role    === "All" || roleLabel === repF.role)      &&
-             (repF.station === "All" || s.station === repF.station)   &&
-             (repF.cat     === "All" || s.cat     === repF.cat)       &&
-             (repF.risk    === "All" || s.risk    === repF.risk)      &&
-             (repF.ti      === "All" || s.ti      === repF.ti);
+      return (repF.role === "All" || roleLabel === repF.role) &&
+        (repF.station === "All" || s.station === repF.station) &&
+        (repF.cat === "All" || s.cat === repF.cat) &&
+        (repF.risk === "All" || s.risk === repF.risk) &&
+        (repF.ti === "All" || s.ti === repF.ti);
     });
   }, [repApplied, repF, staff]);
 
@@ -26,11 +26,11 @@ export function SAReportsAnalytics({ staff, STATION_OPTS }) {
 
     const getCat = s => s >= 80 ? "A" : s >= 50 ? "B" : s >= 26 ? "C" : "D";
     const cat = u.cat || getCat(u.score);
-    
-    const CAT_C  = { A: "#16a34a", B: "#2563eb", C: "#d97706", D: "#dc2626" };
-    const CAT_B  = { A: "#dcfce7", B: "#dbeafe", C: "#fef3c7", D: "#fee2e2" };
+
+    const CAT_C = { A: "#16a34a", B: "#2563eb", C: "#d97706", D: "#dc2626" };
+    const CAT_B = { A: "#dcfce7", B: "#dbeafe", C: "#fef3c7", D: "#fee2e2" };
     const RISK_C = { High: "#dc2626", Medium: "#d97706", Low: "#16a34a" };
-    
+
     const isHighRisk = u.risk === "High" || u.score < 50;
     const risk = isHighRisk ? "High" : u.score >= 80 ? "Low" : "Medium";
     const pmeVal = u.risk === "High" ? "PENDING" : "FIT";
@@ -102,14 +102,14 @@ export function SAReportsAnalytics({ staff, STATION_OPTS }) {
 
             {/* Action button */}
             <button className="ti2-primary-btn" onClick={() => alert("Exporting Dossier PDF...")} style={{ width: "100%", height: "42px", justifyContent: "center", background: "linear-gradient(135deg, #1e293b 0%, #0f172a 100%)", borderRadius: "8px", fontWeight: "700", cursor: "pointer", border: "none", color: "#ffffff", display: "flex", alignItems: "center", gap: "6px" }}>
-              <FileText size={16}/> Export Assessment Dossier (PDF)
+              <FileText size={16} /> Export Assessment Dossier (PDF)
             </button>
           </div>
 
           {/* Right side Performance Breakdown */}
           <div style={{ background: "#ffffff", border: "1px solid #cbd5e1", borderRadius: "14px", padding: "18px" }}>
             <h3 style={{ margin: "0 0 16px 0", fontSize: "13px", fontWeight: "800", color: "#0f172a", textTransform: "uppercase", letterSpacing: "0.5px", borderBottom: "1.5px solid #e2edf8", paddingBottom: "8px" }}>Sectional Competency Breakdown</h3>
-            
+
             {u.role === "pointsmen" ? (
               /* Pointsman sections competency progress bars */
               <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
@@ -131,7 +131,7 @@ export function SAReportsAnalytics({ staff, STATION_OPTS }) {
                           <strong>{s.score} / {s.max} ({pct}%)</strong>
                         </div>
                         <div style={{ height: "8px", background: "#f1f5f9", borderRadius: "999px", overflow: "hidden" }}>
-                          <div style={{ height: "100%", width: `${pct}%`, background: pct >= 80 ? "#16a34a" : pct >= 50 ? "#2563eb" : "#dc2626", borderRadius: "999px" }}/>
+                          <div style={{ height: "100%", width: `${pct}%`, background: pct >= 80 ? "#16a34a" : pct >= 50 ? "#2563eb" : "#dc2626", borderRadius: "999px" }} />
                         </div>
                       </div>
                     );
@@ -160,7 +160,7 @@ export function SAReportsAnalytics({ staff, STATION_OPTS }) {
                           <strong>{s.score} / {s.max} ({pct}%)</strong>
                         </div>
                         <div style={{ height: "8px", background: "#f1f5f9", borderRadius: "999px", overflow: "hidden" }}>
-                          <div style={{ height: "100%", width: `${pct}%`, background: pct >= 80 ? "#16a34a" : pct >= 50 ? "#2563eb" : "#dc2626", borderRadius: "999px" }}/>
+                          <div style={{ height: "100%", width: `${pct}%`, background: pct >= 80 ? "#16a34a" : pct >= 50 ? "#2563eb" : "#dc2626", borderRadius: "999px" }} />
                         </div>
                       </div>
                     );
@@ -181,11 +181,11 @@ export function SAReportsAnalytics({ staff, STATION_OPTS }) {
   const totalReportsVal = staff.length;
 
   const divSummary = [
-    { label:"Average Division Score",  val:avgScoreVal    },
-    { label:"Safety Compliance %",     val:`${safetyComplianceVal}%` },
-    { label:"High-Risk Staff",         val:highRiskStaffVal    },
-    { label:"Pending Approvals",       val:pendingApprovalsVal   },
-    { label:"Total Reports Generated", val:totalReportsVal  },
+    { label: "Average Division Score", val: avgScoreVal },
+    { label: "Safety Compliance %", val: `${safetyComplianceVal}%` },
+    { label: "High-Risk Staff", val: highRiskStaffVal },
+    { label: "Pending Approvals", val: pendingApprovalsVal },
+    { label: "Total Reports Generated", val: totalReportsVal },
   ];
 
   return (
@@ -194,8 +194,8 @@ export function SAReportsAnalytics({ staff, STATION_OPTS }) {
       <p className="sdom-page-subtitle">Division-level reporting hub. Use filters below to generate specific staff reports.</p>
 
       {/* Summary */}
-      <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:16,marginBottom:24}}>
-        {divSummary.map(c=>(
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(5,1fr)", gap: 16, marginBottom: 24 }}>
+        {divSummary.map(c => (
           <div key={c.label} className="sdom-stat-card">
             <div className="sdom-stat-value">{c.val}</div>
             <div className="sdom-stat-label">{c.label}</div>
@@ -207,56 +207,56 @@ export function SAReportsAnalytics({ staff, STATION_OPTS }) {
       <div className="sdom-filter-bar">
         <div className="sdom-filter-field">
           <label>Role</label>
-          <select value={repF.role} onChange={e=>{setRepF(p=>({...p,role:e.target.value}));setRepApplied(false);}}>
-            {ROLE_OPTS.map(o=><option key={o}>{o}</option>)}
+          <select value={repF.role} onChange={e => { setRepF(p => ({ ...p, role: e.target.value })); setRepApplied(false); }}>
+            {ROLE_OPTS.map(o => <option key={o}>{o}</option>)}
           </select>
         </div>
         <div className="sdom-filter-field">
           <label>TI Area</label>
-          <select value={repF.ti} onChange={e=>{setRepF(p=>({...p,ti:e.target.value}));setRepApplied(false);}}>
-            {TI_OPTS.map(o=><option key={o}>{o}</option>)}
+          <select value={repF.ti} onChange={e => { setRepF(p => ({ ...p, ti: e.target.value })); setRepApplied(false); }}>
+            {TI_OPTS.map(o => <option key={o}>{o}</option>)}
           </select>
         </div>
         <div className="sdom-filter-field">
           <label>Station</label>
-          <select value={repF.station} onChange={e=>{setRepF(p=>({...p,station:e.target.value}));setRepApplied(false);}}>
-            {STATION_OPTS.map(o=><option key={o}>{o}</option>)}
+          <select value={repF.station} onChange={e => { setRepF(p => ({ ...p, station: e.target.value })); setRepApplied(false); }}>
+            {STATION_OPTS.map(o => <option key={o}>{o}</option>)}
           </select>
         </div>
         <div className="sdom-filter-field">
           <label>Category</label>
-          <select value={repF.cat} onChange={e=>{setRepF(p=>({...p,cat:e.target.value}));setRepApplied(false);}}>
+          <select value={repF.cat} onChange={e => { setRepF(p => ({ ...p, cat: e.target.value })); setRepApplied(false); }}>
             <option>All</option><option>A</option><option>B</option><option>C</option><option>D</option>
           </select>
         </div>
         <div className="sdom-filter-field">
           <label>Risk Level</label>
-          <select value={repF.risk} onChange={e=>{setRepF(p=>({...p,risk:e.target.value}));setRepApplied(false);}}>
+          <select value={repF.risk} onChange={e => { setRepF(p => ({ ...p, risk: e.target.value })); setRepApplied(false); }}>
             <option>All</option><option>Low</option><option>Medium</option><option>High</option>
           </select>
         </div>
-        <div style={{display:"flex",alignItems:"flex-end"}}>
-          <button className="sdom-btn-primary" onClick={()=>setRepApplied(true)}>
-            <FileBarChart2 size={16}/> Generate Report
+        <div style={{ display: "flex", alignItems: "flex-end" }}>
+          <button className="sdom-btn-primary" onClick={() => setRepApplied(true)}>
+            <FileBarChart2 size={16} /> Generate Report
           </button>
         </div>
       </div>
 
       {repApplied && repFiltered && (
         <div className="sdom-chart-card">
-          <div style={{marginBottom:14,fontWeight:700,color:"#1e293b"}}>{repFiltered.length} staff in report</div>
+          <div style={{ marginBottom: 14, fontWeight: 700, color: "#1e293b" }}>{repFiltered.length} staff in report</div>
           <div className="sdom-table-wrap">
             <table className="sdom-table">
               <thead><tr><th>Name</th><th>Role</th><th>Station</th><th>TI Area</th><th>Score</th><th>Category</th><th>Risk</th><th>Status</th></tr></thead>
               <tbody>
-                {repFiltered.length === 0 && <tr><td colSpan={8} style={{textAlign:"center",color:"#94a3b8",padding:32}}>No staff match the selected filters</td></tr>}
-                {repFiltered.map(s=>(
+                {repFiltered.length === 0 && <tr><td colSpan={8} style={{ textAlign: "center", color: "#94a3b8", padding: 32 }}>No staff match the selected filters</td></tr>}
+                {repFiltered.map(s => (
                   <tr key={s.id} style={{ cursor: "pointer" }} onClick={() => setSelectedReportUserId(s.id)}>
-                    <td style={{fontWeight:700, color: "#2563eb"}}>{s.name}</td>
-                    <td>{ROLE_MAP[s.role]||s.role}</td>
+                    <td style={{ fontWeight: 700, color: "#2563eb" }}>{s.name}</td>
+                    <td>{ROLE_MAP[s.role] || s.role}</td>
                     <td>{s.station}</td>
                     <td>{s.ti}</td>
-                    <td style={{fontWeight:700}}>{s.score}</td>
+                    <td style={{ fontWeight: 700 }}>{s.score}</td>
                     <td>{catBadge(s.cat)}</td>
                     <td>{riskBadge(s.risk)}</td>
                     <td>{statusBadge(s.status)}</td>
@@ -270,7 +270,7 @@ export function SAReportsAnalytics({ staff, STATION_OPTS }) {
 
       {!repApplied && (
         <div className="sdom-empty">
-          <FileBarChart2 size={32} style={{marginBottom:12}}/>
+          <FileBarChart2 size={32} style={{ marginBottom: 12 }} />
           <div className="sdom-empty-title">Select filters and click "Generate Report"</div>
           <div className="sdom-empty-sub">Apply one or more filters above to generate a custom staff performance report.</div>
         </div>

@@ -625,8 +625,9 @@ export default function UserManagement(props) {
 
                 <div className="ti-profile-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '15px', padding: '15px 0' }}>
                   <div><strong>Designation:</strong> <span style={{ color: '#1d4ed8', fontWeight: '700' }}>{selectedUserProfile.designation}</span></div>
-                  <div><strong>Mobile No:</strong> {selectedUserProfile.mobileNo}</div>
-                  <div><strong>Email ID:</strong> {selectedUserProfile.emailId || "N/A"}</div>
+                  <div><strong>Mobile No:</strong> {selectedUserProfile.mobileNo || selectedUserProfile.contact || "N/A"}</div>
+                  <div><strong>Email ID:</strong> {selectedUserProfile.emailId || selectedUserProfile.email || "N/A"}</div>
+                  <div><strong>PF Number:</strong> {selectedUserProfile.pfNumber || "N/A"}</div>
                   <div><strong>Account Status:</strong> <span style={{ color: selectedUserProfile.status === "Inactive" ? '#ef4444' : '#10b981', fontWeight: '700' }}>{selectedUserProfile.status || "Active"}</span></div>
                   
                   <div><strong>Current Zone:</strong> {selectedUserProfile.zone || "N/A"}</div>

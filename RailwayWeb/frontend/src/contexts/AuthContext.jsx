@@ -47,8 +47,16 @@ export function AuthProvider({ children }) {
     }
   };
 
+  const updateCurrentUser = (updates) => {
+    if (currentUser) {
+      const updated = { ...currentUser, ...updates };
+      setCurrentUser(updated);
+      sessionStorage.setItem("rses_session", JSON.stringify(updated));
+    }
+  };
+
   return (
-    <AuthContext.Provider value={{ currentUser, isLoggedIn, login, logout, isLoading, updateUserLanguage }}>
+    <AuthContext.Provider value={{ currentUser, isLoggedIn, login, logout, isLoading, updateUserLanguage, updateCurrentUser }}>
       {children}
     </AuthContext.Provider>
   );

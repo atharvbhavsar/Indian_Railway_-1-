@@ -1,5 +1,5 @@
 import React from 'react';
-import { 
+import {
   UserCircle2, ShieldCheck, FileText, Activity, AlertTriangle, PlayCircle, BarChart2, Plus, Calendar
 } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
@@ -16,9 +16,11 @@ export function StationMasterPointsmanDetail(props) {
     history = []
   } = props;
 
+
+
   // Render score trend if user has a score, otherwise empty
   let personalScoreData = (history || [])
-    .filter(h => h.approvalStatus === "Approved" || h.approvalStatus === "Completed")
+    .filter(h => ["Approved", "Completed", "Submitted", "Pending"].includes(h.approvalStatus))
     .map(h => ({
       month: h.date,
       score: h.totalScore
@@ -29,8 +31,21 @@ export function StationMasterPointsmanDetail(props) {
     personalScoreData = [{ month: "Score", score: smProfile.score }];
   }
 
-  const category = smProfile.cat || smProfile.category || "Untested";
-  const risk = smProfile.risk || smProfile.riskLevel || "Untested";
+  const latestApproved = (history || []).find(h => ["Approved", "Completed", "Submitted", "Pending"].includes(h.approvalStatus));
+  let score = smProfile.score || latestApproved?.totalScore || 0;
+  const computedCategory = latestApproved?.category || (score ? getCat(score) : null);
+  const category = smProfile.cat && smProfile.cat !== "Untested" ? smProfile.cat : (smProfile.category && smProfile.category !== "Untested" ? smProfile.category : (computedCategory || "Untested"));
+
+  // If score is 0/falsy but we have a valid category, fall back to a reasonable score matching the category
+  if (!score && category !== "Untested") {
+    if (category === "A") score = 85;
+    else if (category === "B") score = 70;
+    else if (category === "C") score = 55;
+    else if (category === "D") score = 40;
+  }
+
+  const computedRisk = riskLevel({ ...smProfile, cat: category, score: score });
+  const risk = smProfile.risk && smProfile.risk !== "Untested" ? smProfile.risk : (smProfile.riskLevel && smProfile.riskLevel !== "Untested" ? smProfile.riskLevel : (computedRisk || "Untested"));
 
   return (
     <div className="sdom-fade">
@@ -49,23 +64,31 @@ export function StationMasterPointsmanDetail(props) {
             {category === "Untested" && (
               <span className="sdom-badge sdom-badge-warning">{t("Untested")}</span>
             )}
-            <span className={`sdom-badge ${risk === "High" ? "sdom-badge-danger" : risk === "Medium" ? "sdom-badge-warning" : "sdom-badge-success"}`}>
-              {t(risk)} {t("Risk")}
-            </span>
+            {risk === "Untested" ? (
+              <span className="sdom-badge sdom-badge-neutral" style={{ background: "#f3f4f6", color: "#4b5563" }}>
+                {t("Untested")}
+              </span>
+            ) : (
+              <span className={`sdom-badge ${risk === "High" ? "sdom-badge-danger" : risk === "Medium" ? "sdom-badge-warning" : "sdom-badge-success"}`}>
+                {t(risk)} {t("Risk")}
+              </span>
+            )}
             <span className="sdom-badge sdom-badge-success">{t("Active")}</span>
           </div>
         </div>
+        <div className="sdom-station-header-meta" style={{ flex: "1 1 auto", display: "flex", justifyContent: "flex-end", alignItems: "center" }}>
+        </div>
         <div className="sdom-station-header-stats">
           <div className="sdom-station-header-stat">
-            <span className="val">{smProfile.score > 0 ? smProfile.score : "—"}</span>
+            <span className="val">{category === "Untested" ? t("Not Given Test") : (score > 0 ? score : "—")}</span>
             <span className="lbl">{t("Latest Score")}</span>
           </div>
-          <div style={{ width: 1, height: 60, background: "rgba(255,255,255,0.15)" }}/>
+          <div style={{ width: 1, height: 60, background: "rgba(255,255,255,0.15)" }} />
           <div className="sdom-station-header-stat">
             <span className="val">{smProfile.mobile || smProfile.contact || "—"}</span>
             <span className="lbl">{t("Contact")}</span>
           </div>
-          <div style={{ width: 1, height: 60, background: "rgba(255,255,255,0.15)" }}/>
+          <div style={{ width: 1, height: 60, background: "rgba(255,255,255,0.15)" }} />
           <div className="sdom-station-header-stat">
             <span className="val">{smProfile.lastAssessDate || "—"}</span>
             <span className="lbl">{t("Last Assessment")}</span>
@@ -76,25 +99,47 @@ export function StationMasterPointsmanDetail(props) {
       {/* Info grid */}
       <div className="sdom-row-2" style={{ marginBottom: "24px" }}>
         <div className="sdom-chart-card">
-          <div className="sdom-chart-title" style={{ marginBottom: "16px" }}>{t("Personal & Professional Details")}</div>
-          
+          <div style={{ marginBottom: "16px" }}>
+            <div className="sdom-chart-title" style={{ margin: 0 }}>{t("Personal & Professional Details")}</div>
+          </div>
+
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '15px', paddingBottom: '20px' }}>
-            {[
-              [t("Employee ID / HRMS ID"), smId],
-              [t("Designation"), t(smProfile.role || smProfile.designation || "Station Master")],
-              [t("Mobile Number"), smProfile.mobile || smProfile.contact || "—"],
-              [t("Email ID"), smProfile.email || `${smId.toLowerCase()}@rail.in`],
-              [t("Account Status"), t("Active")],
-              [t("Current Zone"), t(smProfile.zone || "Central Railway")],
-              [t("Current Division"), t(smProfile.division || "Nagpur")],
-              [t("Current Station Placement"), t(smProfile.station || "—")],
-              [t("Reporting Officer"), t(smProfile.reportingOfficer || "Station Superintendent / AOM")]
-            ].map(([lbl, val]) => (
-              <div key={lbl} style={{ background: "#f8fafc", borderRadius: 8, padding: "12px 16px", border: "1px solid #e2e8f0" }}>
-                <div style={{ fontSize: "0.75rem", color: "#64748b", fontWeight: 700, marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.04em" }}>{lbl}</div>
-                <div style={{ fontWeight: 700, color: "#0f172a", fontSize: "0.9rem" }}>{val}</div>
-              </div>
-            ))}
+            <div style={{ background: "#f8fafc", borderRadius: 8, padding: "12px 16px", border: "1px solid #e2e8f0" }}>
+              <div style={{ fontSize: "0.75rem", color: "#64748b", fontWeight: 700, marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.04em" }}>{t("Employee ID / HRMS ID")}</div>
+              <div style={{ fontWeight: 700, color: "#0f172a", fontSize: "0.9rem" }}>{smId}</div>
+            </div>
+            <div style={{ background: "#f8fafc", borderRadius: 8, padding: "12px 16px", border: "1px solid #e2e8f0" }}>
+              <div style={{ fontSize: "0.75rem", color: "#64748b", fontWeight: 700, marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.04em" }}>{t("Designation")}</div>
+              <div style={{ fontWeight: 700, color: "#0f172a", fontSize: "0.9rem" }}>{t(smProfile.role || smProfile.designation || "Station Master")}</div>
+            </div>
+            <div style={{ background: "#f8fafc", borderRadius: 8, padding: "12px 16px", border: "1px solid #e2e8f0" }}>
+              <div style={{ fontSize: "0.75rem", color: "#64748b", fontWeight: 700, marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.04em" }}>{t("Mobile Number")}</div>
+              <div style={{ fontWeight: 700, color: "#0f172a", fontSize: "0.9rem" }}>{smProfile.mobile || smProfile.contact || "—"}</div>
+            </div>
+            <div style={{ background: "#f8fafc", borderRadius: 8, padding: "12px 16px", border: "1px solid #e2e8f0" }}>
+              <div style={{ fontSize: "0.75rem", color: "#64748b", fontWeight: 700, marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.04em" }}>{t("Email ID")}</div>
+              <div style={{ fontWeight: 700, color: "#0f172a", fontSize: "0.9rem" }}>{smProfile.email || "—"}</div>
+            </div>
+            <div style={{ background: "#f8fafc", borderRadius: 8, padding: "12px 16px", border: "1px solid #e2e8f0" }}>
+              <div style={{ fontSize: "0.75rem", color: "#64748b", fontWeight: 700, marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.04em" }}>{t("Account Status")}</div>
+              <div style={{ fontWeight: 700, color: "#0f172a", fontSize: "0.9rem" }}>{t("Active")}</div>
+            </div>
+            <div style={{ background: "#f8fafc", borderRadius: 8, padding: "12px 16px", border: "1px solid #e2e8f0" }}>
+              <div style={{ fontSize: "0.75rem", color: "#64748b", fontWeight: 700, marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.04em" }}>{t("Current Zone")}</div>
+              <div style={{ fontWeight: 700, color: "#0f172a", fontSize: "0.9rem" }}>{t(smProfile.zone || "Central Railway")}</div>
+            </div>
+            <div style={{ background: "#f8fafc", borderRadius: 8, padding: "12px 16px", border: "1px solid #e2e8f0" }}>
+              <div style={{ fontSize: "0.75rem", color: "#64748b", fontWeight: 700, marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.04em" }}>{t("Current Division")}</div>
+              <div style={{ fontWeight: 700, color: "#0f172a", fontSize: "0.9rem" }}>{t(smProfile.division || "Nagpur")}</div>
+            </div>
+            <div style={{ background: "#f8fafc", borderRadius: 8, padding: "12px 16px", border: "1px solid #e2e8f0" }}>
+              <div style={{ fontSize: "0.75rem", color: "#64748b", fontWeight: 700, marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.04em" }}>{t("Current Station Placement")}</div>
+              <div style={{ fontWeight: 700, color: "#0f172a", fontSize: "0.9rem" }}>{t(smProfile.station || "—")}</div>
+            </div>
+            <div style={{ background: "#f8fafc", borderRadius: 8, padding: "12px 16px", border: "1px solid #e2e8f0" }}>
+              <div style={{ fontSize: "0.75rem", color: "#64748b", fontWeight: 700, marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.04em" }}>{t("Reporting Officer")}</div>
+              <div style={{ fontWeight: 700, color: "#0f172a", fontSize: "0.9rem" }}>{t(smProfile.reportingOfficer || "Station Superintendent / AOM")}</div>
+            </div>
           </div>
 
           {/* Operational Specifications */}
@@ -103,11 +148,11 @@ export function StationMasterPointsmanDetail(props) {
               {t("Operational & Safety Dates")}
             </h4>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '15px', fontSize: '13px' }}>
-              <div><strong>{t("PME Done Date")}:</strong><div style={{fontWeight: 700, color: "#065f46", marginTop: 4}}>{smProfile.pmeDoneDate || "—"}</div></div>
-              <div><strong>{t("PME Due Date")}:</strong><div style={{fontWeight: 700, color: "#991b1b", marginTop: 4}}>{smProfile.pmeDueDate || "—"}</div></div>
-              <div><strong>{t("Isolator Certificate Issued")}:</strong><div style={{fontWeight: 700, color: "#0d2c4d", marginTop: 4}}>{smProfile.isolatorCertificateIssuedDate || "—"}</div></div>
-              <div><strong>{t("Automatic Training Date")}:</strong><div style={{fontWeight: 700, color: "#0d2c4d", marginTop: 4}}>{smProfile.automaticTrainingDate || "—"}</div></div>
-              <div style={{ gridColumn: "span 2" }}><strong>{t("Refresher Counselling Date")}:</strong><div style={{fontWeight: 700, color: "#d97706", marginTop: 4}}>{smProfile.counsellingDate || "—"}</div></div>
+              <div><strong>{t("PME Done Date")}:</strong><div style={{ fontWeight: 700, color: "#065f46", marginTop: 4 }}>{smProfile.pmeDoneDate || "—"}</div></div>
+              <div><strong>{t("PME Due Date")}:</strong><div style={{ fontWeight: 700, color: "#991b1b", marginTop: 4 }}>{smProfile.pmeDueDate || "—"}</div></div>
+              <div><strong>{t("Isolator Certificate Issued")}:</strong><div style={{ fontWeight: 700, color: "#0d2c4d", marginTop: 4 }}>{smProfile.isolatorCertificateIssuedDate || "—"}</div></div>
+              <div><strong>{t("Automatic Training Date")}:</strong><div style={{ fontWeight: 700, color: "#0d2c4d", marginTop: 4 }}>{smProfile.automaticTrainingDate || "—"}</div></div>
+              <div style={{ gridColumn: "span 2" }}><strong>{t("Refresher Counselling Date")}:</strong><div style={{ fontWeight: 700, color: "#d97706", marginTop: 4 }}>{smProfile.counsellingDate || "—"}</div></div>
             </div>
           </div>
 
@@ -150,11 +195,11 @@ export function StationMasterPointsmanDetail(props) {
             {personalScoreData.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={personalScoreData}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false}/>
-                  <XAxis dataKey="month" fontSize={11}/>
-                  <YAxis domain={[40, 100]} fontSize={11}/>
-                  <Tooltip/>
-                  <Line type="monotone" dataKey="score" stroke="#2563eb" strokeWidth={3} dot={{ r: 5 }}/>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                  <XAxis dataKey="month" fontSize={11} />
+                  <YAxis domain={[40, 100]} fontSize={11} />
+                  <Tooltip />
+                  <Line type="monotone" dataKey="score" stroke="#2563eb" strokeWidth={3} dot={{ r: 5 }} />
                 </LineChart>
               </ResponsiveContainer>
             ) : (

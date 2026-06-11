@@ -21,7 +21,7 @@ export function PointsmanAssessments({
   /* Scorecard detail view */
   if (myAssessSelected) {
     return (
-      <PointsmanScorecardPage 
+      <PointsmanScorecardPage
         selectedRecord={myAssessSelected}
         setScreenMode={() => setMyAssessSelected(null)}
         performanceSummaryText={performanceSummaryText}
@@ -39,81 +39,81 @@ export function PointsmanAssessments({
       {testActive ? (
         !isTestActivated ? (
           <div style={{
-            background:"#f8fafc",
-            border:"2px dashed #cbd5e1",
-            borderRadius:12,
-            padding:20,
-            marginBottom:24,
-            boxShadow:"0 4px 6px -1px rgba(0,0,0,0.05)",
-            display:"flex",
-            gap:16,
-            alignItems:"start"
+            background: "#f8fafc",
+            border: "2px dashed #cbd5e1",
+            borderRadius: 12,
+            padding: 20,
+            marginBottom: 24,
+            boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)",
+            display: "flex",
+            gap: 16,
+            alignItems: "start"
           }}>
             <div style={{
-              background:"#e2e8f0",
-              borderRadius:50,
-              width:42,
-              height:42,
-              display:"flex",
-              alignItems:"center",
-              justifyContent:"center",
-              flexShrink:0
+              background: "#e2e8f0",
+              borderRadius: 50,
+              width: 42,
+              height: 42,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              flexShrink: 0
             }}>
-              <span style={{fontSize: 20}}>🔒</span>
+              <span style={{ fontSize: 20 }}>🔒</span>
             </div>
-            <div style={{flex:1}}>
-              <h3 style={{margin:"0 0 6px", fontSize:16, fontWeight:700, color:"#475569"}}>
+            <div style={{ flex: 1 }}>
+              <h3 style={{ margin: "0 0 6px", fontSize: 16, fontWeight: 700, color: "#475569" }}>
                 {t("Competency Exam Locked")}
               </h3>
-              <p style={{margin:0, fontSize:13, color:"#64748b", lineHeight:1.4}}>
+              <p style={{ margin: 0, fontSize: 13, color: "#64748b", lineHeight: 1.4 }}>
                 {t("Your periodic safety and competency evaluation is locked. Please request your Station Master to activate your test so you can attempt it.")}
               </p>
             </div>
           </div>
         ) : (
           <div style={{
-            background:"linear-gradient(135deg, #fffbeb 0%, #fff7ed 100%)",
-            border:"1.5px solid #fed7aa",
-            borderRadius:12,
-            padding:20,
-            marginBottom:24,
-            boxShadow:"0 4px 6px -1px rgba(0,0,0,0.05)"
+            background: "linear-gradient(135deg, #fffbeb 0%, #fff7ed 100%)",
+            border: "1.5px solid #fed7aa",
+            borderRadius: 12,
+            padding: 20,
+            marginBottom: 24,
+            boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)"
           }}>
-            <div style={{display:"flex", gap:16, alignItems:"start"}}>
+            <div style={{ display: "flex", gap: 16, alignItems: "start" }}>
               <div style={{
-                background:"#ffedd5",
-                borderRadius:50,
-                width:42,
-                height:42,
-                display:"flex",
-                alignItems:"center",
-                justifyContent:"center",
-                flexShrink:0
+                background: "#ffedd5",
+                borderRadius: 50,
+                width: 42,
+                height: 42,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                flexShrink: 0
               }}>
-                <ShieldCheck size={22} color="#ea580c"/>
+                <ShieldCheck size={22} color="#ea580c" />
               </div>
-              <div style={{flex:1}}>
-                <h3 style={{margin:"0 0 6px", fontSize:16, fontWeight:700, color:"#ea580c"}}>
+              <div style={{ flex: 1 }}>
+                <h3 style={{ margin: "0 0 6px", fontSize: 16, fontWeight: 700, color: "#ea580c" }}>
                   ⚠️ {t("Pending Competency Assessment")}
                 </h3>
-                <p style={{margin:"0 0 14px", fontSize:13, color:"#9a3412", lineHeight:1.4}}>
+                <p style={{ margin: "0 0 14px", fontSize: 13, color: "#9a3412", lineHeight: 1.4 }}>
                   {t("Your supervisor (Station Master) has scheduled a periodic safety & competency assessment for you. You must complete the 25-question MCQ exam.")}
                 </p>
                 <button
                   onClick={startTestAttempt}
                   style={{
-                    background:"#ea580c",
-                    color:"#ffffff",
-                    border:"none",
-                    padding:"10px 20px",
-                    borderRadius:8,
-                    fontSize:13.5,
-                    fontWeight:700,
-                    cursor:"pointer",
-                    boxShadow:"0 4px 6px rgba(234, 88, 12, 0.2)",
-                    display:"flex",
-                    alignItems:"center",
-                    gap:8
+                    background: "#ea580c",
+                    color: "#ffffff",
+                    border: "none",
+                    padding: "10px 20px",
+                    borderRadius: 8,
+                    fontSize: 13.5,
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    boxShadow: "0 4px 6px rgba(234, 88, 12, 0.2)",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8
                   }}
                 >
                   {t("Start 25 MCQ Online Assessment")}
@@ -124,32 +124,32 @@ export function PointsmanAssessments({
         )
       ) : (
         <div style={{
-          background:"#f0fdf4",
-          border:"1.5px solid #bbf7d0",
-          borderRadius:12,
-          padding:18,
-          marginBottom:24,
-          display:"flex",
-          alignItems:"center",
-          gap:14
+          background: "#f0fdf4",
+          border: "1.5px solid #bbf7d0",
+          borderRadius: 12,
+          padding: 18,
+          marginBottom: 24,
+          display: "flex",
+          alignItems: "center",
+          gap: 14
         }}>
-          <ShieldCheck size={24} color="#16a34a"/>
-          <div style={{flex:1}}>
-            <h3 style={{margin:"0 0 2px", fontSize:14.5, fontWeight:700, color:"#14532d"}}>
+          <ShieldCheck size={24} color="#16a34a" />
+          <div style={{ flex: 1 }}>
+            <h3 style={{ margin: "0 0 2px", fontSize: 14.5, fontWeight: 700, color: "#14532d" }}>
               {t("All assessments are up to date. No pending test available.")}
             </h3>
-            <p style={{margin:0, fontSize:12, color:"#166534"}}>
+            <p style={{ margin: 0, fontSize: 12, color: "#166534" }}>
               {t("Your periodic safety and competency evaluation is currently active and compliant.")}
             </p>
           </div>
-          <div style={{display:"flex", gap:16, fontSize:12, textAlign:"right"}}>
+          <div style={{ display: "flex", gap: 16, fontSize: 12, textAlign: "right" }}>
             <div>
-              <span style={{color:"#166534", display:"block"}}>{t("Last Exam Score")}</span>
-              <strong style={{color:"#14532d", fontSize:13}}>{pmMcqTest ? `${pmMcqTest.correctCount}/25 (${pmMcqTest.percentage}%)` : `${history[0]?.totalScore || 84}/100`}</strong>
+              <span style={{ color: "#166534", display: "block" }}>{t("Last Exam Score")}</span>
+              <strong style={{ color: "#14532d", fontSize: 13 }}>{pmMcqTest ? `${pmMcqTest.correctCount}/25` : `${history[0]?.totalScore || 84}/100`}</strong>
             </div>
-            <div style={{borderLeft:"1px solid #bbf7d0", paddingLeft:16}}>
-              <span style={{color:"#166534", display:"block"}}>{t("Next Due Date")}</span>
-              <strong style={{color:"#14532d", fontSize:13}}>
+            <div style={{ borderLeft: "1px solid #bbf7d0", paddingLeft: 16 }}>
+              <span style={{ color: "#166534", display: "block" }}>{t("Next Due Date")}</span>
+              <strong style={{ color: "#14532d", fontSize: 13 }}>
                 {(() => {
                   const latest = history.find(h => !h.approvalStatus || ["Approved", "Completed", "EVALUATED"].includes(h.approvalStatus));
                   if (!latest) return t("Pending Evaluation");
@@ -192,8 +192,12 @@ export function PointsmanAssessments({
         </div>
         <div className="sm2-report-mini">
           <label>{t("Latest Assessment")}</label>
-          <strong style={{color: getCategoryColor(history[0]?.category || getCategory(history[0]?.totalScore || 0))}}>
-            {history[0]?.isOnlineExam ? t("Online CBT") : `${t("Category")} ${history[0]?.category || getCategory(history[0]?.totalScore || 0)}`}
+          <strong style={{ color: history.length === 0 ? "#94a3b8" : getCategoryColor(history[0]?.category || getCategory(history[0]?.totalScore || 0)) }}>
+            {history.length === 0
+              ? t("Untested")
+              : history[0]?.isOnlineExam
+                ? t("Online CBT")
+                : `${t("Category")} ${history[0]?.category || getCategory(history[0]?.totalScore || 0)}`}
           </strong>
         </div>
       </div>
@@ -201,7 +205,7 @@ export function PointsmanAssessments({
       {/* List */}
       <div className="sm2-myassess-list">
         <div className="sm2-myassess-head">
-          {["Period","Date","Score Scale","Category","Assessed By","Status",""].map(h =>
+          {["Period", "Date", "Score Scale", "Category", "Assessed By", "Status", ""].map(h =>
             <span key={h}>{t(h)}</span>)}
         </div>
         {history.map(sc => {
@@ -215,18 +219,18 @@ export function PointsmanAssessments({
               <span><strong>{sc.totalScore}/{sc.isOnlineExam ? 25 : 100}</strong></span>
               <span>
                 {sc.approvalStatus === "Pending" ? (
-                  <span className="sm2-badge" style={{background: "#fef3c7", color: "#d97706"}}>{t("Evaluation Pending")}</span>
+                  <span className="sm2-badge" style={{ background: "#fef3c7", color: "#d97706" }}>{t("Evaluation Pending")}</span>
                 ) : (
-                  <span className="sm2-badge" style={{background:getCategoryBg(cat),color:getCategoryColor(cat)}}>
+                  <span className="sm2-badge" style={{ background: getCategoryBg(cat), color: getCategoryColor(cat) }}>
                     {sc.isOnlineExam ? t("CBT Exam") : `${t("Category")} ${cat}`}
                   </span>
                 )}
               </span>
-              <span style={{fontSize:11,color:"#64748b"}}>{sc.assessedBy || "S. Deshmukh (SM)"}</span>
+              <span style={{ fontSize: 11, color: "#64748b" }}>{sc.assessedBy || "S. Deshmukh (SM)"}</span>
               <span>
                 <span className={`sm2-status-pill sm2-status-${(sc.approvalStatus || "approved").toLowerCase()}`}>{t(sc.approvalStatus || "Approved")}</span>
               </span>
-              <span style={{color:"#2563eb",fontSize:12,fontWeight:600}}>{t("View Form")}</span>
+              <span style={{ color: "#2563eb", fontSize: 12, fontWeight: 600 }}>{t("View Form")}</span>
             </button>
           );
         })}

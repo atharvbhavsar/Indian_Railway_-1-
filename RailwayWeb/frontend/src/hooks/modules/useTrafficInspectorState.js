@@ -131,12 +131,12 @@ export function useTrafficInspectorState(user, onLogout) {
           ...x,
           role: fullRole,
           hrmsId: x.id,
-          cat: x.category || "A",
-          risk: x.riskLevel || "Low",
-          score: parseInt(x.score) || 80,
-          safetyScore: 85,
-          totalAssessments: 2,
-          approvalStatus: "Approved",
+          cat: x.cat || "A",
+          risk: x.risk || "Low",
+          score: x.score !== undefined && x.score !== null ? parseInt(x.score) : 80,
+          safetyScore: x.safetyScore !== undefined && x.safetyScore !== null ? parseInt(x.safetyScore) : 85,
+          totalAssessments: x.totalAssessments || 2,
+          approvalStatus: x.status || "Approved",
           stationName: x.station,
           doj: x.lastDate || "2026-01-01"
         };
@@ -741,7 +741,7 @@ export function useTrafficInspectorState(user, onLogout) {
       const matchesSearch = u.name.toLowerCase().includes(q) || u.id.toLowerCase().includes(q);
       const grade = getCat(u.score);
       const matchesCat = fsCatFilter === "All" || grade === fsCatFilter;
-      const risk = u.pmeStatus === "Overdue" || u.refStatus === "Expired" || u.score < 50 ? "High" : u.score >= 80 ? "Low" : "Medium";
+      const risk = u.risk || (grade === "D" ? "High" : grade === "C" ? "Medium" : "Low");
       const matchesRisk = fsRiskFilter === "All" || risk === fsRiskFilter;
       return matchesSearch && matchesCat && matchesRisk;
     });
@@ -777,7 +777,8 @@ export function useTrafficInspectorState(user, onLogout) {
       const matchesSearch = !q || u.name.toLowerCase().includes(q) || u.id.toLowerCase().includes(q);
       const matchesStation = userStationFilter === "All" || u.station === userStationFilter;
       const matchesCategory = userCategoryFilter === "All" || (u.cat || getCat(u.score)) === userCategoryFilter;
-      const isHighRisk = u.pmeStatus === "Overdue" || u.refStatus === "Expired" || u.score < 50;
+      const grade = u.cat || getCat(u.score);
+      const isHighRisk = u.risk === "High" || grade === "D";
       const matchesRisk = userRiskFilter === "All" || (userRiskFilter === "High" && isHighRisk) || (userRiskFilter === "Non-High" && !isHighRisk);
 
       return matchesSearch && matchesStation && matchesCategory && matchesRisk;
@@ -785,12 +786,15 @@ export function useTrafficInspectorState(user, onLogout) {
   }, [users, userSearch, userStationFilter, userCategoryFilter, userRiskFilter, activePage]);
 
   const filteredReport = useMemo(() => {
-    let list = users.map(u => ({
-      name: u.name, hrmsId: u.id, station: u.station, score: u.score,
-      cat: u.cat || getCat(u.score),
-      risk: u.pmeStatus === "Overdue" || u.refStatus === "Expired" || u.score < 50 ? "High" : u.score >= 80 ? "Low" : "Medium",
-      date: u.lastAssessDate
-    }));
+    let list = users.map(u => {
+      const grade = u.cat || getCat(u.score);
+      return {
+        name: u.name, hrmsId: u.id, station: u.station, score: u.score,
+        cat: grade,
+        risk: u.risk || (grade === "D" ? "High" : grade === "C" ? "Medium" : "Low"),
+        date: u.lastAssessDate
+      };
+    });
     list = list.filter(r => {
       const q = rpSearch.toLowerCase();
       const srch = !q || r.name.toLowerCase().includes(q) || r.station.toLowerCase().includes(q);
@@ -823,25 +827,35 @@ export function useTrafficInspectorState(user, onLogout) {
   // Station level Detail card mapping
   useEffect(() => {
     if (selectedStation) {
-      const matched = stationStats.find(s => s.name === selectedStation.name || s.code === selectedStation.code) || selectedStation;
-      const smCount = users.filter(u => u.station === matched.name && (u.role === "Station Master" || u.role === "sm")).length;
-      const pmCount = users.filter(u => u.station === matched.name && (u.role === "Pointsman" || u.role === "pointsmen")).length;
-      const pmPending = myPmList.filter(p => p.station === matched.name && p.status === "Pending").length;
-      const smPending = mySmList.filter(s => s.station === matched.name && s.status === "Pending").length;
-      const tmPending = myTmList.filter(t => t.station === matched.name && t.status === "Pending").length;
-      const pendingCount = pmPending + smPending + tmPending;
-
-      setView({
-        type: "stationDetail",
-        data: {
-          ...matched, ti: matched.ti || "Not Assigned", smCount, pmCount,
-          score: matched.avgScore || matched.score,
-          safety: matched.safetyPct || matched.safety,
-          highRisk: matched.highRisk, pending: pendingCount
+      setView(prev => {
+        if (prev && prev.type !== "stationDetail") {
+          return prev;
         }
+        const matched = stationStats.find(s => s.name === selectedStation.name || s.code === selectedStation.code) || selectedStation;
+        const smCount = users.filter(u => u.station === matched.name && (u.role === "Station Master" || u.role === "sm")).length;
+        const pmCount = users.filter(u => u.station === matched.name && (u.role === "Pointsman" || u.role === "pointsmen")).length;
+        const pmPending = myPmList.filter(p => p.station === matched.name && p.status === "Pending").length;
+        const smPending = mySmList.filter(s => s.station === matched.name && s.status === "Pending").length;
+        const tmPending = myTmList.filter(t => t.station === matched.name && t.status === "Pending").length;
+        const pendingCount = pmPending + smPending + tmPending;
+
+        return {
+          type: "stationDetail",
+          data: {
+            ...matched, ti: matched.ti || "Not Assigned", smCount, pmCount,
+            score: matched.avgScore || matched.score,
+            safety: matched.safetyPct || matched.safety,
+            highRisk: matched.highRisk, pending: pendingCount
+          }
+        };
       });
     } else {
-      setView(null);
+      setView(prev => {
+        if (prev && prev.type === "stationDetail") {
+          return null;
+        }
+        return prev;
+      });
     }
   }, [selectedStation, stationStats, users, myPmList, mySmList, myTmList, tiName]);
 
@@ -1027,26 +1041,75 @@ export function useTrafficInspectorState(user, onLogout) {
     }
   };
 
-  const openAddUserModal = () => {
+  const openAddUserModal = (defaultRole) => {
+    let initialRole = "Pointsman";
+    if (defaultRole) {
+      initialRole = defaultRole;
+    } else if (activePage === "stationMasters") {
+      initialRole = "Station Master";
+    } else if (activePage === "stationSuperintendents") {
+      initialRole = "Station Superintendent";
+    } else if (activePage === "trainManagers") {
+      initialRole = "Train Manager";
+    } else if (activePage === "pointsmen") {
+      initialRole = "Pointsman";
+    }
+
+    let initialDesignation = initialRole === "Pointsman" ? "Pointsman Grade I" : initialRole;
+    const defaultStation = myStations[0]?.name || "";
+
     setNewUserData({
       id: "",
       name: "",
-      role: "Pointsman",
-      designation: "Pointsman Grade I",
-      station: myStations[0]?.name || "",
+      role: initialRole,
+      designation: initialDesignation,
+      station: defaultStation,
       contact: "",
       joiningDate: new Date().toISOString().slice(0, 10),
       pmeStatus: "Fit",
       refStatus: "Cleared",
-      reportingSm: "",
-      shift: "Morning Shift (06:00 - 14:00)",
-      workLocation: "Platform Area"
+      reportingSm: initialRole === "Train Manager" ? "NGP-BSL Section" : "",
+      shift: initialRole === "Train Manager" ? "Goods Train Beat" : "Morning Shift (06:00 - 14:00)",
+      workLocation: initialRole === "Train Manager" ? "Nagpur Depot" : "Platform Area",
+      smStation: defaultStation,
+      smZone: "Central Railway",
+      smDivision: "Nagpur",
+      email: "",
+      pfNumber: "",
+      password: "",
+      confirmPassword: ""
     });
     setShowAddUserModal(true);
   };
 
   const handleAddUserSubmit = async (e) => {
     e.preventDefault();
+    if (!newUserData.name || !newUserData.id) {
+      alert("Name and HRMS ID are required.");
+      return;
+    }
+    if (!newUserData.pfNumber) {
+      alert("PF Number is required.");
+      return;
+    }
+    if (!newUserData.email) {
+      alert("Email Address is required.");
+      return;
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(newUserData.email)) {
+      alert("Please enter a valid Email Address.");
+      return;
+    }
+    if (!newUserData.password) {
+      alert("Password is required.");
+      return;
+    }
+    if (newUserData.password.length < 6) {
+      alert("Password must be at least 6 characters long.");
+      return;
+    }
+
     const newUser = {
       ...newUserData,
       id: newUserData.id || `USER_${Date.now().toString().slice(-4)}`,
@@ -1066,11 +1129,33 @@ export function useTrafficInspectorState(user, onLogout) {
   };
 
   const handleEditUser = (userRec) => {
-    setEditingUser({ ...userRec });
+    setEditingUser({
+      ...userRec,
+      pfNumber: userRec.pfNumber && userRec.pfNumber !== "—" ? userRec.pfNumber : "",
+      email: userRec.email && userRec.email !== "—" ? userRec.email : ""
+    });
   };
 
   const saveEditedUser = async (e) => {
     e.preventDefault();
+    if (!editingUser.name) {
+      alert("Name is required.");
+      return;
+    }
+    if (!editingUser.pfNumber) {
+      alert("PF Number is required.");
+      return;
+    }
+    if (!editingUser.email) {
+      alert("Email Address is required.");
+      return;
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(editingUser.email)) {
+      alert("Please enter a valid Email Address.");
+      return;
+    }
+
     try {
       await saDataService.saveUser(editingUser, "edit");
       await fetchLiveDatabaseData();
@@ -2460,7 +2545,7 @@ export function useTrafficInspectorState(user, onLogout) {
     setStatusMsg("Activating batch exam access...");
     try {
       const today = new Date().toISOString().slice(0, 10);
-      
+
       // Resolve TI User UUID
       let tiUserUuid = user?.userId;
       if (isSupabaseConfigured && (!tiUserUuid || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(tiUserUuid))) {
@@ -2550,7 +2635,7 @@ export function useTrafficInspectorState(user, onLogout) {
     if (!hrmsId || !date) return { success: false, error: "Missing required fields" };
     try {
       const today = new Date().toISOString().slice(0, 10);
-      
+
       // Resolve TI User UUID
       let tiUserUuid = user?.userId;
       if (isSupabaseConfigured && (!tiUserUuid || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(tiUserUuid))) {

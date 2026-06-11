@@ -493,12 +493,12 @@ function AOmModule({ user, onLogout }) {
     const getEmpCategory = (emp) => emp.cat || aomGetCat(emp.score || 0);
     const cat = getEmpCategory(p);
     const frequency = cat === "A" || cat === "B" ? "6 Months" : (cat === "C" ? "3 Months" : "1 Month");
-    
+
     // Find all assessments for this employee from allDbAssessments
-    const empAssessments = allDbAssessments 
-      ? allDbAssessments.filter(a => a.employee?.hrms_id === p.hrmsId || a.employee?.hrms_id === p.employeeId) 
+    const empAssessments = allDbAssessments
+      ? allDbAssessments.filter(a => a.employee?.hrms_id === p.hrmsId || a.employee?.hrms_id === p.employeeId)
       : [];
-    
+
     const baseAssessType = roleKey === "TI" ? "Safety Exam" : "Station Superintendent Assessment";
 
     // 1. Last Assessment Date
@@ -506,18 +506,18 @@ function AOmModule({ user, onLogout }) {
     pastApproved.sort((a, b) => new Date(b.assessment_date || b.created_at) - new Date(a.assessment_date || a.created_at));
     const lastAssess = pastApproved[0];
     const lastAssessDate = lastAssess ? (lastAssess.assessment_date || lastAssess.created_at?.slice(0, 10)) : (p.lastAssessed || "None");
-    
+
     // 2. Next Due Date & Time
-    const upcomingAssess = empAssessments.find(a => 
-      ["LOCKED", "AVAILABLE", "IN_PROGRESS", "Pending", "Draft", "Scheduled"].includes(a.status) && 
-      a.due_date && 
+    const upcomingAssess = empAssessments.find(a =>
+      ["LOCKED", "AVAILABLE", "IN_PROGRESS", "Pending", "Draft", "Scheduled"].includes(a.status) &&
+      a.due_date &&
       (a.assessment_type?.startsWith(baseAssessType) || a.assessment_type === baseAssessType)
     );
-    
+
     let nextDueDate = null;
     let nextDueTime = "10:00 AM";
     let isCustomScheduled = false;
-    
+
     if (upcomingAssess) {
       nextDueDate = upcomingAssess.due_date;
       isCustomScheduled = true;
@@ -535,22 +535,22 @@ function AOmModule({ user, onLogout }) {
         nextDueDate = lastDateObj.toISOString().slice(0, 10);
       }
     }
-    
+
     if (!nextDueDate) {
       nextDueDate = "Not Scheduled";
     }
-    
+
     // 3. Days Remaining
     let daysRemaining = null;
     if (nextDueDate && nextDueDate !== "Not Scheduled") {
-      const diffTime = new Date(nextDueDate).getTime() - new Date().setHours(0,0,0,0);
+      const diffTime = new Date(nextDueDate).getTime() - new Date().setHours(0, 0, 0, 0);
       daysRemaining = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     }
-    
+
     // 4. Status Indicator
     let statusText = "Not Scheduled";
-    let statusType = "neutral"; 
-    
+    let statusType = "neutral";
+
     if (nextDueDate !== "Not Scheduled" && daysRemaining !== null) {
       if (daysRemaining < 0) {
         statusText = "Overdue";
@@ -566,7 +566,7 @@ function AOmModule({ user, onLogout }) {
         statusType = "success";
       }
     }
-    
+
     return {
       frequency,
       lastAssessDate,
@@ -583,13 +583,13 @@ function AOmModule({ user, onLogout }) {
   const renderPmePosition = () => {
     // Filtered employees list based on search and status filters
     const filtered = allEmployees.filter(emp => {
-      const matchSearch = !pmeSearch || 
-        emp.name.toLowerCase().includes(pmeSearch.toLowerCase()) || 
+      const matchSearch = !pmeSearch ||
+        emp.name.toLowerCase().includes(pmeSearch.toLowerCase()) ||
         emp.hrmsId.toLowerCase().includes(pmeSearch.toLowerCase());
-      
-      const matchStatus = pmeStatusFilter === "All" || 
+
+      const matchStatus = pmeStatusFilter === "All" ||
         emp.pmeStatus?.toLowerCase() === pmeStatusFilter.toLowerCase();
-      
+
       return matchSearch && matchStatus;
     });
 
@@ -637,18 +637,19 @@ function AOmModule({ user, onLogout }) {
     };
 
     return (
+      <>
       <div className="sdom-fade" style={{ background: "#f8fafc", padding: "24px", borderRadius: "16px" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px" }}>
           <div>
             <h1 className="sdom-page-title" style={{ fontSize: "28px", fontWeight: "800", color: "#0f172a", margin: "0 0 4px" }}>PME Position & Compliance</h1>
             <p className="sdom-page-subtitle" style={{ fontSize: "14px", color: "#64748b", margin: 0 }}>Monitor Periodical Medical Examination clearance, schedule exams, and record medical clearance logs.</p>
           </div>
-          <button 
-            onClick={() => handleOpenLogModal("")} 
-            className="sdom-btn-primary" 
+          <button
+            onClick={() => handleOpenLogModal("")}
+            className="sdom-btn-primary"
             style={{ height: "42px", display: "flex", alignItems: "center", gap: "8px", background: "#2563eb", color: "white", padding: "0 20px", border: "none", borderRadius: "8px", fontWeight: "700", cursor: "pointer", fontSize: "13px" }}
           >
-            <Plus size={16}/> Log PME Record
+            <Plus size={16} /> Log PME Record
           </button>
         </div>
 
@@ -674,20 +675,20 @@ function AOmModule({ user, onLogout }) {
             <label style={{ fontSize: "11px", fontWeight: "800", color: "#475569", textTransform: "uppercase" }}>Search Staff</label>
             <div style={{ position: "relative" }}>
               <Search size={15} style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", color: "#64748b" }} />
-              <input 
-                type="text" 
-                placeholder="Search by name or HRMS ID..." 
-                value={pmeSearch} 
-                onChange={e => setPmeSearch(e.target.value)} 
+              <input
+                type="text"
+                placeholder="Search by name or HRMS ID..."
+                value={pmeSearch}
+                onChange={e => setPmeSearch(e.target.value)}
                 style={{ width: "100%", height: "42px", padding: "0 12px 0 36px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "13px", fontWeight: "600", outline: "none" }}
               />
             </div>
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: "6px", flex: 1 }}>
             <label style={{ fontSize: "11px", fontWeight: "800", color: "#475569", textTransform: "uppercase" }}>PME Status</label>
-            <select 
-              value={pmeStatusFilter} 
-              onChange={e => setPmeStatusFilter(e.target.value)} 
+            <select
+              value={pmeStatusFilter}
+              onChange={e => setPmeStatusFilter(e.target.value)}
               style={{ height: "42px", padding: "0 12px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "13px", fontWeight: "600" }}
             >
               <option value="All">All Statuses</option>
@@ -727,9 +728,9 @@ function AOmModule({ user, onLogout }) {
                     <td style={{ padding: "12px 16px", fontSize: "13px", color: "#475569" }}>{emp.pmeDoneDate || "—"}</td>
                     <td style={{ padding: "12px 16px", fontSize: "13px", color: "#dc2626", fontWeight: "700" }}>{emp.pmeDueDate || "—"}</td>
                     <td style={{ padding: "12px 16px", textAlign: "right" }}>
-                      <button 
-                        onClick={() => handleOpenLogModal(emp.hrmsId)} 
-                        className="sdom-btn-primary" 
+                      <button
+                        onClick={() => handleOpenLogModal(emp.hrmsId)}
+                        className="sdom-btn-primary"
                         style={{ height: "30px", padding: "0 12px", borderRadius: "6px", background: "#f1f5f9", color: "#0f172a", border: "1px solid #cbd5e1", fontSize: "11px", fontWeight: "700", cursor: "pointer" }}
                       >
                         Update PME
@@ -746,6 +747,7 @@ function AOmModule({ user, onLogout }) {
             </table>
           </div>
         </div>
+      </div>
 
         {/* Modal form */}
         {showPmeModal && (
@@ -759,20 +761,20 @@ function AOmModule({ user, onLogout }) {
               <form onSubmit={handleFormSubmit} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
                 <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
                   <label style={{ fontSize: "12px", fontWeight: "700", color: "#334155" }}>Select Staff *</label>
-                  <select 
-                    value={pmeFormHrmsId} 
+                  <select
+                    value={pmeFormHrmsId}
                     onChange={e => {
                       setPmeFormHrmsId(e.target.value);
                       const matched = allEmployees.find(x => x.hrmsId === e.target.value);
                       setPmeFormStatus(matched?.pmeStatus || "Fit");
                       setPmeFormDoneDate(matched?.pmeDoneDate || "");
                       setPmeFormDueDate(matched?.pmeDueDate || "");
-                    }} 
+                    }}
                     style={{ height: "42px", padding: "0 12px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "13px", fontWeight: "600", width: "100%" }}
                     required
                   >
                     <option value="">-- Choose Employee --</option>
-                    {[...allEmployees].sort((a,b) => a.name.localeCompare(b.name)).map(emp => (
+                    {[...allEmployees].sort((a, b) => a.name.localeCompare(b.name)).map(emp => (
                       <option key={emp.hrmsId} value={emp.hrmsId}>{emp.name} ({emp.hrmsId} - {emp.designation})</option>
                     ))}
                   </select>
@@ -780,9 +782,9 @@ function AOmModule({ user, onLogout }) {
 
                 <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
                   <label style={{ fontSize: "12px", fontWeight: "700", color: "#334155" }}>PME Status *</label>
-                  <select 
-                    value={pmeFormStatus} 
-                    onChange={e => setPmeFormStatus(e.target.value)} 
+                  <select
+                    value={pmeFormStatus}
+                    onChange={e => setPmeFormStatus(e.target.value)}
                     style={{ height: "42px", padding: "0 12px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "13px", fontWeight: "600", width: "100%" }}
                     required
                   >
@@ -796,19 +798,19 @@ function AOmModule({ user, onLogout }) {
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
                   <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
                     <label style={{ fontSize: "12px", fontWeight: "700", color: "#334155" }}>Done Date</label>
-                    <input 
-                      type="date" 
-                      value={pmeFormDoneDate} 
-                      onChange={e => setPmeFormDoneDate(e.target.value)} 
+                    <input
+                      type="date"
+                      value={pmeFormDoneDate}
+                      onChange={e => setPmeFormDoneDate(e.target.value)}
                       style={{ height: "42px", padding: "0 12px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "13px", fontWeight: "600" }}
                     />
                   </div>
                   <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
                     <label style={{ fontSize: "12px", fontWeight: "700", color: "#334155" }}>Due Date *</label>
-                    <input 
-                      type="date" 
-                      value={pmeFormDueDate} 
-                      onChange={e => setPmeFormDueDate(e.target.value)} 
+                    <input
+                      type="date"
+                      value={pmeFormDueDate}
+                      onChange={e => setPmeFormDueDate(e.target.value)}
                       style={{ height: "42px", padding: "0 12px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "13px", fontWeight: "600" }}
                       required
                     />
@@ -823,7 +825,7 @@ function AOmModule({ user, onLogout }) {
             </div>
           </div>
         )}
-      </div>
+      </>
     );
   };
 
@@ -1294,15 +1296,15 @@ function AOmModule({ user, onLogout }) {
                 <div className="sdom-table-wrap">
                   <table className="sdom-table">
                     <thead>
-                      <tr><th>#</th><th>Station</th><th>Avg Score</th><th>Safety %</th><th>Pending</th></tr>
+                      <tr><th>#</th><th>Station</th><th>Avg Score</th><th>Safety Score</th><th>Pending</th></tr>
                     </thead>
                     <tbody>
                       {top10.map((st, i) => (
                         <tr key={st.id}>
                           <td style={{ color: "#9FB3C8", fontWeight: 700 }}>{i + 1}</td>
                           <td style={{ fontWeight: 600 }}>{st.stationName}</td>
-                          <td><span style={{ color: "#2F855A", fontWeight: 700 }}>{st.avgScore}</span></td>
-                          <td>{st.avgScore + 5}%</td>
+                          <td><span style={{ color: "#2F855A", fontWeight: 700 }}>{st.avgScore}/100</span></td>
+                          <td>{Math.min(st.avgScore + 5, 100)}/100</td>
                           <td>{st.pending}</td>
                         </tr>
                       ))}
@@ -1324,7 +1326,7 @@ function AOmModule({ user, onLogout }) {
                         <tr key={st.id}>
                           <td style={{ color: "#9FB3C8", fontWeight: 700 }}>{i + 1}</td>
                           <td style={{ fontWeight: 600 }}>{st.stationName}</td>
-                          <td><span style={{ color: st.avgScore < 75 ? "#C53030" : "#D69E2E", fontWeight: 700 }}>{st.avgScore}</span></td>
+                          <td><span style={{ color: st.avgScore < 75 ? "#C53030" : "#D69E2E", fontWeight: 700 }}>{st.avgScore}/100</span></td>
                           <td>{st.riskLevel === "High" ? <span style={{ color: "#C53030", fontWeight: 700 }}>1</span> : 0}</td>
                           <td>{st.pending}</td>
                         </tr>
@@ -1801,10 +1803,11 @@ function AOmModule({ user, onLogout }) {
                         <div className="table-empty-state">No Pointsman staff found.</div>
                       ) : (
                         filteredStationPointsmen.map((pm, idx) => {
-                          const cat = getPmCat(pm.lastScore);
-                          const risk = getPmRisk(pm);
-                          const isHighRisk = risk === "High";
-                          const isMedRisk = risk === "Medium";
+                          const cat = pm.cat || pm.category || getPmCat(pm.lastScore);
+                          const isUntested = cat === "Untested";
+                          const risk = isUntested ? "Untested" : (pm.risk || pm.riskLevel || getPmRisk(pm));
+                          const isHighRisk = !isUntested && risk === "High";
+                          const isMedRisk = !isUntested && risk === "Medium";
 
                           return (
                             <div
@@ -1817,15 +1820,15 @@ function AOmModule({ user, onLogout }) {
                               <div>{pm.hrmsId}</div>
                               <div>
                                 <span style={{
-                                  background: cat === "A" ? "#dcfce7" : cat === "B" ? "#dbeafe" : cat === "C" ? "#fef3c7" : "#fee2e2",
-                                  color: cat === "A" ? "#15803d" : cat === "B" ? "#1d4ed8" : cat === "C" ? "#b45309" : "#b91c1c",
+                                  background: cat === "Untested" ? "#f3f4f6" : (cat === "A" ? "#dcfce7" : cat === "B" ? "#dbeafe" : cat === "C" ? "#fef3c7" : "#fee2e2"),
+                                  color: cat === "Untested" ? "#4b5563" : (cat === "A" ? "#15803d" : cat === "B" ? "#1d4ed8" : cat === "C" ? "#b45309" : "#b91c1c"),
                                   padding: "2px 8px",
                                   borderRadius: "4px",
                                   fontWeight: "700",
                                   fontSize: "11px"
-                                }}>Category {cat}</span>
+                                }}>{cat === "Untested" ? "Untested" : `Category ${cat}`}</span>
                               </div>
-                              <div><strong>{pm.lastScore}/100</strong></div>
+                              <div><strong>{cat === "Untested" ? "Not Given Test" : `${pm.lastScore}/100`}</strong></div>
                               <div>
                                 {pm.hrmsId === "PM_1001" ? "2026-03-28" :
                                   pm.hrmsId === "PM_1102" ? "2026-03-10" :
@@ -1843,8 +1846,8 @@ function AOmModule({ user, onLogout }) {
                               </div>
                               <div>
                                 <span style={{
-                                  background: isHighRisk ? "#fee2e2" : isMedRisk ? "#fef3c7" : "#dcfce7",
-                                  color: isHighRisk ? "#b91c1c" : isMedRisk ? "#b45309" : "#15803d",
+                                  background: risk === "Untested" ? "#f3f4f6" : (isHighRisk ? "#fee2e2" : isMedRisk ? "#fef3c7" : "#dcfce7"),
+                                  color: risk === "Untested" ? "#4b5563" : (isHighRisk ? "#b91c1c" : isMedRisk ? "#b45309" : "#15803d"),
                                   padding: "2px 8px",
                                   borderRadius: "4px",
                                   fontWeight: "700",
@@ -2224,8 +2227,21 @@ function AOmModule({ user, onLogout }) {
                       />
                       {formErrors.emailId && <span className="error-text">{formErrors.emailId}</span>}
                     </div>
+
+                    <div className="form-group">
+                      <label>Joining Date *</label>
+                      <input
+                        type="date"
+                        name="joiningDate"
+                        value={userFormData.joiningDate || ""}
+                        onChange={handleUserFormChange}
+                        className={formErrors.joiningDate ? "error" : ""}
+                      />
+                      {formErrors.joiningDate && <span className="error-text">{formErrors.joiningDate}</span>}
+                    </div>
                   </div>
                 </div>
+
 
                 {/* Field Group 2: Designation & Station Placement */}
                 <div className="form-section-header" style={{ marginTop: '24px' }}>
@@ -2748,8 +2764,9 @@ function AOmModule({ user, onLogout }) {
 
                 <div className="ti-profile-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '15px', padding: '15px 0' }}>
                   <div><strong>Designation:</strong> <span style={{ color: '#1d4ed8', fontWeight: '700' }}>{selectedUserProfile.designation}</span></div>
-                  <div><strong>Mobile No:</strong> {selectedUserProfile.mobileNo}</div>
-                  <div><strong>Email ID:</strong> {selectedUserProfile.emailId || "N/A"}</div>
+                  <div><strong>Mobile No:</strong> {selectedUserProfile.mobileNo || selectedUserProfile.contact || "N/A"}</div>
+                  <div><strong>Email ID:</strong> {selectedUserProfile.emailId || selectedUserProfile.email || "N/A"}</div>
+                  <div><strong>PF Number:</strong> {selectedUserProfile.pfNumber || "N/A"}</div>
                   <div><strong>Account Status:</strong> <span style={{ color: selectedUserProfile.status === "Inactive" ? '#ef4444' : '#10b981', fontWeight: '700' }}>{selectedUserProfile.status || "Active"}</span></div>
 
                   <div><strong>Current Zone:</strong> {selectedUserProfile.zone || "N/A"}</div>
@@ -3005,7 +3022,7 @@ function AOmModule({ user, onLogout }) {
             const tryKey = (k) => { try { const v = sessionStorage.getItem(`${prefix}_${k}`) || localStorage.getItem(`${prefix}_${k}`); return v ? JSON.parse(v) : null; } catch { return null; } };
             return tryKey(keyA) || tryKey(keyB) || null;
           };
-          
+
           let effectiveQuizMarks = activeAssessment.quizMarks; // DB TEST_ATTEMPT.obtained_marks — primary source
           if (effectiveQuizMarks === null || effectiveQuizMarks === undefined) {
             const offlineSs = resolveOfflineMcq("ss_mcq_test", hrmsId, employeeUUID);
@@ -3020,7 +3037,7 @@ function AOmModule({ user, onLogout }) {
 
           const activeAnswers = answersByAssessment[activeAssessment.id] || buildPrefilledAnswers(activeAssessment.title);
           const liveScore = calculateAssessmentScore(activeAnswers, true, effectiveQuizMarks, assessmentRoleTab);
-            
+
           const roleCriteria = assessmentCriteria;
 
           let ynScore = 0;
@@ -3134,7 +3151,7 @@ function AOmModule({ user, onLogout }) {
                             <span>/ 25</span>
                           </div>
                           <div className="sm2-mcq-percentage-badge">
-                            {mcqPercentage}% Score
+                            {realMcqScore}/25 Score
                           </div>
                           <button
                             type="button"
@@ -3900,19 +3917,19 @@ function AOmModule({ user, onLogout }) {
             }
           });
 
-          const categoryPms = selectedCategory 
+          const categoryPms = selectedCategory
             ? rosterList.filter(p => getEmpCategory(p) === selectedCategory)
             : [];
 
           const searchedCategoryPms = categoryPms.filter(p => {
-            const matchesSearch = !rosterSearch || 
-              p.name.toLowerCase().includes(rosterSearch.toLowerCase()) || 
+            const matchesSearch = !rosterSearch ||
+              p.name.toLowerCase().includes(rosterSearch.toLowerCase()) ||
               (p.hrmsId || p.employeeId).toLowerCase().includes(rosterSearch.toLowerCase());
-            
+
             const matchesStation = rosterStation === "All" ||
               p.stationName === rosterStation ||
               p.division === rosterStation;
-            
+
             return matchesSearch && matchesStation;
           });
 
@@ -3929,7 +3946,7 @@ function AOmModule({ user, onLogout }) {
             const keyPrefix = rolePrefix; // "ti" or "ss"
             const mcqDataStr = localStorage.getItem(`${keyPrefix}_mcq_test_${p.hrmsId || p.employeeId}`);
             const mcqData = mcqDataStr ? JSON.parse(mcqDataStr) : null;
-            
+
             const isApproved = p.status === 'Approved';
             const isPending = p.status === 'Submitted';
             const isCompleted = (mcqData && mcqData.completed) || p.status === 'Exam Taken';
@@ -4007,11 +4024,11 @@ function AOmModule({ user, onLogout }) {
                     ← Back to List
                   </button>
                   <button
-                    onClick={() => { 
+                    onClick={() => {
                       setSelectedCategory(null);
                       setSelectedHrmsIds([]);
-                      setRosterSearch(""); 
-                      setRosterStation("All"); 
+                      setRosterSearch("");
+                      setRosterStation("All");
                       setViewUpcomingOnly(false);
                       setShowCategoriesPanel(false);
                       setAssessmentRoleTab(null);
@@ -4149,7 +4166,7 @@ function AOmModule({ user, onLogout }) {
                           ))}
                         </select>
                       </div>
-                      
+
                       {/* View Upcoming Tests Toggle */}
                       <button
                         type="button"
@@ -4174,7 +4191,7 @@ function AOmModule({ user, onLogout }) {
                         {viewUpcomingOnly ? "Showing Scheduled Only" : "Show Scheduled Only"}
                       </button>
                     </div>
-                    
+
                     <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
                       {selectedHrmsIds.length > 0 && (
                         <>
@@ -4390,7 +4407,7 @@ function AOmModule({ user, onLogout }) {
                                       View Form
                                     </button>
                                   )}
-                                  
+
                                   {isExamSubmitted && (
                                     <>
                                       <button
@@ -5134,8 +5151,9 @@ function AOmModule({ user, onLogout }) {
           const CAT_B = { A: "#dcfce7", B: "#dbeafe", C: "#fef3c7", D: "#fee2e2" };
           const RISK_C = { High: "#dc2626", Medium: "#d97706", Low: "#16a34a" };
 
-          const isHighRisk = u.riskLevel === "High" || (u.lastScore || 0) < 50;
-          const risk = isHighRisk ? "High" : (u.lastScore || 0) >= 80 ? "Low" : "Medium";
+          const isUntested = cat === "Untested";
+          const isHighRisk = !isUntested && (u.riskLevel === "High" || (u.lastScore || 0) < 50);
+          const risk = isUntested ? "Untested" : (isHighRisk ? "High" : (u.lastScore || 0) >= 80 ? "Low" : "Medium");
           const pmeVal = u.riskLevel === "High" ? "PENDING" : "FIT";
           const refVal = u.riskLevel === "High" ? "EXPIRED" : "CLEARED";
 
@@ -5159,13 +5177,13 @@ function AOmModule({ user, onLogout }) {
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "16px", marginBottom: "24px" }}>
                 <div style={{ background: "#f8fafc", border: "1px solid #e2edf8", padding: "14px", borderRadius: "12px", textAlign: "center" }}>
                   <span style={{ fontSize: "11px", fontWeight: "800", color: "#64748b", textTransform: "uppercase", letterSpacing: "0.5px" }}>Grand Total Score</span>
-                  <strong style={{ display: "block", fontSize: "24px", color: CAT_C[cat] || "#2563eb", marginTop: "4px", fontWeight: "900" }}>{u.lastScore}/100</strong>
+                  <strong style={{ display: "block", fontSize: "24px", color: cat === "Untested" ? "#4b5563" : (CAT_C[cat] || "#2563eb"), marginTop: "4px", fontWeight: "900" }}>{cat === "Untested" ? "Not Given Test" : `${u.lastScore}/100`}</strong>
                 </div>
                 <div style={{ background: "#f8fafc", border: "1px solid #e2edf8", padding: "14px", borderRadius: "12px", textAlign: "center" }}>
                   <span style={{ fontSize: "11px", fontWeight: "800", color: "#64748b", textTransform: "uppercase", letterSpacing: "0.5px" }}>Safety Grade</span>
                   <div>
-                    <span className="ti2-badge" style={{ display: "inline-block", background: CAT_B[cat] || "#dbeafe", color: CAT_C[cat] || "#2563eb", fontSize: "13px", fontWeight: "800", padding: "4px 14px", borderRadius: "8px", marginTop: "8px" }}>
-                      Category {cat}
+                    <span className="ti2-badge" style={{ display: "inline-block", background: cat === "Untested" ? "#f3f4f6" : (CAT_B[cat] || "#dbeafe"), color: cat === "Untested" ? "#4b5563" : (CAT_C[cat] || "#2563eb"), fontSize: "13px", fontWeight: "800", padding: "4px 14px", borderRadius: "8px", marginTop: "8px" }}>
+                      {cat === "Untested" ? "Untested" : `Category ${cat}`}
                     </span>
                   </div>
                 </div>
@@ -5199,7 +5217,7 @@ function AOmModule({ user, onLogout }) {
                       <div style={{ display: "flex", justifyContent: "space-between" }}><dt style={{ color: "#64748b", fontSize: "12px", fontWeight: "700" }}>Contact Number</dt><dd style={{ margin: 0, fontSize: "13px", fontWeight: "800", color: "#1e293b" }}>{u.mobileNo || "+91 98765 11001"}</dd></div>
                       <div style={{ display: "flex", justifyContent: "space-between" }}><dt style={{ color: "#64748b", fontSize: "12px", fontWeight: "700" }}>Date of Appointment</dt><dd style={{ margin: 0, fontSize: "13px", fontWeight: "800", color: "#1e293b" }}>{u.doj || "2018-02-12"}</dd></div>
                       <div style={{ display: "flex", justifyContent: "space-between" }}><dt style={{ color: "#64748b", fontSize: "12px", fontWeight: "700" }}>Alcoholic Status</dt><dd style={{ margin: 0, fontSize: "13px", fontWeight: "800", color: "#16a34a" }}>Non-Alcoholic</dd></div>
-                      <div style={{ display: "flex", justifyContent: "space-between" }}><dt style={{ color: "#64748b", fontSize: "12px", fontWeight: "700" }}>Assigned Division Risk</dt><dd style={{ margin: 0, fontSize: "13px", fontWeight: "800", color: RISK_C[risk] }}>{risk} Risk</dd></div>
+                      <div style={{ display: "flex", justifyContent: "space-between" }}><dt style={{ color: "#64748b", fontSize: "12px", fontWeight: "700" }}>Assigned Division Risk</dt><dd style={{ margin: 0, fontSize: "13px", fontWeight: "800", color: RISK_C[risk] || "#4b5563" }}>{risk === "Untested" ? "Untested" : `${risk} Risk`}</dd></div>
                     </dl>
                   </div>
 
@@ -5308,7 +5326,7 @@ function AOmModule({ user, onLogout }) {
           return matchesSearch && matchesRole && matchesTi && matchesStation && matchesCat && matchesRisk;
         });
 
-        const catBadge = c => <span className="sdom-badge" style={{ background: { A: "#dcfce7", B: "#dbeafe", C: "#fef3c7", D: "#fee2e2" }[c] || "#f3f4f6", color: { A: "#16a34a", B: "#2563eb", C: "#d97706", D: "#dc2626" }[c] || "#6b7280" }}>{c ? `Cat. ${c}` : "—"}</span>;
+        const catBadge = c => <span className="sdom-badge" style={{ background: { A: "#dcfce7", B: "#dbeafe", C: "#fef3c7", D: "#fee2e2" }[c] || "#f3f4f6", color: { A: "#16a34a", B: "#2563eb", C: "#d97706", D: "#dc2626" }[c] || "#6b7280" }}>{c === "Untested" ? "Untested" : (c ? `Cat. ${c}` : "—")}</span>;
         const riskBadge = r => <span className="sdom-badge" style={{ background: { Low: "#dcfce7", Medium: "#fef3c7", High: "#fee2e2" }[r] || "#f3f4f6", color: { Low: "#16a34a", Medium: "#d97706", High: "#dc2626" }[r] || "#6b7280" }}>{r}</span>;
         const statusBadge = s => <span className="sdom-badge" style={{ background: { Approved: "#dcfce7", Pending: "#fef3c7", Rejected: "#fee2e2", Completed: "#dcfce7" }[s] || "#f3f4f6", color: { Approved: "#16a34a", Pending: "#d97706", Rejected: "#dc2626", Completed: "#16a34a" }[s] || "#6b7280" }}>{s}</span>;
 
@@ -5367,13 +5385,13 @@ function AOmModule({ user, onLogout }) {
               <div className="sdom-filter-field" style={{ display: "flex", flexDirection: "column", gap: "6px", flex: 1, minWidth: "100px" }}>
                 <label style={{ fontSize: "11px", fontWeight: "800", color: "#475569", textTransform: "uppercase" }}>Category</label>
                 <select value={repF.cat} onChange={e => setRepF(p => ({ ...p, cat: e.target.value }))} style={{ height: "42px", padding: "0 12px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "13px", fontWeight: "600" }}>
-                  <option>All</option><option>A</option><option>B</option><option>C</option><option>D</option>
+                  <option>All</option><option>A</option><option>B</option><option>C</option><option>D</option><option>Untested</option>
                 </select>
               </div>
               <div className="sdom-filter-field" style={{ display: "flex", flexDirection: "column", gap: "6px", flex: 1, minWidth: "110px" }}>
                 <label style={{ fontSize: "11px", fontWeight: "800", color: "#475569", textTransform: "uppercase" }}>Risk Level</label>
                 <select value={repF.risk} onChange={e => setRepF(p => ({ ...p, risk: e.target.value }))} style={{ height: "42px", padding: "0 12px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "13px", fontWeight: "600" }}>
-                  <option>All</option><option>Low</option><option>Medium</option><option>High</option>
+                  <option>All</option><option>Low</option><option>Medium</option><option>High</option><option>Untested</option>
                 </select>
               </div>
               <div>
@@ -5407,7 +5425,7 @@ function AOmModule({ user, onLogout }) {
                         <td style={{ padding: "12px 16px", color: "#334155", fontWeight: "500" }}>{ROLE_MAP[s.role] || s.designation}</td>
                         <td style={{ padding: "12px 16px", color: "#334155", fontWeight: "500" }}>{s.stationName}</td>
                         <td style={{ padding: "12px 16px", color: "#334155", fontWeight: "500" }}>{s.division}</td>
-                        <td style={{ padding: "12px 16px", fontWeight: 700, color: "#0f172a" }}>{s.lastScore}</td>
+                        <td style={{ padding: "12px 16px", fontWeight: 700, color: "#0f172a" }}>{s.category === "Untested" ? "Not Given Test" : s.lastScore}</td>
                         <td style={{ padding: "12px 16px" }}>{catBadge(s.category)}</td>
                         <td style={{ padding: "12px 16px" }}>{riskBadge(s.riskLevel)}</td>
                         <td style={{ padding: "12px 16px" }}>{statusBadge(s.assessmentStatus)}</td>

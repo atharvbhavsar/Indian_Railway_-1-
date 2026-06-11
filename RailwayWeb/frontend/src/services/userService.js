@@ -13,6 +13,10 @@ export const userService = {
         .select(`
           *,
           ROLE (role_name),
+          MONITORING (
+            risk_level,
+            monitoring_status
+          ),
           EMPLOYEE_PROFILE (
             joining_date,
             current_score,
@@ -111,7 +115,7 @@ export const userService = {
         `)
         .eq("station_id", stationId);
       if (error) throw error;
-      
+
       return data.map(item => item.USERS);
     } catch (err) {
       logger.error(`Error fetching users for station ${stationId}:`, err);
@@ -152,7 +156,7 @@ export const userService = {
         .eq("role_name", userData.role)
         .single();
       if (roleError) throw roleError;
-      
+
       const userPayload = {
         hrms_id: userData.hrmsId,
         username: userData.username || userData.hrmsId.toLowerCase(),
@@ -244,36 +248,98 @@ export const userService = {
         .single();
       if (roleError) throw roleError;
 
-      // 2. Resolve station ID (if station is provided)
+      // 2. Resolve station ID, division, and zone (if station is provided)
       let stationId = null;
-      if (userData.station) {
+      let derivedDivision = "Nagpur";
+      let derivedZone = "Central Railway";
+      if (userData.station && userData.station !== "—" && userData.station !== "Not Assigned") {
         const { data: stData } = await supabase
           .from("STATION")
-          .select("station_id")
+          .select(`
+            station_id,
+            DIVISION (division_name, zone_name)
+          `)
           .eq("station_name", userData.station)
-          .single();
-        stationId = stData?.station_id || null;
+          .limit(1)
+          .maybeSingle();
+        if (stData) {
+          stationId = stData.station_id;
+          derivedDivision = stData.DIVISION?.division_name || "Nagpur";
+          derivedZone = stData.DIVISION?.zone_name || "Central Railway";
+        }
+      } else if (userData.role === "Traffic Inspector") {
+        const jur = userData.linkedStations || userData.jurisdiction || "";
+        const firstStation = jur.split(",")[0]?.trim();
+        if (firstStation) {
+          const { data: stData } = await supabase
+            .from("STATION")
+            .select(`
+              station_id,
+              DIVISION (division_name, zone_name)
+            `)
+            .eq("station_name", firstStation)
+            .limit(1)
+            .maybeSingle();
+          if (stData) {
+            derivedDivision = stData.DIVISION?.division_name || "Nagpur";
+            derivedZone = stData.DIVISION?.zone_name || "Central Railway";
+          }
+        }
+      }
+
+      // Auto-resolve Reporting Station Master for Pointsman role based on station configuration
+      let derivedReportingSm = "";
+      let derivedSmRecordId = null;
+      if (userData.role === "Pointsman" && stationId) {
+        const { data: smProfiles } = await supabase
+          .from("EMPLOYEE_PROFILE")
+          .select(`
+            user_id,
+            USERS!inner (
+              full_name,
+              role_id,
+              ROLE!inner (role_name)
+            ),
+            STATION_MASTER (sm_id)
+          `)
+          .eq("station_id", stationId)
+          .eq("USERS.ROLE.role_name", "Station Master");
+
+        if (smProfiles && smProfiles.length > 0) {
+          derivedReportingSm = smProfiles[0].USERS?.full_name || "";
+          derivedSmRecordId = smProfiles[0].STATION_MASTER?.sm_id || null;
+        }
       }
 
       let userId;
 
       if (mode === "add") {
-        // Validate HRMS ID, Email, Phone for uniqueness
-        const { data: existingUser } = await supabase
-          .from("USERS")
-          .select("hrms_id, email, mobile_no")
-          .or(`hrms_id.eq.${userData.hrmsId},email.eq.${userData.email},mobile_no.eq.${userData.contact}`);
-        
-        if (existingUser && existingUser.length > 0) {
-          const match = existingUser.find(u => 
-            u.hrms_id === userData.hrmsId || 
-            u.email === userData.email || 
-            u.mobile_no === userData.contact
-          );
-          if (match) {
-            if (match.hrms_id === userData.hrmsId) throw new Error(`User with HRMS ID ${userData.hrmsId} already exists.`);
-            if (match.email === userData.email) throw new Error(`Email ${userData.email} is already in use.`);
-            if (match.mobile_no === userData.contact) throw new Error(`Mobile Number ${userData.contact} is already in use.`);
+        // Validate HRMS ID, Email, Phone, and PF Number for uniqueness
+        const orClauses = [];
+        if (userData.hrmsId) orClauses.push(`hrms_id.eq.${userData.hrmsId}`);
+        if (userData.email) orClauses.push(`email.eq.${userData.email}`);
+        if (userData.contact) orClauses.push(`mobile_no.eq.${userData.contact}`);
+        if (userData.pfNumber) orClauses.push(`pf_number.eq.${userData.pfNumber}`);
+
+        if (orClauses.length > 0) {
+          const { data: existingUser } = await supabase
+            .from("USERS")
+            .select("hrms_id, email, mobile_no, pf_number")
+            .or(orClauses.join(","));
+
+          if (existingUser && existingUser.length > 0) {
+            const match = existingUser.find(u =>
+              (userData.hrmsId && u.hrms_id === userData.hrmsId) ||
+              (userData.email && u.email === userData.email) ||
+              (userData.contact && u.mobile_no === userData.contact) ||
+              (userData.pfNumber && u.pf_number === userData.pfNumber)
+            );
+            if (match) {
+              if (userData.hrmsId && match.hrms_id === userData.hrmsId) throw new Error(`User with HRMS ID ${userData.hrmsId} already exists.`);
+              if (userData.email && match.email === userData.email) throw new Error(`Email ${userData.email} is already in use.`);
+              if (userData.contact && match.mobile_no === userData.contact) throw new Error(`Mobile Number ${userData.contact} is already in use.`);
+              if (userData.pfNumber && match.pf_number === userData.pfNumber) throw new Error(`PF Number ${userData.pfNumber} is already in use.`);
+            }
           }
         }
 
@@ -286,7 +352,8 @@ export const userService = {
           mobile_no: userData.contact || "0000000000",
           password_hash: userData.password || "password123",
           role_id: roleData.role_id,
-          status: "Active"
+          status: "Active",
+          pf_number: userData.pfNumber || null
         };
 
         const { data: newUser, error: userErr } = await supabase
@@ -310,11 +377,13 @@ export const userService = {
           category: userData.category || "Untested",
           monitoring_status: userData.monitoringStatus || "Active",
           station_id: stationId,
-          division: userData.division || "Nagpur",
-          reporting_sm: userData.reportingSm || "",
+          division: derivedDivision,
+          reporting_sm: derivedReportingSm || userData.reportingSm || "",
           work_location: userData.workLocation || "",
           shift: userData.shift || "",
-          jurisdiction: userData.jurisdiction || ""
+          jurisdiction: userData.jurisdiction || "",
+          pme_status: userData.pmeStatus || "Fit",
+          refresher_status: userData.refStatus || "Cleared"
         };
 
         const { error: profileErr } = await supabase
@@ -329,8 +398,10 @@ export const userService = {
           if (userData.role === 'Pointsman') {
             subtypePayload.shift = userData.shift || "Morning Shift (06:00 - 14:00)";
             subtypePayload.work_location = userData.workLocation || userData.station || "Nagpur Junction";
-            // For pointsman, link SM if provided
-            if (userData.reportingSm) {
+            // Link SM dynamically
+            if (derivedSmRecordId) {
+              subtypePayload.sm_id = derivedSmRecordId;
+            } else if (userData.reportingSm) {
               const { data: smUser } = await supabase
                 .from("USERS")
                 .select("user_id")
@@ -357,14 +428,39 @@ export const userService = {
         }
       } else {
         // Edit mode
-        // 1. Get user details
+        // 1. Get user details including existing values to perform a safe merge update
         const { data: existingUser, error: userError } = await supabase
           .from("USERS")
-          .select("user_id, role_id, ROLE (role_name)")
+          .select(`
+            user_id,
+            role_id,
+            full_name,
+            email,
+            mobile_no,
+            pf_number,
+            ROLE (role_name),
+            EMPLOYEE_PROFILE (
+              joining_date,
+              current_score,
+              station_id,
+              division,
+              reporting_sm,
+              work_location,
+              shift,
+              jurisdiction,
+              category,
+              pme_status,
+              refresher_status
+            )
+          `)
           .eq("hrms_id", userData.hrmsId)
           .single();
         if (userError) throw userError;
         userId = existingUser.user_id;
+
+        const ep = Array.isArray(existingUser.EMPLOYEE_PROFILE)
+          ? (existingUser.EMPLOYEE_PROFILE[0] || {})
+          : (existingUser.EMPLOYEE_PROFILE || {});
 
         // Check if role has changed, and if so, perform a role shift
         const oldRoleName = existingUser.ROLE?.role_name;
@@ -375,13 +471,56 @@ export const userService = {
           }
         }
 
+        // Validate if Email or PF Number is already in use by ANOTHER user
+        const orEditClauses = [];
+        if (userData.email && userData.email !== existingUser.email) orEditClauses.push(`email.eq.${userData.email}`);
+        if (userData.pfNumber && userData.pfNumber !== existingUser.pf_number) orEditClauses.push(`pf_number.eq.${userData.pfNumber}`);
+
+        if (orEditClauses.length > 0) {
+          const { data: duplicateCheck } = await supabase
+            .from("USERS")
+            .select("hrms_id, email, pf_number")
+            .or(orEditClauses.join(","))
+            .neq("hrms_id", userData.hrmsId);
+
+          if (duplicateCheck && duplicateCheck.length > 0) {
+            const match = duplicateCheck.find(u =>
+              (userData.email && u.email === userData.email) ||
+              (userData.pfNumber && u.pf_number === userData.pfNumber)
+            );
+            if (match) {
+              if (userData.email && match.email === userData.email) throw new Error(`Email ${userData.email} is already in use by another user.`);
+              if (userData.pfNumber && match.pf_number === userData.pfNumber) throw new Error(`PF Number ${userData.pfNumber} is already in use by another user.`);
+            }
+          }
+        }
+
+        // Merge existing user values with updates, ignoring undefined/null/empty strings from partial updates
+        const nameVal = userData.name !== undefined && userData.name !== "" ? userData.name : existingUser.full_name;
+        const emailVal = userData.email !== undefined && userData.email !== "" ? userData.email : existingUser.email;
+        const contactVal = userData.contact !== undefined && userData.contact !== "" ? userData.contact : existingUser.mobile_no;
+        const pfNumberVal = userData.pfNumber !== undefined && userData.pfNumber !== "" ? userData.pfNumber : existingUser.pf_number;
+
+        const joiningDateVal = userData.lastDate !== undefined && userData.lastDate !== "" ? userData.lastDate : ep.joining_date;
+        const scoreVal = userData.score !== undefined ? userData.score : ep.current_score;
+        const stationIdVal = stationId !== null ? stationId : ep.station_id;
+        const divisionVal = userData.division !== undefined && userData.division !== "" ? derivedDivision : ep.division;
+        const reportingSmVal = userData.reportingSm !== undefined && userData.reportingSm !== "" ? (derivedReportingSm || userData.reportingSm) : ep.reporting_sm;
+        const workLocationVal = userData.workLocation !== undefined && userData.workLocation !== "" ? userData.workLocation : ep.work_location;
+        const shiftVal = userData.shift !== undefined && userData.shift !== "" ? userData.shift : ep.shift;
+        const jurisdictionVal = userData.jurisdiction !== undefined && userData.jurisdiction !== "" ? userData.jurisdiction : ep.jurisdiction;
+        const categoryVal = userData.category !== undefined && userData.category !== "" ? userData.category : ep.category;
+        const pmeStatusVal = userData.pmeStatus !== undefined && userData.pmeStatus !== "" ? userData.pmeStatus : ep.pme_status;
+        const refStatusVal = userData.refStatus !== undefined && userData.refStatus !== "" ? userData.refStatus : ep.refresher_status;
+
         // 2. Update users
         const { error: userUpdateErr } = await supabase
           .from("USERS")
           .update({
-            full_name: userData.name,
-            email: userData.email,
-            mobile_no: userData.contact
+            full_name: nameVal,
+            email: emailVal,
+            mobile_no: contactVal,
+            pf_number: pfNumberVal
           })
           .eq("user_id", userId);
         if (userUpdateErr) throw userUpdateErr;
@@ -390,16 +529,17 @@ export const userService = {
         const { error: profileUpdateErr } = await supabase
           .from("EMPLOYEE_PROFILE")
           .update({
-            joining_date: userData.lastDate,
-            current_score: userData.score,
-            station_id: stationId,
-            division: userData.division,
-            reporting_sm: userData.reportingSm,
-            work_location: userData.workLocation,
-            shift: userData.shift,
-            jurisdiction: userData.jurisdiction,
-            category: userData.category
-
+            joining_date: joiningDateVal,
+            current_score: scoreVal,
+            station_id: stationIdVal,
+            division: divisionVal,
+            reporting_sm: reportingSmVal,
+            work_location: workLocationVal,
+            shift: shiftVal,
+            jurisdiction: jurisdictionVal,
+            category: categoryVal,
+            pme_status: pmeStatusVal,
+            refresher_status: refStatusVal
           })
           .eq("user_id", userId);
         if (profileUpdateErr) throw profileUpdateErr;
@@ -411,6 +551,33 @@ export const userService = {
           if (userData.role === 'Pointsman') {
             subtypePayload.shift = userData.shift;
             subtypePayload.work_location = userData.workLocation;
+            if (derivedSmRecordId) {
+              subtypePayload.sm_id = derivedSmRecordId;
+            } else if (userData.reportingSm) {
+              const { data: smUser } = await supabase
+                .from("USERS")
+                .select("user_id")
+                .eq("full_name", userData.reportingSm)
+                .limit(1)
+                .maybeSingle();
+              if (smUser) {
+                const { data: smRecord } = await supabase
+                  .from("STATION_MASTER")
+                  .select("sm_id")
+                  .eq("user_id", smUser.user_id)
+                  .limit(1)
+                  .maybeSingle();
+                if (smRecord) {
+                  subtypePayload.sm_id = smRecord.sm_id;
+                } else {
+                  subtypePayload.sm_id = null;
+                }
+              } else {
+                subtypePayload.sm_id = null;
+              }
+            } else {
+              subtypePayload.sm_id = null;
+            }
           } else if (userData.role === 'Traffic Inspector') {
             subtypePayload.station_id = stationId;
             subtypePayload.jurisdiction = userData.jurisdiction;
@@ -487,7 +654,7 @@ export const userService = {
           insertPayload.shift = "Morning Shift (06:00 - 14:00)";
           insertPayload.work_location = "Nagpur Junction";
         }
-        
+
         await supabase.from(newSubtypeTable).insert([insertPayload]);
       }
 

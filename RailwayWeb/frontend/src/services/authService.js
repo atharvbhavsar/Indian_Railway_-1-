@@ -110,6 +110,7 @@ export const authService = {
         email,
         mobile_no,
         status,
+        pf_number,
         ROLE (
           role_name
         ),
@@ -152,6 +153,7 @@ export const authService = {
       email: data.email,
       mobile: data.mobile_no,
       status: data.status,
+      pfNumber: data.pf_number || "—",
       preferredLanguage: preferredLanguage,
       role: data.ROLE?.role_name || null,
       station: st?.station_name || "—",

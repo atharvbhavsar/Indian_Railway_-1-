@@ -10,15 +10,15 @@ export function StationTable({ title, subtitle, stations }) {
       <div className="sdom-table-wrap">
         <table className="sdom-table">
           <thead>
-            <tr><th>#</th><th>Station</th><th>Avg Score</th><th>Safety %</th><th>Pending</th></tr>
+            <tr><th>#</th><th>Station</th><th>Avg Score</th><th>Safety Score</th><th>Pending</th></tr>
           </thead>
           <tbody>
             {stations.map((st, i) => (
               <tr key={st.id}>
                 <td>{i + 1}</td>
                 <td><div style={{ fontWeight: 600 }}>{st.name}</div><div style={{ fontSize: 11, color: "#94a3b8" }}>{st.ti}</div></td>
-                <td><span className={st.score >= 80 ? "sdom-text-success" : st.score >= 50 ? "sdom-text-warning" : "sdom-text-danger"} style={{ fontWeight: 700 }}>{st.score}</span></td>
-                <td><span className={st.safety >= 80 ? "sdom-text-success" : "sdom-text-danger"} style={{ fontWeight: 700 }}>{st.safety}%</span></td>
+                <td><span className={st.score >= 80 ? "sdom-text-success" : st.score >= 50 ? "sdom-text-warning" : "sdom-text-danger"} style={{ fontWeight: 700 }}>{st.score}/100</span></td>
+                <td><span className={st.safety >= 80 ? "sdom-text-success" : "sdom-text-danger"} style={{ fontWeight: 700 }}>{st.safety}/100</span></td>
                 <td>{st.pending > 0 ? <span className="sdom-badge sdom-badge-danger">{st.pending}</span> : <span style={{ color: "#94a3b8" }}>0</span>}</td>
               </tr>
             ))}
@@ -65,7 +65,7 @@ export function EmployeeTable({ staff, onView, onEdit, onShift, onRemove, showSh
                   {riskBadge(s.risk)}
                 </div>
               </td>
-              <td style={{ fontWeight: 600, color: s.score < 50 ? "#C53030" : "#2F855A" }}>{s.score}</td>
+              <td style={{ fontWeight: 600, color: s.cat === "Untested" ? "#4b5563" : (s.score < 50 ? "#C53030" : "#2F855A") }}>{s.cat === "Untested" ? "Not Given Test" : `${s.score}/100`}</td>
               <td>{statusBadge(s.status)}</td>
               <td>
                 <div style={{ display: "flex", gap: 8 }}>

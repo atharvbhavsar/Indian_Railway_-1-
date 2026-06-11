@@ -7,9 +7,18 @@ export function getCat(score) {
 
 
 export function riskLevel(pm) {
-  if (pm.safetyScore < 60 || pm.lastScore < 50)  return "High";
-  if (pm.safetyScore < 75 || pm.lastScore < 65)  return "Medium";
-  return "Low";
+  const category = pm.cat || pm.category;
+  if (category === "Untested" || (category && category.toLowerCase() === "untested")) return "Untested";
+  if (category === "A") return "Low";
+  if (category === "B") return "Low";
+  if (category === "C") return "Medium";
+  if (category === "D") return "High";
+  
+  const score = pm.lastScore !== undefined && pm.lastScore !== null ? pm.lastScore : (pm.score !== undefined && pm.score !== null ? pm.score : 0);
+  if (score >= 80) return "Low";
+  if (score >= 50) return "Low";
+  if (score >= 26) return "Medium";
+  return "High";
 }
 
 export function getCatColor(cat) {
@@ -29,6 +38,7 @@ export function getCatBg(cat) {
 export function riskColor(risk) {
   if (risk === "Low") return "#16a34a";
   if (risk === "Medium") return "#f59e0b";
+  if (risk === "Untested") return "#94a3b8";
   return "#ef4444";
 }
 

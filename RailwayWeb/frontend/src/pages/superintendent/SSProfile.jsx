@@ -2,6 +2,7 @@ import React from 'react';
 import { UserCircle2, Clock, ShieldCheck, FileText, Activity } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { useLanguage } from '../../contexts/LanguageContext';
+import { getCategory } from '../../utils/ssUtils';
 
 export default function SSProfile({
   fullName,
@@ -12,9 +13,10 @@ export default function SSProfile({
   history,
   activityLogs,
   latestCategory,
-  latestScore
+  latestScore,
+  user = {}
 }) {
-  const { language, changeLanguage, t } = useLanguage();
+  const { t } = useLanguage();
 
   // RENDER BODY
 
@@ -23,6 +25,28 @@ export default function SSProfile({
     score: h.totalScore
   }));
 
+  // Fallbacks to stationSuperintendentProfile fields for offline/local sandbox consistency
+  const fallbackDesignation = user.role || stationSuperintendentProfile.designation;
+  const fallbackMobile = user.mobile || user.contact || stationSuperintendentProfile.mobileNumber;
+  const fallbackEmail = user.email || `${(employeeId || "").toLowerCase()}@rail.in`;
+  const fallbackZone = user.zone || "Central Railway";
+  const fallbackDivision = user.division || "Nagpur";
+  const fallbackStation = user.station || stationSuperintendentProfile.stationName;
+  const fallbackReporting = user.reportingSm || stationSuperintendentProfile.reportingOfficer;
+  const fallbackPmeDone = user.pmeDoneDate || user.pmeDate || "2024-10-16";
+  const fallbackPmeDue = user.pmeDueDate || "2028-10-15";
+  const fallbackRefDone = user.refDoneDate || user.refresherDate || "2024-04-13";
+  const fallbackRefDue = user.refDueDate || user.refresherDueDate || "2027-04-12";
+  const fallbackTraining = user.refStatus || user.trainingStatus || stationSuperintendentProfile.trainingStatus;
+
+  const latestApproved = (history || []).find(h => ["Approved", "Completed", "Submitted", "Pending"].includes(h.approvalStatus));
+  const scoreVal = user.score !== undefined && user.score !== null && user.score !== 0 ? user.score : (latestApproved?.totalScore || (latestScore && !String(latestScore).includes("—") ? parseInt(latestScore) : 85));
+  const computedCategory = latestApproved?.category || (scoreVal ? getCategory(scoreVal) : null);
+  const category = user.category && user.category !== "Untested" ? user.category : (user.cat && user.cat !== "Untested" ? user.cat : (latestCategory && latestCategory !== "—" && latestCategory !== "Untested" && !latestCategory.includes("Awaiting") ? latestCategory : (computedCategory || stationSuperintendentProfile.currentCategory || "A")));
+
+  // Derive risk from category: A/B → Low, C → Medium, D → High
+  const risk = category === "Untested" ? "Untested" : category === "D" ? "High" : category === "C" ? "Medium" : "Low";
+
   return (
     <div className="sdom-fade">
       {/* Hero header */}
@@ -30,28 +54,38 @@ export default function SSProfile({
         <div className="sdom-station-header-meta">
           <div style={{ fontSize: "0.8rem", color: "rgba(255,255,255,0.6)", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.06em" }}>{t("Staff Profile")}</div>
           <div style={{ fontSize: "1.8rem", fontWeight: 800, marginBottom: 4 }}>{fullName}</div>
-          <div style={{ fontSize: "0.9rem", color: "rgba(255,255,255,0.7)" }}>{t(stationSuperintendentProfile.designation)} &bull; {t(stationSuperintendentProfile.stationName)} &bull; {t("Central Railway")}</div>
+          <div style={{ fontSize: "0.9rem", color: "rgba(255,255,255,0.7)" }}>{t(fallbackDesignation)} &bull; {t(fallbackStation)} &bull; {t(fallbackZone)}</div>
           <div style={{ marginTop: 12, display: "flex", gap: 10 }}>
-            <span className="sdom-badge sdom-badge-success">
-              {(!latestCategory || latestCategory === "—" || latestCategory === "Untested" || latestCategory.includes("Awaiting")) ? t("Awaiting Approval") : `${t("Category")} ${latestCategory}`}
-            </span>
-            <span className="sdom-badge sdom-badge-success">{t("Low Risk")}</span>
+            {(!category || category.includes("Awaiting")) ? (
+              <span className="sdom-badge sdom-badge-warning">{t("Awaiting Approval")}</span>
+            ) : (
+              <span className={`sdom-badge ${category === "D" ? "sdom-badge-danger" : category === "C" ? "sdom-badge-warning" : "sdom-badge-success"}`}>
+                {t("Category")} {category}
+              </span>
+            )}
+            {risk === "Untested" ? (
+              <span className="sdom-badge" style={{ background: "#f3f4f6", color: "#4b5563" }}>{t("Untested")}</span>
+            ) : (
+              <span className={`sdom-badge ${risk === "High" ? "sdom-badge-danger" : risk === "Medium" ? "sdom-badge-warning" : "sdom-badge-success"}`}>
+                {t(risk)} {t("Risk")}
+              </span>
+            )}
             <span className="sdom-badge sdom-badge-success">{t("Active")}</span>
           </div>
         </div>
         <div className="sdom-station-header-stats">
           <div className="sdom-station-header-stat">
-            <span className="val">{latestScore !== null ? (String(latestScore).includes("/") ? latestScore : `${latestScore}/100`) : "—"}</span>
+            <span className="val">{scoreVal !== null ? `${scoreVal}/100` : "—"}</span>
             <span className="lbl">{t("Latest Score")}</span>
           </div>
           <div style={{ width: 1, height: 60, background: "rgba(255,255,255,0.15)" }}/>
           <div className="sdom-station-header-stat">
-            <span className="val">{stationSuperintendentProfile.mobileNumber}</span>
+            <span className="val">{fallbackMobile}</span>
             <span className="lbl">{t("Contact")}</span>
           </div>
           <div style={{ width: 1, height: 60, background: "rgba(255,255,255,0.15)" }}/>
           <div className="sdom-station-header-stat">
-            <span className="val">{history.length ? history[0].date : stationSuperintendentProfile.joiningDate}</span>
+            <span className="val">{history.length ? history[0].date : (user.joiningDate || stationSuperintendentProfile.joiningDate)}</span>
             <span className="lbl">{t("Last Assessment")}</span>
           </div>
         </div>
@@ -65,14 +99,14 @@ export default function SSProfile({
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '15px', paddingBottom: '20px' }}>
             {[
               [t("Employee ID / HRMS ID"), employeeId],
-              [t("Designation"), t(stationSuperintendentProfile.designation)],
-              [t("Mobile Number"), stationSuperintendentProfile.mobileNumber],
-              [t("Email ID"), `${(employeeId || "").toLowerCase()}@rail.in`],
+              [t("Designation"), t(fallbackDesignation)],
+              [t("Mobile Number"), fallbackMobile],
+              [t("Email ID"), fallbackEmail],
               [t("Account Status"), t("Active")],
-              [t("Current Zone"), t("Central Railway")],
-              [t("Current Division"), t("Nagpur")],
-              [t("Current Station Placement"), t(stationSuperintendentProfile.stationName)],
-              [t("Reporting Officer"), t(stationSuperintendentProfile.reportingOfficer)]
+              [t("Current Zone"), t(fallbackZone)],
+              [t("Current Division"), t(fallbackDivision)],
+              [t("Current Station Placement"), t(fallbackStation)],
+              [t("Reporting Officer"), t(fallbackReporting)]
             ].map(([lbl, val]) => (
               <div key={lbl} style={{ background: "#f8fafc", borderRadius: 8, padding: "12px 16px", border: "1px solid #e2e8f0" }}>
                 <div style={{ fontSize: "0.75rem", color: "#64748b", fontWeight: 700, marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.04em" }}>{lbl}</div>
@@ -87,11 +121,11 @@ export default function SSProfile({
               {t("Operational & Safety Dates")}
             </h4>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '15px', fontSize: '13px' }}>
-              <div><strong>{t("PME Last Completed")}:</strong><div style={{fontWeight: 700, color: "#065f46", marginTop: 4}}>2024-10-16 (FIT)</div></div>
-              <div><strong>{t("PME Next Due")}:</strong><div style={{fontWeight: 700, color: "#991b1b", marginTop: 4}}>2028-10-15</div></div>
-              <div><strong>{t("Refresher Course Completed")}:</strong><div style={{fontWeight: 700, color: "#0d2c4d", marginTop: 4}}>2024-04-13</div></div>
-              <div><strong>{t("Refresher Course Due")}:</strong><div style={{fontWeight: 700, color: "#0d2c4d", marginTop: 4}}>2027-04-12</div></div>
-              <div style={{ gridColumn: "span 2" }}><strong>{t("Training Clearance")}:</strong><div style={{fontWeight: 700, color: "#d97706", marginTop: 4}}>{t(stationSuperintendentProfile.trainingStatus)}</div></div>
+              <div><strong>{t("PME Last Completed")}:</strong><div style={{fontWeight: 700, color: "#065f46", marginTop: 4}}>{fallbackPmeDone}</div></div>
+              <div><strong>{t("PME Next Due")}:</strong><div style={{fontWeight: 700, color: "#991b1b", marginTop: 4}}>{fallbackPmeDue}</div></div>
+              <div><strong>{t("Refresher Course Completed")}:</strong><div style={{fontWeight: 700, color: "#0d2c4d", marginTop: 4}}>{fallbackRefDone}</div></div>
+              <div><strong>{t("Refresher Course Due")}:</strong><div style={{fontWeight: 700, color: "#0d2c4d", marginTop: 4}}>{fallbackRefDue}</div></div>
+              <div style={{ gridColumn: "span 2" }}><strong>{t("Training Clearance")}:</strong><div style={{fontWeight: 700, color: "#d97706", marginTop: 4}}>{t(fallbackTraining)}</div></div>
             </div>
           </div>
 

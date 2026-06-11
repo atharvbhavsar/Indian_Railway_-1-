@@ -97,20 +97,7 @@ const stationSuperintendentProfile = {
   joiningDate: "2012-03-10"
 };
 
-const stationTiMap = {
-  "Parbhani Junction": "TI PAR",
-  "Amla Junction": "TI AMLA",
-  "Badnera Junction": "TI NGP",
-  "Akola Junction": "TI PAR",
-  "Nagpur Junction": "TI NGP",
-  "Wardha Junction": "TI NGP",
-  "Betul Station": "TI AMLA",
-  "Itarsi Junction": "TI AMLA",
-  "Chandrapur Station": "TI NGP",
-  "Gondia Junction": "TI NGP",
-  "Dhamangaon Station": "TI NGP",
-  "Pulgaon Junction": "TI NGP"
-};
+
 
 
 
@@ -246,14 +233,20 @@ function stopAlarmSound() {
 /* ─── Main component ─── */
 function StationSuperintendentModule({ user, onLogout }) {
   const { t } = useLanguage();
-  const fullName = user?.name && user.name !== "Station Superintendent User" ? user.name : stationSuperintendentProfile.name;
   const employeeId = user?.hrmsId || stationSuperintendentProfile.hrmsId;
-
-  const [activeNav, setActiveNav] = useState("dashboard");
 
   // CRUD & Staff Directory States
   const [view, setView] = useState(null);
   const [users, setUsers] = useState([]);
+
+  const loggedInUserRecord = useMemo(() => {
+    return users.find(u => u.hrmsId === employeeId || u.user_id === employeeId || u.id === employeeId);
+  }, [users, employeeId]);
+
+  const fullName = loggedInUserRecord?.name || (user?.name && user.name !== "Station Superintendent User" ? user.name : stationSuperintendentProfile.name);
+
+  const [activeNav, setActiveNav] = useState("dashboard");
+
   const [stations, setStations] = useState([]);
 
   const fetchLiveDatabaseData = async () => {
@@ -297,6 +290,19 @@ function StationSuperintendentModule({ user, onLogout }) {
   }, []);
 
   const myStations = useMemo(() => stations, [stations]);
+
+  const loggedInTi = useMemo(() => {
+    const station = user?.station || "Nagpur Junction";
+    const found = users.find(u => {
+      const isTi = u.role === "Traffic Inspector" || u.role === "ti";
+      if (!isTi) return false;
+      const stations = (u.linkedStations || u.jurisdiction || "")
+        .split(",")
+        .map(s => s.trim().toLowerCase());
+      return stations.includes(station.toLowerCase().trim());
+    });
+    return found ? `${found.name} (${found.hrmsId || found.id})` : "Not Assigned";
+  }, [users, user]);
 
   const [roleF, setRoleF] = useState({ name: "", station: "All", ti: "All", cat: "All", risk: "All" });
   const [editingUser, setEditingUser] = useState(null);
@@ -809,9 +815,12 @@ function StationSuperintendentModule({ user, onLogout }) {
       hrmsId: editingUser.hrmsId || editingUser.id,
       name: editingUser.name,
       contact: editingUser.contact,
+      email: editingUser.email,
+      pfNumber: editingUser.pfNumber,
       stationName: editingUser.stationName || editingUser.station,
       role: editingUser.role,
       designation: editingUser.designation,
+      joiningDate: editingUser.joiningDate,
       pmeStatus: editingUser.pmeStatus,
       refStatus: editingUser.refStatus
     };
@@ -1250,7 +1259,11 @@ function StationSuperintendentModule({ user, onLogout }) {
         <SSProfile
           fullName={fullName}
           employeeId={employeeId}
-          stationSuperintendentProfile={stationSuperintendentProfile}
+          user={{ ...user, ...loggedInUserRecord }}
+          stationSuperintendentProfile={{
+            ...stationSuperintendentProfile,
+            reportingOfficer: loggedInTi
+          }}
           profileSubTab={profileSubTab}
           setProfileSubTab={setProfileSubTab}
           history={history}
@@ -1517,7 +1530,7 @@ function StationSuperintendentModule({ user, onLogout }) {
                 <Gauge size={14} />
                 <span>Avg {averageScore}</span>
               </div>
-              {latestCategory !== "Untested" && (
+              {latestCategory !== "Untested" && latestCategory !== "—" && (
                 <div className="pm-hkpi" style={{ color: getCategoryColor(latestCategory) }}>
                   <ShieldCheck size={14} />
                   <span>Cat. {latestCategory}</span>

@@ -5,15 +5,34 @@ export default function EditUserModal({
   editingUser,
   setEditingUser,
   saveEditedUser,
-  myStations
+  myStations,
+  stationMasters = []
 }) {
+  const [smSearchText, setSmSearchText] = React.useState(editingUser?.reportingSm || "");
+  const [showSmDropdown, setShowSmDropdown] = React.useState(false);
+  const dropdownRef = React.useRef(null);
+
+  React.useEffect(() => {
+    setSmSearchText(editingUser?.reportingSm || "");
+  }, [editingUser?.reportingSm]);
+
+  React.useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setShowSmDropdown(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
   if (!editingUser) return null;
 
   return (
     <div className="sdom-modal-overlay" onClick={e => e.target === e.currentTarget && setEditingUser(null)}>
-      <div className="sdom-modal" style={{ width: "900px", maxWidth: "95vw" }}>
+      <div className="sdom-modal" style={{ width: "900px", maxWidth: "95vw", maxHeight: "90vh", overflowY: "auto" }}>
         <form onSubmit={saveEditedUser} style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
-          
+
           {/* Header inside modal */}
           <div style={{ display: "flex", alignItems: "center", gap: "16px", marginBottom: "8px" }}>
             <div style={{
@@ -46,40 +65,50 @@ export default function EditUserModal({
               1. General &amp; Contact Information
             </h4>
             <div style={{ height: '1px', background: '#d5dfeb', marginBottom: '16px' }}></div>
-            
+
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
               <div className="sdom-modal-field">
                 <label>Full Name *</label>
-                <input 
-                  value={editingUser.name || ""} 
-                  onChange={e => setEditingUser({ ...editingUser, name: e.target.value })} 
-                  placeholder="Enter full name (e.g. A. K. Sharma)" 
+                <input
+                  value={editingUser.name || ""}
+                  onChange={e => setEditingUser({ ...editingUser, name: e.target.value })}
+                  placeholder="Enter full name (e.g. A. K. Sharma)"
                   required
                 />
               </div>
               <div className="sdom-modal-field">
                 <label>Mobile Number *</label>
-                <input 
-                  value={editingUser.contact || ""} 
-                  onChange={e => setEditingUser({ ...editingUser, contact: e.target.value })} 
-                  placeholder="Enter 10-digit mobile number" 
+                <input
+                  value={editingUser.contact || ""}
+                  onChange={e => setEditingUser({ ...editingUser, contact: e.target.value })}
+                  placeholder="Enter 10-digit mobile number"
                   required
                 />
               </div>
               <div className="sdom-modal-field">
                 <label>HRMS ID / Employee ID *</label>
-                <input 
-                  value={editingUser.id || ""} 
+                <input
+                  value={editingUser.id || ""}
                   disabled
                   style={{ background: "#f1f5f9", cursor: "not-allowed" }}
                 />
               </div>
               <div className="sdom-modal-field">
                 <label>Email ID *</label>
-                <input 
-                  value={editingUser.email || ""} 
-                  onChange={e => setEditingUser({ ...editingUser, email: e.target.value })} 
-                  placeholder="Enter email address (e.g. user@rail.in)" 
+                <input
+                  value={editingUser.email || ""}
+                  onChange={e => setEditingUser({ ...editingUser, email: e.target.value })}
+                  placeholder="Enter email address (e.g. user@rail.in)"
+                  required
+                />
+              </div>
+              <div className="sdom-modal-field">
+                <label>PF Number *</label>
+                <input
+                  value={editingUser.pfNumber || ""}
+                  onChange={e => setEditingUser({ ...editingUser, pfNumber: e.target.value })}
+                  placeholder="Enter 12-digit PF Number"
+                  required
                 />
               </div>
             </div>
@@ -92,12 +121,12 @@ export default function EditUserModal({
               2. Designation &amp; Station Placement Setup
             </h4>
             <div style={{ height: '1px', background: '#d5dfeb', marginBottom: '16px' }}></div>
-            
+
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
               <div className="sdom-modal-field">
                 <label>Role / Designation *</label>
-                <select 
-                  value={editingUser.role} 
+                <select
+                  value={editingUser.role}
                   onChange={e => setEditingUser({ ...editingUser, role: e.target.value, designation: e.target.value })}
                   required
                 >
@@ -108,59 +137,14 @@ export default function EditUserModal({
                 </select>
               </div>
               <div className="sdom-modal-field">
-                <label>Division *</label>
-                <select 
-                  value={editingUser.division || "Nagpur"} 
-                  onChange={e => setEditingUser({ ...editingUser, division: e.target.value })}
-                >
-                  {["Nagpur", "Pune", "Mumbai", "Solapur", "Bhusawal"].map(d => <option key={d} value={d}>{d}</option>)}
-                </select>
-              </div>
-              <div className="sdom-modal-field">
-                <label>Railway Zone *</label>
-                <select 
-                  value={editingUser.zone || "Central Railway"} 
-                  onChange={e => setEditingUser({ ...editingUser, zone: e.target.value })}
-                >
-                  {["Central Railway", "Western Railway", "Northern Railway", "Southern Railway", "Eastern Railway"].map(z => <option key={z} value={z}>{z}</option>)}
-                </select>
-              </div>
-              <div className="sdom-modal-field">
                 <label>Station Name *</label>
-                <select 
-                  value={editingUser.station} 
+                <select
+                  value={editingUser.station}
                   onChange={e => setEditingUser({ ...editingUser, station: e.target.value })}
                   required
                 >
                   {myStations.map(s => <option key={s.id || s.name} value={s.name}>{s.name} ({s.code})</option>)}
                 </select>
-              </div>
-              <div className="sdom-modal-field">
-                <label>Category *</label>
-                <select 
-                  value={editingUser.cat || "A"} 
-                  onChange={e => setEditingUser({ ...editingUser, cat: e.target.value })}
-                >
-                  <option>A</option><option>B</option><option>C</option><option>D</option>
-                </select>
-              </div>
-              <div className="sdom-modal-field" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
-                <div style={{ display: "flex", flexDirection: "column", gap: "5px" }}>
-                  <label style={{ fontSize: "0.7rem", color: "#64748b", textTransform: "uppercase", fontWeight: 700 }}>PME Status</label>
-                  <select style={{ padding: "9px 12px", borderRadius: "6px", border: "1px solid #cbd5e1" }} value={editingUser.pmeStatus} onChange={e => setEditingUser({ ...editingUser, pmeStatus: e.target.value })} required>
-                    <option>Fit</option>
-                    <option>Unfit</option>
-                    <option>Overdue</option>
-                  </select>
-                </div>
-                <div style={{ display: "flex", flexDirection: "column", gap: "5px" }}>
-                  <label style={{ fontSize: "0.7rem", color: "#64748b", textTransform: "uppercase", fontWeight: 700 }}>REF Status</label>
-                  <select style={{ padding: "9px 12px", borderRadius: "6px", border: "1px solid #cbd5e1" }} value={editingUser.refStatus} onChange={e => setEditingUser({ ...editingUser, refStatus: e.target.value })} required>
-                    <option>Cleared</option>
-                    <option>Pending</option>
-                    <option>Expired</option>
-                  </select>
-                </div>
               </div>
             </div>
           </div>
@@ -172,86 +156,22 @@ export default function EditUserModal({
                 {editingUser.role} Operational Setup
               </h4>
               <div style={{ height: '1px', backgroundColor: '#a7f3d0', marginBottom: '16px' }}></div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: "16px" }}>
                 <div className="sdom-modal-field">
                   <label>Operational Station *</label>
-                  <select 
-                    value={editingUser.smStation || editingUser.station || ""} 
+                  <select
+                    value={editingUser.smStation || editingUser.station || ""}
                     onChange={e => setEditingUser({ ...editingUser, smStation: e.target.value, station: e.target.value })}
                   >
                     <option value="">Select Operational Station</option>
                     {myStations.map(s => <option key={s.id || s.name} value={s.name}>{s.name}</option>)}
                   </select>
                 </div>
-                <div className="sdom-modal-field">
-                  <label>Operational Zone *</label>
-                  <select 
-                    value={editingUser.smZone || editingUser.zone || "Central Railway"} 
-                    onChange={e => setEditingUser({ ...editingUser, smZone: e.target.value, zone: e.target.value })}
-                  >
-                    <option value="">Select Zone</option>
-                    {["Central Railway", "Western Railway", "Northern Railway", "Southern Railway", "Eastern Railway"].map(z => <option key={z} value={z}>{z}</option>)}
-                  </select>
-                </div>
-                <div className="sdom-modal-field">
-                  <label>Operational Division *</label>
-                  <select 
-                    value={editingUser.smDivision || editingUser.division || "Nagpur"} 
-                    onChange={e => setEditingUser({ ...editingUser, smDivision: e.target.value, division: e.target.value })}
-                  >
-                    <option value="">Select Division</option>
-                    {["Nagpur", "Pune", "Mumbai", "Solapur", "Bhusawal"].map(d => <option key={d} value={d}>{d}</option>)}
-                  </select>
-                </div>
               </div>
             </div>
           )}
 
-          {editingUser.role === "Pointsman" && (
-            <div style={{ padding: 18, background: "#f0f7ff", border: "1px solid #c2e0ff", borderRadius: 10 }}>
-              <h4 style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#0d2c4d', margin: '0 0 10px', fontSize: '14px', fontWeight: '800' }}>
-                Pointsman Operational Setup
-              </h4>
-              <div style={{ height: '1px', backgroundColor: '#c2e0ff', marginBottom: '16px' }}></div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
-                <div className="sdom-modal-field">
-                  <label>Reporting Station Master *</label>
-                  <input 
-                    value={editingUser.reportingSm || ""} 
-                    onChange={e => setEditingUser({ ...editingUser, reportingSm: e.target.value })} 
-                    placeholder="Station Master Name"
-                  />
-                </div>
-                <div className="sdom-modal-field">
-                  <label>Work Location Setup *</label>
-                  <select 
-                    value={editingUser.workLocation || ""} 
-                    onChange={e => setEditingUser({ ...editingUser, workLocation: e.target.value })}
-                  >
-                    <option value="">Select Location</option>
-                    <option value="Yard">Yard Area</option>
-                    <option value="Cabin A">Cabin A</option>
-                    <option value="Cabin B">Cabin B</option>
-                    <option value="Platform Area">Platform Area</option>
-                    <option value="Level Crossing Gate">Level Crossing Gate</option>
-                  </select>
-                </div>
-                <div className="sdom-modal-field">
-                  <label>Assigned Shift *</label>
-                  <select 
-                    value={editingUser.shift || ""} 
-                    onChange={e => setEditingUser({ ...editingUser, shift: e.target.value })}
-                  >
-                    <option value="">Select Shift</option>
-                    <option value="Morning Shift (06:00 - 14:00)">Morning Shift (06:00 - 14:00)</option>
-                    <option value="Evening Shift (14:00 - 22:00)">Evening Shift (14:00 - 22:00)</option>
-                    <option value="Night Shift (22:00 - 06:00)">Night Shift (22:00 - 06:00)</option>
-                    <option value="General Shift (09:00 - 18:00)">General Shift (09:00 - 18:00)</option>
-                  </select>
-                </div>
-              </div>
-            </div>
-          )}
+
 
           {editingUser.role === "Train Manager" && (
             <div style={{ padding: 18, background: "#faf5ff", border: "1px solid #e9d5ff", borderRadius: 10 }}>
@@ -259,11 +179,11 @@ export default function EditUserModal({
                 Train Manager Operational Setup
               </h4>
               <div style={{ height: '1px', backgroundColor: '#e9d5ff', marginBottom: '16px' }}></div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: "16px" }}>
                 <div className="sdom-modal-field">
                   <label>Crew Depot *</label>
-                  <select 
-                    value={editingUser.workLocation || "Nagpur Depot"} 
+                  <select
+                    value={editingUser.workLocation || "Nagpur Depot"}
                     onChange={e => setEditingUser({ ...editingUser, workLocation: e.target.value })}
                   >
                     <option value="Nagpur Depot">Nagpur Depot</option>
@@ -271,25 +191,6 @@ export default function EditUserModal({
                     <option value="Mumbai Depot">Mumbai Depot</option>
                     <option value="Solapur Depot">Solapur Depot</option>
                     <option value="Bhusawal Depot">Bhusawal Depot</option>
-                  </select>
-                </div>
-                <div className="sdom-modal-field">
-                  <label>Assigned Section Beats *</label>
-                  <input 
-                    value={editingUser.reportingSm || "NGP-BSL Section"} 
-                    onChange={e => setEditingUser({ ...editingUser, reportingSm: e.target.value })} 
-                    placeholder="E.g. NGP-BSL, NGP-DURG"
-                  />
-                </div>
-                <div className="sdom-modal-field">
-                  <label>Assigned Shift *</label>
-                  <select 
-                    value={editingUser.shift || "Goods Train Beat"} 
-                    onChange={e => setEditingUser({ ...editingUser, shift: e.target.value })}
-                  >
-                    <option value="Mail/Express Beat">Mail/Express Beat</option>
-                    <option value="Passenger Beat">Passenger Beat</option>
-                    <option value="Goods Train Beat">Goods Train Beat</option>
                   </select>
                 </div>
               </div>

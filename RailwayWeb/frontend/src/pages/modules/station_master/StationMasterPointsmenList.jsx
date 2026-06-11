@@ -56,6 +56,7 @@ export function StationMasterPointsmenList(props) {
             <option>B</option>
             <option>C</option>
             <option>D</option>
+            <option>Untested</option>
           </select>
         </div>
         <div className="sdom-filter-field">
@@ -65,6 +66,7 @@ export function StationMasterPointsmenList(props) {
             <option value="Low">{t("Low")}</option>
             <option value="Medium">{t("Medium")}</option>
             <option value="High">{t("High")}</option>
+            <option value="Untested">{t("Untested")}</option>
           </select>
         </div>
       </div>
@@ -94,7 +96,7 @@ export function StationMasterPointsmenList(props) {
               )}
               {filteredPm.map(s => {
                 const riskVal = riskLevel(s);
-                const catVal = getCat(s.lastScore);
+                const catVal = s.cat || "Untested";
                 return (
                   <tr key={s.id || s.hrmsId}>
                     <td style={{ fontWeight: 700 }}>{s.name}</td>
@@ -102,7 +104,7 @@ export function StationMasterPointsmenList(props) {
                     <td>{t(s.station || smProfile.station)}</td>
                     <td><span className={`sdom-badge ${catMap[catVal] || "sdom-badge-neutral"}`}>{catVal}</span></td>
                     <td><span className={`sdom-badge ${riskMap[riskVal] || "sdom-badge-neutral"}`}>{t(riskVal)}</span></td>
-                    <td style={{ fontWeight: 700 }}>{s.lastScore || s.score || "—"}</td>
+                    <td style={{ fontWeight: 700 }}>{s.cat === "Untested" ? "Not Given Test" : ((s.lastScore || s.score) ? `${s.lastScore || s.score}/100` : "—")}</td>
                     <td>
                       <span className={`sdom-badge ${s.pmeStatus === "Fit" ? "sdom-badge-success" : s.pmeStatus === "Pending" ? "sdom-badge-warning" : "sdom-badge-danger"}`}>
                         {t(s.pmeStatus || "Fit")}

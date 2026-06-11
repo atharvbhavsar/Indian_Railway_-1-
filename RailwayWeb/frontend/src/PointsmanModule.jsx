@@ -306,6 +306,8 @@ function PointsmanModule({ user, onLogout }) {
             setProfile({
               name: dbUser.full_name,
               hrmsId: dbUser.hrms_id,
+              pfNumber: dbUser.pf_number || "—",
+              email: dbUser.email || "—",
               stationName: stationName,
               designation: dbUser.ROLE?.role_name || "Pointsman",
               mobileNumber: dbUser.mobile_no || "—",
@@ -1520,7 +1522,7 @@ function PointsmanModule({ user, onLogout }) {
                 <Gauge size={14} />
                 <span>{t("Avg")} {Math.round(averageScore)}%</span>
               </div>
-              {latestCategory !== "Untested" && (
+              {latestCategory !== "Untested" && latestCategory !== "—" && (
                 <div className="pm-hkpi" style={{ color: getCategoryColor(latestCategory) }}>
                   <ShieldCheck size={14} />
                   <span>{t("Cat.")} {latestCategory}</span>

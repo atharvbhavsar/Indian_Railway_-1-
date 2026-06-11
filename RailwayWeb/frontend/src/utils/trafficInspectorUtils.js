@@ -8,9 +8,18 @@ export const getCat = (score) => {
 };
 
 export const getUserRisk = (user) => {
-  return user.pmeStatus === "Overdue" || user.refStatus === "Expired" || user.score < 50 
-    ? "High" 
-    : user.score >= 80 ? "Low" : "Medium";
+  const category = user.cat || user.category;
+  if (category === "Untested") return "Untested";
+  if (category === "A") return "Low";
+  if (category === "B") return "Low";
+  if (category === "C") return "Medium";
+  if (category === "D") return "High";
+  
+  const score = user.score !== undefined && user.score !== null ? user.score : 0;
+  if (score >= 80) return "Low";
+  if (score >= 50) return "Low";
+  if (score >= 26) return "Medium";
+  return "High";
 };
 
 export const computeSMScore = (form, criteriaConfig) => {

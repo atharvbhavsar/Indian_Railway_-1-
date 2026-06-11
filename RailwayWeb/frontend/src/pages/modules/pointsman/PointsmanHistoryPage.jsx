@@ -64,7 +64,7 @@ export function PointsmanHistoryPage({
           </div>
           <div>
             <div style={{ fontSize: "10.5px", color: "#64748b", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.4px" }}>{t("Average Score")}</div>
-            <div style={{ fontSize: "18px", fontWeight: "800", color: "#0f172a", marginTop: "2px" }}>{averageScore}%</div>
+            <div style={{ fontSize: "18px", fontWeight: "800", color: "#0f172a", marginTop: "2px" }}>{averageScore}/100</div>
           </div>
         </div>
 

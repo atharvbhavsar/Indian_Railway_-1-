@@ -22,6 +22,10 @@ export function useSAData() {
 
   useEffect(() => {
     fetchLiveDatabaseData();
+    const interval = setInterval(() => {
+      fetchLiveDatabaseData();
+    }, 4000);
+    return () => clearInterval(interval);
   }, [fetchLiveDatabaseData]);
 
   const addStation = async (newStation) => {
@@ -51,6 +55,7 @@ export function useSAData() {
       lastDate: modalData.lastDate || "—",
       status: modalData.status || "Approved",
       email: modalData.email || "—",
+      pfNumber: modalData.pfNumber || "—",
       division: modalData.division || "Nagpur",
       zone: modalData.zone || "Central Railway",
       reportingSm: modalData.reportingSm || "—",

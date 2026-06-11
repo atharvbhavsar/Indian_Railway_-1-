@@ -165,7 +165,8 @@ export function SAStationDirectory({ stations, staff = [], addStation, updateSta
   };
 
   return (
-    <div className="sdom-fade">
+    <>
+      <div className="sdom-fade">
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 }}>
         <div>
           <h1 className="sdom-page-title">Stations</h1>
@@ -243,11 +244,12 @@ export function SAStationDirectory({ stations, staff = [], addStation, updateSta
           </table>
         </div>
       </div>
+      </div>
 
       {/* Add / Edit Station Modal */}
       {showAddStation && (
-        <div className="sdom-modal-overlay" style={{ zIndex: 9999 }}>
-          <div className="sdom-modal" style={{ width: "650px" }}>
+        <div className="sdom-modal-overlay" style={{ zIndex: 99999 }}>
+          <div className="sdom-modal" style={{ width: "650px", maxWidth: "95vw", maxHeight: "90vh", overflowY: "auto" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
               <h3 style={{ margin: 0, fontSize: "1.2rem", fontWeight: 700, color: "#0B1F3A" }}>
                 {modalMode === "add" ? "Add New Station" : "Edit Station"}
@@ -255,93 +257,87 @@ export function SAStationDirectory({ stations, staff = [], addStation, updateSta
               <button type="button" onClick={() => setShowAddStation(false)} style={{ background: "none", border: "none", fontSize: "24px", cursor: "pointer", color: "#64748b" }}>&times;</button>
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px", maxHeight: "70vh", overflowY: "auto", paddingRight: "5px" }}>
-              {/* Column 1 */}
-              <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-                <h4 style={{ margin: "0 0 4px 0", color: "#1e3a8a", fontSize: "0.9rem", borderBottom: "1px solid #e2e8f0", paddingBottom: "3px" }}>Station Info</h4>
-                
-                <div className="sdom-filter-field">
-                  <label style={{ fontWeight: 600, fontSize: "0.8rem", color: "#334155" }}>Station Name *</label>
-                  <input type="text" value={formData.stationName} onChange={e => {
-                    setFormData(p => ({ ...p, stationName: e.target.value }));
-                    if (formErrors.stationName) setFormErrors(p => ({ ...p, stationName: "" }));
-                  }} placeholder="e.g. Wardha Junction" />
-                  {formErrors.stationName && <span style={{ color: "#dc2626", fontSize: "0.75rem", marginTop: "2px" }}>{formErrors.stationName}</span>}
-                </div>
-
-                <div className="sdom-filter-field">
-                  <label style={{ fontWeight: 600, fontSize: "0.8rem", color: "#334155" }}>Station Code *</label>
-                  <input type="text" value={formData.stationCode} onChange={e => {
-                    setFormData(p => ({ ...p, stationCode: e.target.value.toUpperCase() }));
-                    if (formErrors.stationCode) setFormErrors(p => ({ ...p, stationCode: "" }));
-                  }} placeholder="e.g. WR" />
-                  {formErrors.stationCode && <span style={{ color: "#dc2626", fontSize: "0.75rem", marginTop: "2px" }}>{formErrors.stationCode}</span>}
-                </div>
-
-                <div className="sdom-filter-field">
-                  <label style={{ fontWeight: 600, fontSize: "0.8rem", color: "#334155" }}>Status</label>
-                  <select value={formData.status} onChange={e => setFormData(p => ({ ...p, status: e.target.value }))}>
-                    <option value="Active">Active</option>
-                    <option value="Inactive">Inactive</option>
-                  </select>
-                </div>
-
-                <h4 style={{ margin: "10px 0 4px 0", color: "#1e3a8a", fontSize: "0.9rem", borderBottom: "1px solid #e2e8f0", paddingBottom: "3px" }}>Hierarchy</h4>
-
-                <div className="sdom-filter-field">
-                  <label style={{ fontWeight: 600, fontSize: "0.8rem", color: "#334155" }}>Division</label>
-                  <input type="text" value={formData.division} readOnly style={{ backgroundColor: "#f1f5f9", cursor: "not-allowed" }} />
-                </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px 20px", paddingRight: "5px" }}>
+              {/* Station Info Section */}
+              <h4 style={{ gridColumn: "span 2", margin: "4px 0 0 0", color: "#1e3a8a", fontSize: "0.95rem", fontWeight: 700, borderBottom: "1.5px solid #cbd5e1", paddingBottom: "4px" }}>Station Info</h4>
+              
+              <div className="sdom-filter-field">
+                <label style={{ fontWeight: 600, fontSize: "0.8rem", color: "#334155" }}>Station Name *</label>
+                <input type="text" value={formData.stationName} onChange={e => {
+                  setFormData(p => ({ ...p, stationName: e.target.value }));
+                  if (formErrors.stationName) setFormErrors(p => ({ ...p, stationName: "" }));
+                }} placeholder="e.g. Wardha Junction" />
+                {formErrors.stationName && <span style={{ color: "#dc2626", fontSize: "0.75rem", marginTop: "2px" }}>{formErrors.stationName}</span>}
               </div>
 
-              {/* Column 2 */}
-              <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-                <h4 style={{ margin: "0 0 4px 0", color: "#1e3a8a", fontSize: "0.9rem", borderBottom: "1px solid #e2e8f0", paddingBottom: "3px" }}>Operations & Location</h4>
+              <div className="sdom-filter-field">
+                <label style={{ fontWeight: 600, fontSize: "0.8rem", color: "#334155" }}>Station Code *</label>
+                <input type="text" value={formData.stationCode} onChange={e => {
+                  setFormData(p => ({ ...p, stationCode: e.target.value.toUpperCase() }));
+                  if (formErrors.stationCode) setFormErrors(p => ({ ...p, stationCode: "" }));
+                }} placeholder="e.g. WR" />
+                {formErrors.stationCode && <span style={{ color: "#dc2626", fontSize: "0.75rem", marginTop: "2px" }}>{formErrors.stationCode}</span>}
+              </div>
 
-                <div className="sdom-filter-field">
-                  <label style={{ fontWeight: 600, fontSize: "0.8rem", color: "#334155" }}>Platforms *</label>
-                  <input type="number" min="0" value={formData.platforms} onChange={e => {
-                    setFormData(p => ({ ...p, platforms: e.target.value }));
-                    if (formErrors.platforms) setFormErrors(p => ({ ...p, platforms: "" }));
-                  }} placeholder="Enter number of platforms" />
-                  {formErrors.platforms && <span style={{ color: "#dc2626", fontSize: "0.75rem", marginTop: "2px" }}>{formErrors.platforms}</span>}
-                </div>
+              <div className="sdom-filter-field">
+                <label style={{ fontWeight: 600, fontSize: "0.8rem", color: "#334155" }}>Status</label>
+                <select value={formData.status} onChange={e => setFormData(p => ({ ...p, status: e.target.value }))}>
+                  <option value="Active">Active</option>
+                  <option value="Inactive">Inactive</option>
+                </select>
+              </div>
 
-                <div className="sdom-filter-field">
-                  <label style={{ fontWeight: 600, fontSize: "0.8rem", color: "#334155" }}>Running Lines *</label>
-                  <input type="number" min="0" value={formData.runningLines} onChange={e => {
-                    setFormData(p => ({ ...p, runningLines: e.target.value }));
-                    if (formErrors.runningLines) setFormErrors(p => ({ ...p, runningLines: "" }));
-                  }} placeholder="Enter number of running lines" />
-                  {formErrors.runningLines && <span style={{ color: "#dc2626", fontSize: "0.75rem", marginTop: "2px" }}>{formErrors.runningLines}</span>}
-                </div>
+              <div className="sdom-filter-field">
+                <label style={{ fontWeight: 600, fontSize: "0.8rem", color: "#334155" }}>Division</label>
+                <input type="text" value={formData.division} readOnly style={{ backgroundColor: "#f1f5f9", cursor: "not-allowed" }} />
+              </div>
 
-                <div className="sdom-filter-field">
-                  <label style={{ fontWeight: 600, fontSize: "0.8rem", color: "#334155" }}>District *</label>
-                  <input type="text" value={formData.district} onChange={e => {
-                    setFormData(p => ({ ...p, district: e.target.value }));
-                    if (formErrors.district) setFormErrors(p => ({ ...p, district: "" }));
-                  }} placeholder="Enter district" />
-                  {formErrors.district && <span style={{ color: "#dc2626", fontSize: "0.75rem", marginTop: "2px" }}>{formErrors.district}</span>}
-                </div>
+              {/* Operations & Location Section */}
+              <h4 style={{ gridColumn: "span 2", margin: "10px 0 0 0", color: "#1e3a8a", fontSize: "0.95rem", fontWeight: 700, borderBottom: "1.5px solid #cbd5e1", paddingBottom: "4px" }}>Operations &amp; Location</h4>
 
-                <div className="sdom-filter-field">
-                  <label style={{ fontWeight: 600, fontSize: "0.8rem", color: "#334155" }}>State *</label>
-                  <input type="text" value={formData.state} onChange={e => {
-                    setFormData(p => ({ ...p, state: e.target.value }));
-                    if (formErrors.state) setFormErrors(p => ({ ...p, state: "" }));
-                  }} placeholder="Enter state" />
-                  {formErrors.state && <span style={{ color: "#dc2626", fontSize: "0.75rem", marginTop: "2px" }}>{formErrors.state}</span>}
-                </div>
+              <div className="sdom-filter-field">
+                <label style={{ fontWeight: 600, fontSize: "0.8rem", color: "#334155" }}>Platforms *</label>
+                <input type="number" min="0" value={formData.platforms} onChange={e => {
+                  setFormData(p => ({ ...p, platforms: e.target.value }));
+                  if (formErrors.platforms) setFormErrors(p => ({ ...p, platforms: "" }));
+                }} placeholder="Enter number of platforms" />
+                {formErrors.platforms && <span style={{ color: "#dc2626", fontSize: "0.75rem", marginTop: "2px" }}>{formErrors.platforms}</span>}
+              </div>
 
-                <div className="sdom-filter-field">
-                  <label style={{ fontWeight: 600, fontSize: "0.8rem", color: "#334155" }}>Address *</label>
-                  <textarea value={formData.address} onChange={e => {
-                    setFormData(p => ({ ...p, address: e.target.value }));
-                    if (formErrors.address) setFormErrors(p => ({ ...p, address: "" }));
-                  }} placeholder="Enter address" style={{ height: "60px", padding: "8px", borderRadius: "6px", border: "1px solid #cbd5e1", resize: "none" }} />
-                  {formErrors.address && <span style={{ color: "#dc2626", fontSize: "0.75rem", marginTop: "2px" }}>{formErrors.address}</span>}
-                </div>
+              <div className="sdom-filter-field">
+                <label style={{ fontWeight: 600, fontSize: "0.8rem", color: "#334155" }}>Running Lines *</label>
+                <input type="number" min="0" value={formData.runningLines} onChange={e => {
+                  setFormData(p => ({ ...p, runningLines: e.target.value }));
+                  if (formErrors.runningLines) setFormErrors(p => ({ ...p, runningLines: "" }));
+                }} placeholder="Enter number of running lines" />
+                {formErrors.runningLines && <span style={{ color: "#dc2626", fontSize: "0.75rem", marginTop: "2px" }}>{formErrors.runningLines}</span>}
+              </div>
+
+              <div className="sdom-filter-field">
+                <label style={{ fontWeight: 600, fontSize: "0.8rem", color: "#334155" }}>District *</label>
+                <input type="text" value={formData.district} onChange={e => {
+                  setFormData(p => ({ ...p, district: e.target.value }));
+                  if (formErrors.district) setFormErrors(p => ({ ...p, district: "" }));
+                }} placeholder="Enter district" />
+                {formErrors.district && <span style={{ color: "#dc2626", fontSize: "0.75rem", marginTop: "2px" }}>{formErrors.district}</span>}
+              </div>
+
+              <div className="sdom-filter-field">
+                <label style={{ fontWeight: 600, fontSize: "0.8rem", color: "#334155" }}>State *</label>
+                <input type="text" value={formData.state} onChange={e => {
+                  setFormData(p => ({ ...p, state: e.target.value }));
+                  if (formErrors.state) setFormErrors(p => ({ ...p, state: "" }));
+                }} placeholder="Enter state" />
+                {formErrors.state && <span style={{ color: "#dc2626", fontSize: "0.75rem", marginTop: "2px" }}>{formErrors.state}</span>}
+              </div>
+
+              <div className="sdom-filter-field" style={{ gridColumn: "span 2" }}>
+                <label style={{ fontWeight: 600, fontSize: "0.8rem", color: "#334155" }}>Address *</label>
+                <textarea value={formData.address} onChange={e => {
+                  setFormData(p => ({ ...p, address: e.target.value }));
+                  if (formErrors.address) setFormErrors(p => ({ ...p, address: "" }));
+                }} placeholder="Enter address" style={{ height: "60px", padding: "8px", borderRadius: "6px", border: "1px solid #cbd5e1", resize: "none", width: "100%", boxSizing: "border-box" }} />
+                {formErrors.address && <span style={{ color: "#dc2626", fontSize: "0.75rem", marginTop: "2px" }}>{formErrors.address}</span>}
               </div>
             </div>
 
@@ -354,6 +350,6 @@ export function SAStationDirectory({ stations, staff = [], addStation, updateSta
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 }

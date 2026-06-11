@@ -23,7 +23,7 @@ export function StationMasterPointsmenDetailAlt(props) {
   const catMap = { A: "sdom-badge-success", B: "sdom-badge-info", C: "sdom-badge-warning", D: "sdom-badge-danger" };
   const pmRisk = riskLevel(s);
   const riskMap = { Low: "sdom-badge-success", Medium: "sdom-badge-warning", High: "sdom-badge-danger" };
-  const catVal = getCat(s.lastScore);
+  const catVal = s.cat || "Untested";
 
   return (
     <div className="sdom-fade">
@@ -47,7 +47,7 @@ export function StationMasterPointsmenDetailAlt(props) {
         </div>
         <div className="sdom-station-header-stats">
           <div className="sdom-station-header-stat">
-            <span className="val">{s.lastScore || s.score || "—"}</span>
+            <span className="val">{(s.lastScore || s.score) ? `${s.lastScore || s.score}/100` : "—"}</span>
             <span className="lbl">{t("Latest Score")}</span>
           </div>
           <div style={{ width: 1, height: 60, background: "rgba(255,255,255,0.15)" }} />
@@ -67,13 +67,14 @@ export function StationMasterPointsmenDetailAlt(props) {
       <div className="sdom-row-2">
         <div className="sdom-chart-card">
           <div className="sdom-chart-title" style={{ marginBottom: 16 }}>{t("Personal & Professional Details")}</div>
-          
+
           <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 15, paddingBottom: 20 }}>
             {[
               [t("Employee ID / HRMS ID"), s.hrmsId],
               [t("Designation"), t(s.designation || "Pointsman")],
+              [t("PF Number"), s.pfNumber || "—"],
               [t("Mobile Number"), s.contact || "N/A"],
-              [t("Email ID"), `${s.hrmsId?.toLowerCase()}@rail.in`],
+              [t("Email ID"), s.email || `${s.hrmsId?.toLowerCase()}@rail.in`],
               [t("Account Status"), t("Active")],
               [t("Current Zone"), t("Central Railway")],
               [t("Current Division"), t("Nagpur")],

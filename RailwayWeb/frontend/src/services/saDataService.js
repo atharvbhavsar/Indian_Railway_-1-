@@ -27,21 +27,21 @@ export const saDataService = {
             locationObj = { address: s.location || "" };
           }
 
-          const matchingTi = staff.find(user => 
-            (user.role === "ti" || user.role === "Traffic Inspector") && 
+          const matchingTi = staff.find(user =>
+            (user.role === "ti" || user.role === "Traffic Inspector") &&
             (user.linkedStations || user.jurisdiction || "")
               .split(",")
               .map(x => x.trim().toLowerCase())
               .includes(stName.toLowerCase())
           );
           const assignedTi = matchingTi ? (matchingTi.id || matchingTi.hrmsId || matchingTi.employeeId) : (locationObj.assignedTi || "");
-          
+
           let ti = "—";
           if (matchingTi) {
             ti = `${matchingTi.name} (${matchingTi.id})`;
           } else if (locationObj.assignedTi) {
-            const foundTi = staff.find(u => 
-              (u.role === "ti" || u.role === "Traffic Inspector") && 
+            const foundTi = staff.find(u =>
+              (u.role === "ti" || u.role === "Traffic Inspector") &&
               (u.id === locationObj.assignedTi || u.user_id === locationObj.assignedTi || u.name === locationObj.assignedTi)
             );
             ti = foundTi ? `${foundTi.name} (${foundTi.id})` : locationObj.assignedTi;
@@ -89,6 +89,25 @@ export const saDataService = {
     try {
       const usersData = await dbService.getAllUsers();
       if (usersData && usersData.length > 0) {
+        const dynamicStationTiMap = {};
+        usersData.forEach(userObj => {
+          const roleName = userObj.ROLE?.role_name || "";
+          if (roleName === "Traffic Inspector") {
+            const ep = Array.isArray(userObj.EMPLOYEE_PROFILE)
+              ? (userObj.EMPLOYEE_PROFILE[0] || {})
+              : (userObj.EMPLOYEE_PROFILE || {});
+            const jur = ep.jurisdiction || "";
+            if (jur && jur !== "—") {
+              const stationsList = jur.split(",").map(s => s.trim().toLowerCase());
+              stationsList.forEach(stName => {
+                if (stName) {
+                  dynamicStationTiMap[stName] = userObj.full_name;
+                }
+              });
+            }
+          }
+        });
+
         return usersData.map((u) => {
           const roleName = u.ROLE?.role_name || "";
           const ep = Array.isArray(u.EMPLOYEE_PROFILE)
@@ -109,7 +128,14 @@ export const saDataService = {
           const safetyScore = ep.safety_score != null ? ep.safety_score : 0;
 
           const cat = ep.category || (lastScore === 0 ? "Untested" : (lastScore >= 80 ? "A" : lastScore >= 50 ? "B" : lastScore >= 26 ? "C" : "D"));
-          const risk = lastScore === 0 ? "Untested" : ((safetyScore < 60 || lastScore < 50) ? "High" : (safetyScore < 75 || lastScore < 65) ? "Medium" : "Low");
+
+          let risk = "Low";
+          if (cat === "C") risk = "Medium";
+          else if (cat === "D") risk = "High";
+          else if (cat === "Untested") risk = "Untested";
+
+          const mon = Array.isArray(u.MONITORING) ? (u.MONITORING[0] || {}) : (u.MONITORING || {});
+          const monitoringStatus = mon.monitoring_status || ep.monitoring_status || "Active";
 
           const pmeRecs = u.PME_RECORD || [];
           const sortedPme = [...pmeRecs].sort((a, b) => new Date(b.pme_due_date || 0) - new Date(a.pme_due_date || 0));
@@ -129,14 +155,16 @@ export const saDataService = {
             name: u.full_name,
             role: superAdminRole,
             station: st.station_name || "—",
-            ti: "—",
+            ti: st.station_name ? (dynamicStationTiMap[st.station_name.toLowerCase()] || "—") : "—",
             cat,
             risk,
+            monitoringStatus,
             score: lastScore,
             contact: u.mobile_no || "—",
             lastDate: ep.joining_date || "—",
             status: u.status === "Suspended" ? "Rejected" : u.status === "Retired" ? "Overdue" : "Approved",
             email: u.email || "—",
+            pfNumber: u.pf_number || "—",
             division: ep.division || "—",
             zone: st.zone || "—",
             reportingSm: ep.reporting_sm || "—",
@@ -215,14 +243,14 @@ export const saDataService = {
           USERS(full_name, hrms_id)
         `)
         .eq("station_id", stationId);
-      
+
       if (userErr) throw userErr;
-      
+
       if (assignedUsers && assignedUsers.length > 0) {
         const userNames = assignedUsers.map(u => `${u.USERS?.full_name} (${u.USERS?.hrms_id})`).join(", ");
-        return { 
-          success: false, 
-          error: `Cannot delete station. Operational staff are currently assigned to this station: ${userNames}. Please reassign or delete these staff members first.` 
+        return {
+          success: false,
+          error: `Cannot delete station. Operational staff are currently assigned to this station: ${userNames}. Please reassign or delete these staff members first.`
         };
       }
 
@@ -250,7 +278,7 @@ export const saDataService = {
           EMPLOYEE_PROFILE(jurisdiction)
         `)
         .eq("ROLE.role_name", "Traffic Inspector");
-      
+
       if (uErr || !usersData) {
         console.error("Failed to fetch Traffic Inspectors for jurisdiction sync:", uErr);
         return;
@@ -304,35 +332,53 @@ export const saDataService = {
         if (res && res.success === false) {
           throw new Error(res.error || "Unknown database error shifting user role.");
         }
+        return res || { success: true };
       } else {
         const payload = {
           hrmsId: modalData.id,
           name: modalData.name,
-          contact: modalData.contact || "—",
-          email: modalData.email || `${modalData.id.toLowerCase()}@rail.in`,
+          contact: modalData.contact,
+          email: modalData.email,
+          pfNumber: modalData.pfNumber,
           role: roleName,
           station: modalData.station,
-          division: modalData.division || "Nagpur",
-          gender: "Male",
-          age: 35,
-          lastDate: modalData.lastDate || new Date().toISOString().split('T')[0],
-          basePay: "₹28,500",
-          score: mode === "add" ? 0 : (modalData.score !== undefined ? modalData.score : 80),
-          safetyScore: mode === "add" ? 0 : 85,
-          password: modalData.password, // Added password support
-          disciplinary: "None",
-          incidents: 0,
-          monitoringStatus: "Active",
-          reportingSm: modalData.reportingSm || "",
-          workLocation: modalData.workLocation || "",
-          shift: modalData.shift || "",
+          division: modalData.division,
+          lastDate: modalData.joiningDate || modalData.lastDate,
+          score: modalData.score,
+          safetyScore: modalData.safetyScore,
+          password: modalData.password,
+          reportingSm: modalData.reportingSm,
+          workLocation: modalData.workLocation,
+          shift: modalData.shift,
           jurisdiction: roleName === "Traffic Inspector" ? (modalData.linkedStations || modalData.jurisdiction || "") : (modalData.jurisdiction || ""),
-          category: modalData.cat || (mode === "add" ? "Untested" : "A")
+          category: modalData.cat || modalData.category,
+          pmeStatus: modalData.pmeStatus,
+          refStatus: modalData.refStatus
         };
+
+        if (mode === "add") {
+          payload.contact = payload.contact || "—";
+          payload.email = payload.email || `${modalData.id.toLowerCase()}@rail.in`;
+          payload.division = payload.division || "Nagpur";
+          payload.lastDate = payload.lastDate || new Date().toISOString().split('T')[0];
+          payload.score = payload.score !== undefined ? payload.score : 0;
+          payload.safetyScore = payload.safetyScore !== undefined ? payload.safetyScore : 0;
+          payload.gender = "Male";
+          payload.age = 35;
+          payload.basePay = "₹28,500";
+          payload.disciplinary = "None";
+          payload.incidents = 0;
+          payload.monitoringStatus = "Active";
+          payload.category = payload.category || "Untested";
+          payload.pmeStatus = payload.pmeStatus || "Fit";
+          payload.refStatus = payload.refStatus || "Cleared";
+        }
+
         const res = await dbService.saveUser(payload, mode);
         if (res && res.success === false) {
           throw new Error(res.error || "Unknown database error while saving user.");
         }
+        return res || { success: true };
       }
     } catch (err) {
       console.error("Failed to save user to Supabase: " + err.message);
@@ -341,15 +387,20 @@ export const saDataService = {
   },
 
   async removeUser(id) {
-    if (!isSupabaseConfigured) return;
+    if (!isSupabaseConfigured) return { success: false, error: "Supabase not configured" };
     try {
       const res = await dbService.deleteUser(id);
       if (res && res.success === false) {
         throw new Error(res.error || "Unknown database error while deleting user.");
       }
+      return res || { success: true };
     } catch (err) {
       console.error("Failed to delete user from Supabase: " + err.message);
       throw err;
     }
+  },
+
+  async deleteUser(id) {
+    return this.removeUser(id);
   }
 };

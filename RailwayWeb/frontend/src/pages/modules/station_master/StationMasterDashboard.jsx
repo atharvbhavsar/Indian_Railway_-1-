@@ -35,8 +35,11 @@ export function StationMasterDashboard(props) {
   const hasAssignedExam = myAssess && myAssess.status === "Exam Sent";
 
   // Dynamic Station parameters
-  const avgScore = pointsmen.length ? Math.round(pointsmen.reduce((s, p) => s + (p.lastScore || 0), 0) / pointsmen.length) : 0;
-  const safetyVal = pointsmen.length ? Math.round(pointsmen.reduce((s, p) => s + (p.safetyScore || 0), 0) / pointsmen.length) : 0;
+  // Dynamic Station parameters
+  const testedPointsmen = pointsmen.filter(p => p.cat && p.cat !== "Untested" && p.lastScore > 0);
+  const avgScore = testedPointsmen.length ? Math.round(testedPointsmen.reduce((s, p) => s + (p.lastScore || 0), 0) / testedPointsmen.length) : 0;
+  const testedForSafety = pointsmen.filter(p => p.cat && p.cat !== "Untested" && p.safetyScore !== null && p.safetyScore !== undefined);
+  const safetyVal = testedForSafety.length ? Math.round(testedForSafety.reduce((s, p) => s + (p.safetyScore || 0), 0) / testedForSafety.length) : 0;
 
   const myStationObj = {
     name: user?.station || "No Station Assigned",
@@ -53,7 +56,7 @@ export function StationMasterDashboard(props) {
   // calculate category distribution dynamically from pointsmen!
   const catCount = ["A", "B", "C", "D"].map(c => ({
     cat: `${t("Category")} ${c}`,
-    count: pointsmen.filter(p => getCat(p.lastScore) === c).length,
+    count: pointsmen.filter(p => p.cat === c).length,
     fill: CAT_COLORS[c]
   }));
 
@@ -81,12 +84,12 @@ export function StationMasterDashboard(props) {
         </div>
         <div className="sdom-station-header-stats">
           <div className="sdom-station-header-stat">
-            <span className="val">{myStationObj.score > 0 ? myStationObj.score : "—"}</span>
+            <span className="val">{myStationObj.score > 0 ? `${myStationObj.score}/100` : "—"}</span>
             <span className="lbl">{t("Avg Score")}</span>
           </div>
           <div style={{ width: 1, height: 60, background: "rgba(255,255,255,0.15)" }}/>
           <div className="sdom-station-header-stat">
-            <span className="val">{myStationObj.safety > 0 ? `${myStationObj.safety}%` : "—"}</span>
+            <span className="val">{myStationObj.safety > 0 ? `${myStationObj.safety}/100` : "—"}</span>
             <span className="lbl">{t("Safety")}</span>
           </div>
           <div style={{ width: 1, height: 60, background: "rgba(255,255,255,0.15)" }}/>
@@ -109,7 +112,7 @@ export function StationMasterDashboard(props) {
           { label: t("Pending Assessments"),   val: myStationObj.pending },
           { label: t("Completed Evaluations"), val: pointsmen.length - myStationObj.pending },
           { label: t("High-Risk Pointsmen"),   val: myStationObj.highRisk },
-          { label: t("Safety Compliance"),     val: myStationObj.safety > 0 ? `${myStationObj.safety}%` : "—" },
+          { label: t("Safety Compliance"),     val: myStationObj.safety > 0 ? `${myStationObj.safety}/100` : "—" },
         ].map(c => (
           <div key={c.label} className="sdom-stat-card">
             <div className="sdom-stat-value">{c.val}</div>
@@ -187,7 +190,7 @@ export function StationMasterDashboard(props) {
                   <Tooltip contentStyle={{ fontSize: "0.85rem", borderRadius: 6, border: "1px solid #D9E2EC" }}/>
                   <Legend wrapperStyle={{ fontSize: "0.82rem" }}/>
                   <Line type="monotone" dataKey="avgScore" name={t("Avg Score")} stroke="#1E3A5F" strokeWidth={2.5} dot={{ r: 4, fill: "#1E3A5F" }}/>
-                  <Line type="monotone" dataKey="safetyAvg" name={t("Safety %")} stroke="#2F855A" strokeWidth={2.5} strokeDasharray="5 3" dot={{ r: 4, fill: "#2F855A" }}/>
+                  <Line type="monotone" dataKey="safetyAvg" name={t("Safety Score")} stroke="#2F855A" strokeWidth={2.5} strokeDasharray="5 3" dot={{ r: 4, fill: "#2F855A" }}/>
                 </LineChart>
               </ResponsiveContainer>
             ) : (
@@ -228,7 +231,7 @@ export function StationMasterDashboard(props) {
                         <span className="sdom-badge sdom-badge-success">{t("Category")} {s.cat}</span>
                       )}
                     </td>
-                    <td style={{ fontWeight: 700 }}>{s.score > 0 ? s.score : "—"}</td>
+                    <td style={{ fontWeight: 700 }}>{s.score > 0 ? `${s.score}/100` : "—"}</td>
                     <td>{s.lastDate}</td>
                     <td>
                       <span className="sdom-badge sdom-badge-success">{t(s.status)}</span>
@@ -270,7 +273,7 @@ export function StationMasterDashboard(props) {
                   </tr>
                 ) : (
                   pointsmen.map(p => {
-                    const cat = getCat(p.lastScore);
+                    const cat = p.cat || "Untested";
                     const risk = riskLevel(p);
                     return (
                       <tr key={p.id}>
@@ -278,19 +281,19 @@ export function StationMasterDashboard(props) {
                         <td style={{ color: "#64748b", fontSize: "0.85rem" }}>{p.hrmsId}</td>
                         <td>
                           {cat === "Untested" ? (
-                            <span className="sdom-badge sdom-badge-warning">{t("Untested")}</span>
+                            <span className="sdom-badge sdom-badge-neutral">{t("Untested")}</span>
                           ) : (
                             <span className={`sdom-badge ${cat === "A" ? "sdom-badge-success" : cat === "B" ? "sdom-badge-info" : cat === "C" ? "sdom-badge-warning" : "sdom-badge-danger"}`}>{cat}</span>
                           )}
                         </td>
                         <td>
                           {risk === "Untested" ? (
-                            <span className="sdom-badge sdom-badge-warning">{t("Untested")}</span>
+                            <span className="sdom-badge sdom-badge-neutral">{t("Untested")}</span>
                           ) : (
                             <span className={`sdom-badge ${risk === "Low" ? "sdom-badge-success" : risk === "Medium" ? "sdom-badge-warning" : "sdom-badge-danger"}`}>{t(risk)}</span>
                           )}
                         </td>
-                        <td style={{ fontWeight: 700 }}>{p.lastScore > 0 ? `${p.lastScore}/100` : "—"}</td>
+                        <td style={{ fontWeight: 700 }}>{cat === "Untested" ? t("Not Given Test") : (p.lastScore > 0 ? `${p.lastScore}/100` : "—")}</td>
                         <td>
                           <span className={`sdom-badge ${p.approvalStatus === "Approved" ? "sdom-badge-success" : p.approvalStatus === "Pending" ? "sdom-badge-warning" : "sdom-badge-danger"}`}>{t(p.approvalStatus)}</span>
                         </td>

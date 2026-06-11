@@ -15,6 +15,7 @@ import {
 } from "recharts";
 import "./sdom.css";
 import { useLanguage } from "./contexts/LanguageContext";
+import { useAuth } from "./contexts/AuthContext";
 
 // ── Refactored State Hook & Modular Components ──────────────────────────────
 import { useTrafficInspectorState } from "./hooks/modules/useTrafficInspectorState";
@@ -200,6 +201,57 @@ const TiTooltip = ({ active, payload, label }) => {
 
 export default function TrafficInspectorModule({ user, onLogout }) {
   const { language, changeLanguage, t } = useLanguage();
+  const { updateCurrentUser } = useAuth();
+
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [editMobile, setEditMobile] = useState("");
+  const [editEmail, setEditEmail] = useState("");
+
+  useEffect(() => {
+    setEditMobile(user?.mobile || user?.contact || "");
+    setEditEmail(user?.email || "");
+  }, [user]);
+
+  const handleSaveProfile = async () => {
+    if (!editMobile.trim()) {
+      alert(t("Mobile Number is required."));
+      return;
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (editEmail && !emailRegex.test(editEmail)) {
+      alert(t("Please enter a valid Email Address."));
+      return;
+    }
+
+    try {
+      const updatePayload = {
+        id: user?.hrmsId || tiId,
+        name: user?.name || tiName,
+        contact: editMobile,
+        email: editEmail,
+        role: "Traffic Inspector",
+        station: user?.station || "—",
+        division: user?.division || "Nagpur Division",
+        joiningDate: user?.joiningDate || user?.lastDate || "—",
+        score: user?.score || 0,
+        cat: user?.cat || "Untested",
+        pmeStatus: user?.pmeStatus || "Fit",
+        refStatus: user?.refStatus || "Cleared"
+      };
+
+      await saDataService.saveUser(updatePayload, "edit");
+
+      updateCurrentUser({
+        mobile: editMobile,
+        email: editEmail
+      });
+
+      setIsEditingProfile(false);
+      alert(t("Profile updated successfully."));
+    } catch (err) {
+      alert(t("Failed to update profile: ") + err.message);
+    }
+  };
 
   const {
     activePage, setActivePage, goTo,
@@ -347,10 +399,10 @@ export default function TrafficInspectorModule({ user, onLogout }) {
   const getEmployeeScheduleDetails = (p, role) => {
     const cat = p.cat || getCat(p.score || 0);
     const frequency = cat === "A" || cat === "B" ? "6 Months" : (cat === "C" ? "3 Months" : "1 Month");
-    
+
     // Find all assessments for this employee from allDbAssessments
     const empAssessments = allDbAssessments ? allDbAssessments.filter(a => a.employee?.hrms_id === p.hrmsId) : [];
-    
+
     const baseAssessType = role === "SM" ? "Station Master Assessment" : "Train Manager Assessment";
 
     // 1. Last Assessment Date
@@ -358,14 +410,14 @@ export default function TrafficInspectorModule({ user, onLogout }) {
     pastApproved.sort((a, b) => new Date(b.assessment_date || b.created_at) - new Date(a.assessment_date || a.created_at));
     const lastAssess = pastApproved[0];
     const lastAssessDate = lastAssess ? (lastAssess.assessment_date || lastAssess.created_at?.slice(0, 10)) : (p.submissionDate || p.lastDate || "None");
-    
+
     // 2. Next Due Date & Time
     const upcomingAssess = empAssessments.find(a => ["LOCKED", "AVAILABLE", "IN_PROGRESS", "Pending", "Draft", "Scheduled"].includes(a.status) && a.due_date && (a.assessment_type?.startsWith(baseAssessType) || a.assessment_type === baseAssessType));
-    
+
     let nextDueDate = null;
     let nextDueTime = "10:00 AM";
     let isCustomScheduled = false;
-    
+
     if (upcomingAssess) {
       nextDueDate = upcomingAssess.due_date;
       isCustomScheduled = true;
@@ -383,22 +435,22 @@ export default function TrafficInspectorModule({ user, onLogout }) {
         nextDueDate = lastDateObj.toISOString().slice(0, 10);
       }
     }
-    
+
     if (!nextDueDate) {
       nextDueDate = "Not Scheduled";
     }
-    
+
     // 3. Days Remaining
     let daysRemaining = null;
     if (nextDueDate && nextDueDate !== "Not Scheduled") {
-      const diffTime = new Date(nextDueDate).getTime() - new Date().setHours(0,0,0,0);
+      const diffTime = new Date(nextDueDate).getTime() - new Date().setHours(0, 0, 0, 0);
       daysRemaining = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     }
-    
+
     // 4. Status Indicator
     let statusText = "Not Scheduled";
-    let statusType = "neutral"; 
-    
+    let statusType = "neutral";
+
     if (nextDueDate !== "Not Scheduled" && daysRemaining !== null) {
       if (daysRemaining < 0) {
         statusText = "Overdue";
@@ -414,7 +466,7 @@ export default function TrafficInspectorModule({ user, onLogout }) {
         statusType = "success";
       }
     }
-    
+
     return {
       frequency,
       lastAssessDate,
@@ -823,15 +875,15 @@ export default function TrafficInspectorModule({ user, onLogout }) {
           <div className="sdom-table-wrap">
             <table className="sdom-table">
               <thead>
-                <tr><th>#</th><th>Station</th><th>Avg Score</th><th>Safety %</th><th>High Risk</th></tr>
+                <tr><th>#</th><th>Station</th><th>Avg Score</th><th>Safety Score</th><th>High Risk</th></tr>
               </thead>
               <tbody>
                 {topStations.map((st, i) => (
                   <tr key={st.id}>
                     <td style={{ color: "#9FB3C8", fontWeight: 700 }}>{i + 1}</td>
                     <td style={{ fontWeight: 600 }}>{st.name}</td>
-                    <td><span style={{ color: "#2F855A", fontWeight: 700 }}>{st.avgScore}%</span></td>
-                    <td>{st.safetyPct}%</td>
+                    <td><span style={{ color: "#2F855A", fontWeight: 700 }}>{st.avgScore}/100</span></td>
+                    <td>{st.safetyPct}/100</td>
                     <td>{st.highRisk}</td>
                   </tr>
                 ))}
@@ -846,15 +898,15 @@ export default function TrafficInspectorModule({ user, onLogout }) {
           <div className="sdom-table-wrap">
             <table className="sdom-table">
               <thead>
-                <tr><th>#</th><th>Station</th><th>Avg Score</th><th>Safety %</th><th>High Risk</th></tr>
+                <tr><th>#</th><th>Station</th><th>Avg Score</th><th>Safety Score</th><th>High Risk</th></tr>
               </thead>
               <tbody>
                 {bottomStations.map((st, i) => (
                   <tr key={st.id}>
                     <td style={{ color: "#9FB3C8", fontWeight: 700 }}>{i + 1}</td>
                     <td style={{ fontWeight: 600 }}>{st.name}</td>
-                    <td><span style={{ color: st.avgScore < 75 ? "#C53030" : "#D69E2E", fontWeight: 700 }}>{st.avgScore}%</span></td>
-                    <td>{st.safetyPct}%</td>
+                    <td><span style={{ color: st.avgScore < 75 ? "#C53030" : "#D69E2E", fontWeight: 700 }}>{st.avgScore}/100</span></td>
+                    <td>{st.safetyPct}/100</td>
                     <td>{st.highRisk}</td>
                   </tr>
                 ))}
@@ -913,6 +965,13 @@ export default function TrafficInspectorModule({ user, onLogout }) {
       { month: "May'26", score: 88 }
     ];
 
+    const latestApproved = (tiAssessments || []).find(h => ["Approved", "Completed", "Submitted", "Pending"].includes(h.approvalStatus));
+    const scoreVal = user?.score || latestApproved?.totalScore || avgScoreAll || 0;
+    const categoryVal = user?.category && user?.category !== "Untested" ? user?.category : (user?.cat && user?.cat !== "Untested" ? user?.cat : (latestApproved?.category || (scoreVal ? getCat(scoreVal) : "Untested")));
+
+    // Derive risk from category: A/B → Low, C → Medium, D → High
+    const riskVal = categoryVal === "Untested" ? "Untested" : categoryVal === "D" ? "High" : categoryVal === "C" ? "Medium" : "Low";
+
     return (
       <div className="sdom-fade">
         {/* Hero header */}
@@ -922,24 +981,37 @@ export default function TrafficInspectorModule({ user, onLogout }) {
             <div style={{ fontSize: "1.8rem", fontWeight: 800, marginBottom: 4 }}>{user?.name || tiName}</div>
             <div style={{ fontSize: "0.9rem", color: "rgba(255,255,255,0.7)" }}>{t(user?.role || "Traffic Inspector")} &bull; {t(user?.division || "Nagpur")} {t("Division")} &bull; {t(user?.zone || "Central Railway")}</div>
             <div style={{ marginTop: 12, display: "flex", gap: 10 }}>
-              <span className="sdom-badge sdom-badge-success">{t("Category")} {user?.cat || "Untested"}</span>
+              {categoryVal === "Untested" ? (
+                <span className="sdom-badge sdom-badge-warning">{t("Untested")}</span>
+              ) : (
+                <span className={`sdom-badge ${categoryVal === "D" ? "sdom-badge-danger" : categoryVal === "C" ? "sdom-badge-warning" : "sdom-badge-success"}`}>
+                  {t("Category")} {categoryVal}
+                </span>
+              )}
+              {riskVal === "Untested" ? (
+                <span className="sdom-badge" style={{ background: "#f3f4f6", color: "#4b5563" }}>{t("Untested")}</span>
+              ) : (
+                <span className={`sdom-badge ${riskVal === "High" ? "sdom-badge-danger" : riskVal === "Medium" ? "sdom-badge-warning" : "sdom-badge-success"}`}>
+                  {t(riskVal)} {t("Risk")}
+                </span>
+              )}
               <span className="sdom-badge sdom-badge-success">{t("Inspector")}</span>
               <span className="sdom-badge sdom-badge-success">{t("Active")}</span>
             </div>
           </div>
           <div className="sdom-station-header-stats">
             <div className="sdom-station-header-stat">
-              <span className="val">{user?.score || "N/A"}{user?.score ? "%" : ""}</span>
+              <span className="val">{scoreVal || "N/A"}{scoreVal ? "/100" : ""}</span>
               <span className="lbl">{t("Section Avg")}</span>
             </div>
             <div style={{ width: 1, height: 60, background: "rgba(255,255,255,0.15)" }} />
             <div className="sdom-station-header-stat">
-              <span className="val">{user?.contact || "N/A"}</span>
+              <span className="val">{user?.mobile || user?.contact || "N/A"}</span>
               <span className="lbl">{t("Contact")}</span>
             </div>
             <div style={{ width: 1, height: 60, background: "rgba(255,255,255,0.15)" }} />
             <div className="sdom-station-header-stat">
-              <span className="val">{user?.lastAssessDate || "N/A"}</span>
+              <span className="val">{user?.lastAssessDate || latestApproved?.date || "N/A"}</span>
               <span className="lbl">{t("Last Audit")}</span>
             </div>
           </div>
@@ -951,22 +1023,46 @@ export default function TrafficInspectorModule({ user, onLogout }) {
             <div className="sdom-chart-title" style={{ marginBottom: "16px" }}>{t("Personal & Professional Details")}</div>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '15px', paddingBottom: '20px' }}>
-              {[
-                [t("Employee ID / HRMS ID"), user?.hrmsId || tiId],
-                [t("Designation"), t(user?.role || "Traffic Inspector")],
-                [t("Mobile Number"), user?.contact || "N/A"],
-                [t("Email ID"), `${(user?.hrmsId || tiId).toLowerCase()}@rail.in`],
-                [t("Account Status"), t("Active")],
-                [t("Current Zone"), t("Central Railway")],
-                [t("Current Division"), t("Nagpur Division")],
-                [t("Current Placement"), t(user?.jurisdiction || "Various")],
-                [t("Reporting Officer"), t("P. K. Verma (Sr. DOM)")]
-              ].map(([lbl, val]) => (
-                <div key={lbl} style={{ background: "#f8fafc", borderRadius: 8, padding: "12px 16px", border: "1px solid #e2e8f0" }}>
-                  <div style={{ fontSize: "0.75rem", color: "#64748b", fontWeight: 700, marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.04em" }}>{lbl}</div>
-                  <div style={{ fontWeight: 700, color: "#0f172a", fontSize: "0.9rem" }}>{val}</div>
-                </div>
-              ))}
+              <div style={{ background: "#f8fafc", borderRadius: 8, padding: "12px 16px", border: "1px solid #e2e8f0" }}>
+                <div style={{ fontSize: "0.75rem", color: "#64748b", fontWeight: 700, marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.04em" }}>{t("Employee ID / HRMS ID")}</div>
+                <div style={{ fontWeight: 700, color: "#0f172a", fontSize: "0.9rem" }}>{user?.hrmsId || tiId}</div>
+              </div>
+              <div style={{ background: "#f8fafc", borderRadius: 8, padding: "12px 16px", border: "1px solid #e2e8f0" }}>
+                <div style={{ fontSize: "0.75rem", color: "#64748b", fontWeight: 700, marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.04em" }}>{t("Designation")}</div>
+                <div style={{ fontWeight: 700, color: "#0f172a", fontSize: "0.9rem" }}>{t(user?.role || "Traffic Inspector")}</div>
+              </div>
+              <div style={{ background: "#f8fafc", borderRadius: 8, padding: "12px 16px", border: "1px solid #e2e8f0" }}>
+                <div style={{ fontSize: "0.75rem", color: "#64748b", fontWeight: 700, marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.04em" }}>{t("Mobile Number")}</div>
+                <div style={{ fontWeight: 700, color: "#0f172a", fontSize: "0.9rem" }}>{user?.mobile || user?.contact || "—"}</div>
+              </div>
+              <div style={{ background: "#f8fafc", borderRadius: 8, padding: "12px 16px", border: "1px solid #e2e8f0" }}>
+                <div style={{ fontSize: "0.75rem", color: "#64748b", fontWeight: 700, marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.04em" }}>{t("Email ID")}</div>
+                <div style={{ fontWeight: 700, color: "#0f172a", fontSize: "0.9rem" }}>{user?.email || "—"}</div>
+              </div>
+              <div style={{ background: "#f8fafc", borderRadius: 8, padding: "12px 16px", border: "1px solid #e2e8f0" }}>
+                <div style={{ fontSize: "0.75rem", color: "#64748b", fontWeight: 700, marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.04em" }}>{t("PF Number")}</div>
+                <div style={{ fontWeight: 700, color: "#0f172a", fontSize: "0.9rem" }}>{user?.pfNumber || "—"}</div>
+              </div>
+              <div style={{ background: "#f8fafc", borderRadius: 8, padding: "12px 16px", border: "1px solid #e2e8f0" }}>
+                <div style={{ fontSize: "0.75rem", color: "#64748b", fontWeight: 700, marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.04em" }}>{t("Account Status")}</div>
+                <div style={{ fontWeight: 700, color: "#0f172a", fontSize: "0.9rem" }}>{t("Active")}</div>
+              </div>
+              <div style={{ background: "#f8fafc", borderRadius: 8, padding: "12px 16px", border: "1px solid #e2e8f0" }}>
+                <div style={{ fontSize: "0.75rem", color: "#64748b", fontWeight: 700, marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.04em" }}>{t("Current Zone")}</div>
+                <div style={{ fontWeight: 700, color: "#0f172a", fontSize: "0.9rem" }}>{t("Central Railway")}</div>
+              </div>
+              <div style={{ background: "#f8fafc", borderRadius: 8, padding: "12px 16px", border: "1px solid #e2e8f0" }}>
+                <div style={{ fontSize: "0.75rem", color: "#64748b", fontWeight: 700, marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.04em" }}>{t("Current Division")}</div>
+                <div style={{ fontWeight: 700, color: "#0f172a", fontSize: "0.9rem" }}>{t("Nagpur Division")}</div>
+              </div>
+              <div style={{ background: "#f8fafc", borderRadius: 8, padding: "12px 16px", border: "1px solid #e2e8f0" }}>
+                <div style={{ fontSize: "0.75rem", color: "#64748b", fontWeight: 700, marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.04em" }}>{t("Current Placement")}</div>
+                <div style={{ fontWeight: 700, color: "#0f172a", fontSize: "0.9rem" }}>{t(user?.jurisdiction || "Various")}</div>
+              </div>
+              <div style={{ background: "#f8fafc", borderRadius: 8, padding: "12px 16px", border: "1px solid #e2e8f0" }}>
+                <div style={{ fontSize: "0.75rem", color: "#64748b", fontWeight: 700, marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.04em" }}>{t("Reporting Officer")}</div>
+                <div style={{ fontWeight: 700, color: "#0f172a", fontSize: "0.9rem" }}>{t("P. K. Verma (Sr. DOM)")}</div>
+              </div>
             </div>
 
             {/* Operational & Safety Dates Card */}
@@ -1079,6 +1175,7 @@ export default function TrafficInspectorModule({ user, onLogout }) {
                 ["Designation", ROLE_MAP[s.role] || s.role],
                 ["Mobile Number", s.contact || "N/A"],
                 ["Email ID", s.email || `${s.id?.toLowerCase()}@rail.in`],
+                ["PF Number", s.pfNumber || "N/A"],
                 ["Account Status", s.status || "Active"],
                 ["Current Zone", s.zone || "Central Railway"],
                 ["Current Division", s.division || "Nagpur Division"],
@@ -1290,6 +1387,7 @@ export default function TrafficInspectorModule({ user, onLogout }) {
           setEditingUser={setEditingUser}
           saveEditedUser={saveEditedUser}
           myStations={myStations}
+          stationMasters={mySmList}
         />
         <TransferUserModal
           transferringUser={transferringUser}
@@ -1304,6 +1402,7 @@ export default function TrafficInspectorModule({ user, onLogout }) {
           setNewUserData={setNewUserData}
           handleAddUserSubmit={handleAddUserSubmit}
           myStations={myStations}
+          stationMasters={mySmList}
         />
       </div>
     );
@@ -1974,7 +2073,7 @@ export default function TrafficInspectorModule({ user, onLogout }) {
           </div>
           <div className="sm2-report-mini">
             <label>Latest Score</label>
-            <strong>{tiAssessments[0] ? `${tiAssessments[0].totalScore}/${tiAssessments[0].approvalStatus === "Approved" ? "100" : "25"}` : "—"}</strong>
+            <strong>{tiAssessments[0] ? `${tiAssessments[0].totalScore}/${tiAssessments[0].totalMarks || (tiAssessments[0].totalScore > 25 ? "100" : "25")}` : "—"}</strong>
           </div>
           <div className="sm2-report-mini">
             <label>Average AOM Score</label>
@@ -1982,8 +2081,8 @@ export default function TrafficInspectorModule({ user, onLogout }) {
           </div>
           <div className="sm2-report-mini">
             <label>Latest Assessment</label>
-            <strong style={{ color: tiAssessments[0]?.approvalStatus === "Approved" ? (CAT_C[tiAssessments[0]?.category] || "#2563eb") : "#ea580c" }}>
-              {tiAssessments[0] ? (tiAssessments[0].approvalStatus === "Approved" ? `Category ${tiAssessments[0].category}` : "Awaiting AOM") : "—"}
+            <strong style={{ color: (tiAssessments[0]?.category && tiAssessments[0].category !== "Untested") ? (CAT_C[tiAssessments[0].category] || "#2563eb") : "#ea580c" }}>
+              {tiAssessments[0] ? `Category ${tiAssessments[0].category || getCat(tiAssessments[0].totalScore)}` : "—"}
             </strong>
           </div>
         </div>
@@ -2003,10 +2102,10 @@ export default function TrafficInspectorModule({ user, onLogout }) {
                   <strong>{formatQuarterPeriod(sc.period)}</strong>
                 </span>
                 <span>{sc.date}</span>
-                <span><strong>{sc.totalScore}/{isApproved ? "100" : "25"}</strong></span>
+                <span><strong>{sc.totalScore}/{sc.totalMarks || (sc.totalScore > 25 ? "100" : "25")}</strong></span>
                 <span>
-                  {isApproved ? (
-                    <span className="sm2-badge" style={{ background: CAT_B[cat], color: CAT_C[cat] }}>
+                  {cat && cat !== "Untested" ? (
+                    <span className="sm2-badge" style={{ background: CAT_B[cat] || "#fee2e2", color: CAT_C[cat] || "#b91c1c" }}>
                       Cat. {cat}
                     </span>
                   ) : (
@@ -4251,7 +4350,7 @@ export default function TrafficInspectorModule({ user, onLogout }) {
                                   Send Access
                                 </button>
                               )}
-                              
+
                               {(item.status === "Submitted" || item.status === "Exam Taken") ? (
                                 <>
                                   <button
@@ -4361,14 +4460,14 @@ export default function TrafficInspectorModule({ user, onLogout }) {
         }
       });
 
-      const categoryPms = selectedCategory 
+      const categoryPms = selectedCategory
         ? rosterList.filter(p => getEmpCategory(p) === selectedCategory)
         : [];
 
       // Filter category roster by search query
       const searchedCategoryPms = categoryPms.filter(p => {
-        const matchesSearch = !rosterSearch || 
-          p.name.toLowerCase().includes(rosterSearch.toLowerCase()) || 
+        const matchesSearch = !rosterSearch ||
+          p.name.toLowerCase().includes(rosterSearch.toLowerCase()) ||
           p.hrmsId.toLowerCase().includes(rosterSearch.toLowerCase());
         const matchesStation = rosterStation === "All" || p.station === rosterStation;
         return matchesSearch && matchesStation;
@@ -4390,7 +4489,7 @@ export default function TrafficInspectorModule({ user, onLogout }) {
         const keyPrefix = roleKey === "SM" ? "sm" : "tm";
         const mcqDataStr = localStorage.getItem(`${keyPrefix}_mcq_test_${p.hrmsId}`);
         const mcqData = mcqDataStr ? JSON.parse(mcqDataStr) : null;
-        
+
         const isApproved = p.status === 'Approved';
         const isPending = p.status === 'Submitted'; // Submitted is Pending approval for TI -> AOM
         const isCompleted = (mcqData && mcqData.completed) || p.status === 'Exam Taken';
@@ -4470,13 +4569,13 @@ export default function TrafficInspectorModule({ user, onLogout }) {
                 ← Back to List
               </button>
               <button
-                onClick={() => { 
-                  setAssessRole(null); 
+                onClick={() => {
+                  setAssessRole(null);
                   setSelectedCategory(null);
                   setSelectedHrmsIds([]);
-                  setRosterSearch(""); 
-                  setRosterStation("All"); 
-                  setRosterStatus("All"); 
+                  setRosterSearch("");
+                  setRosterStation("All");
+                  setRosterStatus("All");
                   setRosterDate("");
                   setViewUpcomingOnly(false);
                   setShowCategoriesPanel(false);
@@ -4614,7 +4713,7 @@ export default function TrafficInspectorModule({ user, onLogout }) {
                       ))}
                     </select>
                   </div>
-                  
+
                   {/* View Upcoming Tests Toggle */}
                   <button
                     type="button"
@@ -4639,7 +4738,7 @@ export default function TrafficInspectorModule({ user, onLogout }) {
                     {viewUpcomingOnly ? "Showing Scheduled Only" : "Show Scheduled Only"}
                   </button>
                 </div>
-                
+
                 <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
                   {selectedHrmsIds.length > 0 && (
                     <>
@@ -4855,7 +4954,7 @@ export default function TrafficInspectorModule({ user, onLogout }) {
                                   View Form
                                 </button>
                               )}
-                              
+
                               {isExamSubmitted && (
                                 <>
                                   <button
@@ -5769,8 +5868,8 @@ export default function TrafficInspectorModule({ user, onLogout }) {
               {fullscreenChart === "station" && (
                 <>
                   {[
-                    { label: "Avg Performance Score", value: filteredFsStations.length ? Math.round(filteredFsStations.reduce((s, x) => s + x.avgScore, 0) / filteredFsStations.length) + "%" : "—", color: "#2563eb", glowColor: "rgba(37,99,235,0.15)" },
-                    { label: "Avg Safety Compliance", value: filteredFsStations.length ? Math.round(filteredFsStations.reduce((s, x) => s + x.safetyPct, 0) / filteredFsStations.length) + "%" : "—", color: "#7c3aed", glowColor: "rgba(124,58,237,0.15)" },
+                    { label: "Avg Performance Score", value: filteredFsStations.length ? Math.round(filteredFsStations.reduce((s, x) => s + x.avgScore, 0) / filteredFsStations.length) + "/100" : "—", color: "#2563eb", glowColor: "rgba(37,99,235,0.15)" },
+                    { label: "Avg Safety Compliance", value: filteredFsStations.length ? Math.round(filteredFsStations.reduce((s, x) => s + x.safetyPct, 0) / filteredFsStations.length) + "/100" : "—", color: "#7c3aed", glowColor: "rgba(124,58,237,0.15)" },
                     { label: "High-Risk Stations", value: filteredFsStations.filter(st => st.highRisk >= 2).length, color: "#dc2626", glowColor: "rgba(220,38,38,0.15)" },
                     { label: "Grade A Stations", value: filteredFsStations.filter(st => getCat(st.avgScore) === "A").length, color: "#16a34a", glowColor: "rgba(22,163,74,0.15)" },
                     { label: "Total Filtered Stations", value: filteredFsStations.length, color: "#0891b2", glowColor: "rgba(8,145,178,0.15)" },
@@ -5787,9 +5886,9 @@ export default function TrafficInspectorModule({ user, onLogout }) {
                 <>
                   {[
                     { label: "Total Tests Taken", value: MONTHLY.reduce((s, x) => s + x.assessments, 0), color: "#2563eb", glowColor: "rgba(37,99,235,0.15)" },
-                    { label: "Overall Score Average", value: (MONTHLY.length > 0 ? Math.round(MONTHLY.reduce((s, x) => s + x.avgScore, 0) / MONTHLY.length) : 0) + "%", color: "#0891b2", glowColor: "rgba(8,145,178,0.15)" },
-                    { label: "Overall Safety Average", value: (MONTHLY.length > 0 ? Math.round(MONTHLY.reduce((s, x) => s + x.safetyAvg, 0) / MONTHLY.length) : 0) + "%", color: "#16a34a", glowColor: "rgba(22,163,74,0.15)" },
-                    { label: "Safety Compliance Peak", value: (MONTHLY.length > 0 ? Math.max(...MONTHLY.map(m => m.safetyAvg)) : 0) + "%", color: "#7c3aed", glowColor: "rgba(124,58,237,0.15)" },
+                    { label: "Overall Score Average", value: (MONTHLY.length > 0 ? Math.round(MONTHLY.reduce((s, x) => s + x.avgScore, 0) / MONTHLY.length) : 0) + "/100", color: "#0891b2", glowColor: "rgba(8,145,178,0.15)" },
+                    { label: "Overall Safety Average", value: (MONTHLY.length > 0 ? Math.round(MONTHLY.reduce((s, x) => s + x.safetyAvg, 0) / MONTHLY.length) : 0) + "/100", color: "#16a34a", glowColor: "rgba(22,163,74,0.15)" },
+                    { label: "Safety Compliance Peak", value: (MONTHLY.length > 0 ? Math.max(...MONTHLY.map(m => m.safetyAvg)) : 0) + "/100", color: "#7c3aed", glowColor: "rgba(124,58,237,0.15)" },
                     { label: "Evaluation Cycles Logged", value: MONTHLY.length, color: "#475569", glowColor: "rgba(71,85,105,0.15)" },
                   ].map(k => (
                     <div key={k.label} className="sm2-fs-kpi-card" style={{ "--glow": k.glowColor }}>
@@ -5803,7 +5902,7 @@ export default function TrafficInspectorModule({ user, onLogout }) {
               {fullscreenChart === "grade" && (
                 <>
                   {[
-                    { label: "Avg Personnel Score", value: filteredFsUsers.length ? Math.round(filteredFsUsers.reduce((s, x) => s + x.score, 0) / filteredFsUsers.length) + "%" : "—", color: "#2563eb", glowColor: "rgba(37,99,235,0.15)" },
+                    { label: "Avg Personnel Score", value: filteredFsUsers.length ? Math.round(filteredFsUsers.reduce((s, x) => s + x.score, 0) / filteredFsUsers.length) + "/100" : "—", color: "#2563eb", glowColor: "rgba(37,99,235,0.15)" },
                     { label: "Fit (PME Status)", value: filteredFsUsers.filter(u => u.pmeStatus === "Fit").length, color: "#16a34a", glowColor: "rgba(22,163,74,0.15)" },
                     { label: "Cleared (REF Status)", value: filteredFsUsers.filter(u => u.refStatus === "Cleared").length, color: "#0891b2", glowColor: "rgba(8,145,178,0.15)" },
                     { label: "Grade A Personnel", value: filteredFsUsers.filter(u => getCat(u.score) === "A").length, color: "#7c3aed", glowColor: "rgba(124,58,237,0.15)" },
@@ -5834,8 +5933,8 @@ export default function TrafficInspectorModule({ user, onLogout }) {
                       <YAxis domain={[0, 100]} tick={{ fontSize: 11, fill: "#64748b" }} tickLine={false} axisLine={false} />
                       <Tooltip content={<TiTooltip />} />
                       <Legend verticalAlign="top" height={36} wrapperStyle={{ fontSize: 12 }} />
-                      <Bar dataKey="avgScore" name="Avg Performance Score (%)" fill="#2563eb" radius={[4, 4, 0, 0]} maxBarSize={38} />
-                      <Bar dataKey="safetyPct" name="Safety Compliance Rate (%)" fill="#7c3aed" radius={[4, 4, 0, 0]} maxBarSize={38} />
+                      <Bar dataKey="avgScore" name="Avg Performance Score (/100)" fill="#2563eb" radius={[4, 4, 0, 0]} maxBarSize={38} />
+                      <Bar dataKey="safetyPct" name="Safety Compliance Rate (/100)" fill="#7c3aed" radius={[4, 4, 0, 0]} maxBarSize={38} />
                     </BarChart>
                   ) : fullscreenChart === "trend" ? (
                     <LineChart data={MONTHLY} margin={{ top: 8, right: 10, left: -24, bottom: 4 }}>
@@ -5878,8 +5977,8 @@ export default function TrafficInspectorModule({ user, onLogout }) {
                             <span className="ti2-badge" style={{ background: RISK_B[level], color: RISK_C[level] }}>{level} Risk</span>
                           </div>
                           <div style={{ fontSize: "12px", color: "#64748b", display: "flex", gap: "10px", marginTop: "8px" }}>
-                            <span>Avg Score: <strong>{st.avgScore}%</strong></span>
-                            <span>Compliance: <strong>{st.safetyPct}%</strong></span>
+                            <span>Avg Score: <strong>{st.avgScore}/100</strong></span>
+                            <span>Compliance: <strong>{st.safetyPct}/100</strong></span>
                           </div>
                         </div>
                         <button
@@ -5903,15 +6002,15 @@ export default function TrafficInspectorModule({ user, onLogout }) {
                   <div style={{ display: "grid", gridTemplateColumns: "1.5fr 1.5fr 1.5fr 2fr", padding: "10px 14px", background: "#f8fafc", borderBottom: "1px solid #e2e8f0", fontWeight: "700", fontSize: "11px" }}>
                     <span>Evaluation Period</span>
                     <span>Assessments Volume</span>
-                    <span>Performance Avg (%)</span>
+                    <span>Performance Avg (/100)</span>
                     <span>Safety Compliance Rating</span>
                   </div>
                   {MONTHLY.map(m => (
                     <div key={m.month} style={{ display: "grid", gridTemplateColumns: "1.5fr 1.5fr 1.5fr 2fr", padding: "12px 14px", borderBottom: "1px solid #f1f5f9", fontSize: "13px" }}>
                       <strong>{m.month}</strong>
                       <span>{m.assessments} tests administered</span>
-                      <span>{m.avgScore}% avg</span>
-                      <strong style={{ color: m.safetyAvg >= 80 ? "#16a34a" : "#ea580c" }}>{m.safetyAvg}% compliance</strong>
+                      <span>{m.avgScore}/100 avg</span>
+                      <strong style={{ color: m.safetyAvg >= 80 ? "#16a34a" : "#ea580c" }}>{m.safetyAvg}/100 compliance</strong>
                     </div>
                   ))}
                 </div>

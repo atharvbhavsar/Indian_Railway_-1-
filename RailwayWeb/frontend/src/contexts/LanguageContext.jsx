@@ -46,7 +46,7 @@ const translations = {
     "Current Tests": "वर्तमान परीक्षाएं",
     "History": "इतिहास",
     "Safety Panel": "सुरक्षा पैनल",
-    
+
     // Stats & summaries
     "Total Staff": "कुल कर्मचारी",
     "Average Score": "औसत स्कोर",
@@ -57,7 +57,7 @@ const translations = {
     "Safety Index": "सुरक्षा सूचकांक",
     "Audit Due": "ऑडिट देय",
     "Retests": "पुनः परीक्षाएं",
-    
+
     // Buttons & Actions
     "Save": "सहेजें",
     "Cancel": "रद्द करें",
@@ -172,7 +172,7 @@ const translations = {
     "Error Messages": "त्रुटि संदेश",
     "Success Messages": "सफलता संदेश",
     "Validation Messages": "सत्यापन संदेश",
-    
+
     // Roles
     "Super Admin": "सुपर एडमिन",
     "AOM": "एओएम",
@@ -588,7 +588,7 @@ const translations = {
 
     "If a signal cannot be lowered, the driver should be given:": "यदि सिग्नल नीचे नहीं किया जा सकता है, तो ड्राइवर को दिया जाना चाहिए:",
     "A defective signal requires a physical authorization memo (T/369-3b) handed to the driver, authorizing them to pass the signal at danger at restricted speed.": "एक दोषपूर्ण सिग्नल के लिए ड्राइवर को एक भौतिक प्राधिकरण ज्ञापन (T/369-3b) सौंपने की आवश्यकता होती है, जो उन्हें प्रतिबंधित गति से खतरे के समय सिग्नल पार करने के लिए अधिकृत करता है।",
-    
+
     // Station Master specific terms
     "Station Analytics Dashboard": "स्टेशन विश्लेषिकी डैशबोर्ड",
     "Code:": "कोड:",
@@ -604,11 +604,8 @@ const translations = {
     "No risk profile data available": "कोई जोखिम प्रोफ़ाइल डेटा उपलब्ध नहीं है",
     "No historical trend data available (Untested)": "कोई ऐतिहासिक प्रवृत्ति डेटा उपलब्ध नहीं है (अपरीक्षित)",
     "Detailed Staff Card": "विस्तृत कर्मचारी कार्ड",
-    "Employee ID / HRMS ID": "कर्मचारी आईडी / एचआरएमएस आईडी",
     "Contact Number": "संपर्क नंबर",
-    "Email ID": "ईमेल आईडी",
     "Current Station Placement": "वर्तमान स्टेशन पदस्थापना",
-    "Reporting Officer": "रिपोर्टिंग अधिकारी",
     "Operational Zone": "परिचालन क्षेत्र",
     "Operational Division": "परिचालन मंडल",
     "Close Profile": "प्रोफाइल बंद करें",
@@ -636,12 +633,10 @@ const translations = {
     "Log REF Record": "आरईएफ रिकॉर्ड लॉग करें",
     "REF Completed / Cleared": "आरईएफ पूर्ण / स्वीकृत",
     "Scheduled / In Progress": "निर्धारित / प्रगति पर",
-    "Expired / Cancelled": "समाप्त / रद्द",
     "LOG REF COURSE RECORD": "आरईएफ कोर्स रिकॉर्ड दर्ज करें",
     "Select Pointsman *": "पॉइंट्समैन चुनें *",
     "REF Status *": "आरईएफ स्थिति *",
     "REF Training Date *": "आरईएफ प्रशिक्षण तिथि *",
-    "Next REF Due Date": "अगली आरईएफ देय तिथि",
     "Remarks / Observations": "टिप्पणी / अवलोकन",
     "Save REF Record": "आरईएफ रिकॉर्ड सहेजें",
     "Safety Counselling Queue": "सुरक्षा परामर्श कतार",
@@ -708,7 +703,6 @@ const translations = {
     "Emp ID": "कर्मचारी आईडी",
     "No records found": "कोई रिकॉर्ड नहीं मिला",
     "Back to List": "सूची पर वापस जाएं",
-    "Personal & Professional Details": "व्यक्तिगत और व्यावसायिक विवरण",
     "Account Status": "खाता स्थिति",
     "Current Zone": "वर्तमान ज़ोन",
     "Current Division": "वर्तमान मंडल",
@@ -748,13 +742,10 @@ const translations = {
     "TIME ELAPSED:": "समय व्यतीत:",
     "Active Session": "सक्रिय सत्र",
     "Candidate Name:": "उम्मीदवार का नाम:",
-    "Unattempted": "बिना प्रयास किया",
-    "Submit Examination": "परीक्षा जमा करें",
     "My Assessment History (by TI)": "मेरा मूल्यांकन इतिहास (यातायात निरीक्षक द्वारा)",
     "All assessments conducted by the Traffic Inspector for your station. Click any row to view the detailed scorecard.": "आपके स्टेशन के लिए यातायात निरीक्षक द्वारा आयोजित सभी मूल्यांकन। विस्तृत स्कोरकार्ड देखने के लिए किसी भी पंक्ति पर क्लिक करें।",
     "Total Assessments": "कुल मूल्यांकन",
     "Average TI Score": "औसत टीआई स्कोर",
-    "Reports & Analytics": "रिपोर्ट और विश्लेषिकी",
     "Division-level reporting hub. Use filters below to generate specific staff reports.": "मंडल स्तरीय रिपोर्टिंग हब। विशिष्ट कर्मचारी रिपोर्ट उत्पन्न करने के लिए नीचे दिए गए फ़िल्टर का उपयोग करें।",
     "Average Station Score": "औसत स्टेशन स्कोर",
     "Safety Compliance %": "सुरक्षा अनुपालन %",
@@ -788,10 +779,7 @@ const translations = {
     "Name": "नाम",
     "Actions": "कार्रवाई",
     "Employee Name": "कर्मचारी का नाम",
-    "Not Scheduled": "निर्धारित नहीं",
     "Employee": "कर्मचारी",
-    "Trigger Assessment": "मूल्यांकन ट्रिगर",
-    "Scheduled Date/Time": "निर्धारित तिथि/समय",
     "SM": "स्टेशन मास्टर (SM)",
     "Enter remarks about the REF training session...": "आरईएफ प्रशिक्षण सत्र के बारे में टिप्पणी दर्ज करें...",
     "Enter initial details for the pointsman...": "पॉइंट्समैन के लिए प्रारंभिक विवरण दर्ज करें...",
@@ -853,11 +841,9 @@ const translations = {
     "🔄 SHIFT POINTSMAN ROLE": "🔄 पॉइंट्समैन भूमिका बदलें",
     "👤 ADD POINTSMAN": "👤 पॉइंट्समैन जोड़ें",
     "Speed limit permitted over loop lines?": "लूप लाइनों पर गति सीमा कितनी अनुमत है?",
-    "30 km/h": "30 किमी/घंटा",
     "Signal below stop signal to admit train into occupied lines?": "अवरुद्ध लाइनों में ट्रेन को प्रवेश देने के लिए स्टॉप सिग्नल के नीचे कौन सा सिग्नल होता है?",
     "Calling-on signal": "कॉलिंग-ऑन सिग्नल",
     "Maximum speed limit during shunting operations?": "शंटिंग संचालन के दौरान अधिकतम गति सीमा?",
-    "15 km/h": "15 किमी/घंटा",
     "Vigilance action upon noticing hot axle on train?": "ट्रेन में हॉट एक्सेल देखने पर सतर्कता कार्रवाई?",
     "Display Danger Hand Signal": "खतरे का हाथ संकेत प्रदर्शित करें",
     "Detonator count required for emergency protection?": "आपातकालीन सुरक्षा के लिए आवश्यक पटाखों की संख्या?",
@@ -918,8 +904,6 @@ const translations = {
     "Duty area kept tidy": "ड्यूटी क्षेत्र को साफ रखता है",
     "Assessment —": "मूल्यांकन —",
     "MCQ Test Completed": "एमसीक्यू परीक्षा पूर्ण",
-    "Read-Only (Synced)": "केवल पढ़ने योग्य (सिंक किया गया)",
-    "Awaiting Pointsman Attempt": "पॉइंट्समैन के प्रयास की प्रतीक्षा",
     "The shunting safety competency trial is active. Request pointsman (": "शंटिंग सुरक्षा योग्यता परीक्षण सक्रिय है। पॉइंट्समैन (",
     ") to log into their portal and attempt the 25 safety questions to automatically sync scores.": ") को अपने पोर्टल पर लॉग इन करने और स्कोर को स्वचालित रूप से सिंक करने के लिए 25 सुरक्षा प्रश्नों का प्रयास करने के लिए कहें।",
     "The pointsman shunting safety MCQ exam is currently locked. You must click the": "पॉइंट्समैन शंटिंग सुरक्षा MCQ परीक्षा वर्तमान में लॉक है। आपको नीचे दिए गए",
@@ -1202,7 +1186,7 @@ const translations = {
     "Current Tests": "सध्याच्या परीक्षा",
     "History": "इतिहास",
     "Safety Panel": "सुरक्षा पॅनेल",
-    
+
     // Stats & summaries
     "Total Staff": "एकूण कर्मचारी",
     "Average Score": "सरासरी गुण",
@@ -1213,7 +1197,7 @@ const translations = {
     "Safety Index": "सुरक्षा निर्देशांक",
     "Audit Due": "ऑडिट देय",
     "Retests": "पुनः परीक्षा",
-    
+
     // Buttons & Actions
     "Save": "जतन करा",
     "Cancel": "रद्द करा",
@@ -1328,7 +1312,7 @@ const translations = {
     "Error Messages": "त्रुटी संदेश",
     "Success Messages": "यशस्वी संदेश",
     "Validation Messages": "सत्यापन संदेश",
-    
+
     // Roles
     "Super Admin": "सुपर ॲडमीन",
     "AOM": "एओएम",
@@ -1689,7 +1673,7 @@ const translations = {
     "Safety requires the pointsman to visually verify that the track switches are free of tools, ballast, or staff before notifying the SM to normalise the routing.": "सुरक्षेसाठी आवश्यक आहे की पॉइंट्समनने ट्रॅक स्विचेस टूल्स, खडे किंवा कर्मचाऱ्यांपासून मोकळे आहेत याची खात्री करून स्टेशन मास्टरला सूचित करावे.",
     "If a signal cannot be lowered, the driver should be given:": "जर सिग्नल खाली करता येत नसेल, तर चालकाला हे दिले पाहिजे:",
     "A defective signal requires a physical authorization memo (T/369-3b) handed to the driver, authorizing them to pass the signal at danger at restricted speed.": "दोषी सिग्नलसाठी ड्रायव्हरला प्रत्यक्ष अधिकृतता मेमो (T/369-3b) देणे आवश्यक आहे, ज्यामुळे त्यांना मर्यादित वेगाने धोक्याच्या वेळी सिग्नल पार करण्याची परवानगी मिळते.",
-    
+
     // Station Master specific terms
     "Station Analytics Dashboard": "स्टेशन विश्लेषण डॅशबोर्ड",
     "Code:": "कोड:",
@@ -1705,11 +1689,8 @@ const translations = {
     "No risk profile data available": "जोखीम प्रोफाइलची कोणतीही माहिती उपलब्ध नाही",
     "No historical trend data available (Untested)": "कोणताही ऐतिहासिक कल उपलब्ध नाही (अचाचणीकृत)",
     "Detailed Staff Card": "तपशीलवार कर्मचारी कार्ड",
-    "Employee ID / HRMS ID": "कर्मचारी आयडी / एचआरएमएस आयडी",
     "Contact Number": "संपर्क क्रमांक",
-    "Email ID": "ईमेल आयडी",
     "Current Station Placement": "सध्याचे स्टेशन पोस्टिंग",
-    "Reporting Officer": "रिपोर्टिंग अधिकारी",
     "Operational Zone": "परिचालन झोन",
     "Operational Division": "विभाग",
     "Close Profile": "प्रोफाइल बंद करा",
@@ -1737,12 +1718,10 @@ const translations = {
     "Log REF Record": "आरईएफ रेकॉर्डची नोंद करा",
     "REF Completed / Cleared": "आरईएफ पूर्ण / मंजूर",
     "Scheduled / In Progress": "नियोजित / प्रगतीपथावर",
-    "Expired / Cancelled": "मुदत संपलेले / रद्द",
     "LOG REF COURSE RECORD": "आरईएफ कोर्स रेकॉर्डची नोंद करा",
     "Select Pointsman *": "पॉइंट्समन निवडा *",
     "REF Status *": "आरईएफ स्थिती *",
     "REF Training Date *": "आरईएफ प्रशिक्षण तारीख *",
-    "Next REF Due Date": "पुढील आरईएफ देय तारीख",
     "Remarks / Observations": "शेरा / निरीक्षण",
     "Save REF Record": "आरईएफ रेकॉर्ड जतन करा",
     "Safety Counselling Queue": "सुरक्षा समुपदेशन रांग",
@@ -1809,7 +1788,6 @@ const translations = {
     "Emp ID": "कर्मचारी आयडी",
     "No records found": "कोणतीही नोंद आढळली नाही",
     "Back to List": "यादीवर परत जा",
-    "Personal & Professional Details": "वैयक्तिक आणि व्यावसायिक तपशील",
     "Account Status": "खाते स्थिती",
     "Current Zone": "सध्याचा झोन",
     "Current Division": "विभाग",
@@ -1849,13 +1827,10 @@ const translations = {
     "TIME ELAPSED:": "वेळ गेलेला:",
     "Active Session": "सक्रिय सत्र",
     "Candidate Name:": "उमेदवाराचे नाव:",
-    "Unattempted": "प्रयत्न न केलेले",
-    "Submit Examination": "परीक्षा सबमिट करा",
     "My Assessment History (by TI)": "माझा मूल्यांकन इतिहास (टीआय द्वारे)",
     "All assessments conducted by the Traffic Inspector for your station. Click any row to view the detailed scorecard.": "तुमच्या स्टेशनसाठी रहदारी निरीक्षकाने घेतलेले सर्व मूल्यांकन. तपशीलवार स्कोरकार्ड पाहण्यासाठी कोणत्याही ओळीवर क्लिक करा.",
     "Total Assessments": "एकूण मूल्यांकन",
     "Average TI Score": "सरासरी टीआय गुण",
-    "Reports & Analytics": "अहवाल आणि विश्लेषण",
     "Division-level reporting hub. Use filters below to generate specific staff reports.": "विभाग-स्तरीय अहवाल केंद्र. तपशीलवार अहवाल तयार करण्यासाठी खालील फिल्टर वापरा.",
     "Average Station Score": "सरासरी स्टेशन गुण",
     "Safety Compliance %": "सुरक्षा पालन %",
@@ -1889,10 +1864,7 @@ const translations = {
     "Name": "नाव",
     "Actions": "कारवाई",
     "Employee Name": "कर्मचाऱ्याचे नाव",
-    "Not Scheduled": "नियोजित नाही",
     "Employee": "कर्मचारी",
-    "Trigger Assessment": "मूल्यांकन सुरू करा",
-    "Scheduled Date/Time": "नियोजित तारीख/वेळ",
     "SM": "स्टेशन मास्टर (एसएम)",
     "Enter remarks about the REF training session...": "आरईएफ प्रशिक्षण सत्राबद्दल शेरा प्रविष्ट करा...",
     "Enter initial details for the pointsman...": "पॉइंट्समनसाठी प्रारंभिक तपशील प्रविष्ट करा...",
@@ -1954,11 +1926,9 @@ const translations = {
     "🔄 SHIFT POINTSMAN ROLE": "🔄 पॉइंट्समन भूमिका बदला",
     "👤 ADD POINTSMAN": "👤 पॉइंट्समन जोडा",
     "Speed limit permitted over loop lines?": "लूप लाईन्सवर कमाल वेग मर्यादा किती आहे?",
-    "30 km/h": "३० किमी/तास",
     "Signal below stop signal to admit train into occupied lines?": "व्याप्त लाईन्सवर गाडी घेण्यासाठी स्टॉप सिग्नलच्या खाली कोणता सिग्नल असतो?",
     "Calling-on signal": "कॉलिंग-ऑन सिग्नल",
     "Maximum speed limit during shunting operations?": "शंटिंग हालचालींदरम्यान कमाल वेग मर्यादा किती असते?",
-    "15 km/h": "१५ किमी/तास",
     "Vigilance action upon noticing hot axle on train?": "ट्रेनमध्ये हॉट एक्सल आढळल्यास तातडीची कारवाई?",
     "Display Danger Hand Signal": "धोक्याचा हँड सिग्नल दाखवा",
     "Detonator count required for emergency protection?": "आपत्कालीन संरक्षणासाठी आवश्यक फटाक्यांची संख्या?",
@@ -2019,8 +1989,6 @@ const translations = {
     "Duty area kept tidy": "ड्युटी परिसर स्वच्छ ठेवतो",
     "Assessment —": "मूल्यांकन —",
     "MCQ Test Completed": "MCQ परीक्षा पूर्ण",
-    "Read-Only (Synced)": "केवळ वाचनासाठी (सिंक केलेले)",
-    "Awaiting Pointsman Attempt": "पॉइंट्समनच्या परीषेच्या प्रयत्नाची प्रतीक्षा",
     "The shunting safety competency trial is active. Request pointsman (": "शंटिंग सुरक्षा सक्षमता चाचणी सक्रिय आहे. पॉइंट्समन (",
     ") to log into their portal and attempt the 25 safety questions to automatically sync scores.": ") ला त्यांच्या पोर्टलवर लॉग इन करण्यास आणि गुण स्वयंचलितपणे सिंक करण्यासाठी २५ सुरक्षा प्रश्नांची उत्तरे देण्यास सांगा.",
     "The pointsman shunting safety MCQ exam is currently locked. You must click the": "पॉइंट्समन शंटिंग सुरक्षा MCQ परीक्षा सध्या लॉक आहे. तुम्हाला खालील",
@@ -2291,7 +2259,7 @@ export function LanguageProvider({ children }) {
 
   const changeLanguage = async (newLang) => {
     if (!["en", "hi", "mr"].includes(newLang)) return;
-    
+
     setLanguageState(newLang);
     localStorage.setItem("rses_preferred_language", newLang);
 

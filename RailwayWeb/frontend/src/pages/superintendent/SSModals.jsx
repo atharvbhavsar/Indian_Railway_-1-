@@ -87,6 +87,14 @@ export default function SSModals({
                   placeholder="Enter email address (e.g. user@rail.in)" 
                 />
               </div>
+              <div className="sdom-modal-field">
+                <label>PF Number *</label>
+                <input 
+                  value={editingUser.pfNumber || ""} 
+                  onChange={e => setEditingUser({ ...editingUser, pfNumber: e.target.value })} 
+                  placeholder="Enter PF Number" 
+                />
+              </div>
             </div>
           </div>
 
@@ -112,24 +120,6 @@ export default function SSModals({
                 </select>
               </div>
               <div className="sdom-modal-field">
-                <label>Division *</label>
-                <select 
-                  value={editingUser.division || "Nagpur"} 
-                  onChange={e => setEditingUser({ ...editingUser, division: e.target.value })}
-                >
-                  {["Nagpur", "Pune", "Mumbai", "Solapur", "Bhusawal"].map(d => <option key={d} value={d}>{d}</option>)}
-                </select>
-              </div>
-              <div className="sdom-modal-field">
-                <label>Railway Zone *</label>
-                <select 
-                  value={editingUser.zone || "Central Railway"} 
-                  onChange={e => setEditingUser({ ...editingUser, zone: e.target.value })}
-                >
-                  {["Central Railway", "Western Railway", "Northern Railway", "Southern Railway", "Eastern Railway"].map(z => <option key={z} value={z}>{z}</option>)}
-                </select>
-              </div>
-              <div className="sdom-modal-field">
                 <label>Station Name *</label>
                 <select 
                   value={editingUser.station} 
@@ -139,33 +129,7 @@ export default function SSModals({
                   {myStations.map(s => <option key={s.id} value={s.name}>{s.name} ({s.code})</option>)}
                 </select>
               </div>
-              <div className="sdom-modal-field">
-                <label>Category *</label>
-                <select 
-                  value={editingUser.cat || "A"} 
-                  onChange={e => setEditingUser({ ...editingUser, cat: e.target.value })}
-                >
-                  <option>A</option><option>B</option><option>C</option><option>D</option>
-                </select>
-              </div>
-              <div className="sdom-modal-field" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
-                <div style={{ display: "flex", flexDirection: "column", gap: "5px" }}>
-                  <label style={{ fontSize: "0.7rem", color: "#64748b", textTransform: "uppercase", fontWeight: 700 }}>PME Status</label>
-                  <select style={{ padding: "9px 12px", borderRadius: "6px", border: "1px solid #cbd5e1" }} value={editingUser.pmeStatus} onChange={e => setEditingUser({ ...editingUser, pmeStatus: e.target.value })} required>
-                    <option>Fit</option>
-                    <option>Unfit</option>
-                    <option>Overdue</option>
-                  </select>
-                </div>
-                <div style={{ display: "flex", flexDirection: "column", gap: "5px" }}>
-                  <label style={{ fontSize: "0.7rem", color: "#64748b", textTransform: "uppercase", fontWeight: 700 }}>REF Status</label>
-                  <select style={{ padding: "9px 12px", borderRadius: "6px", border: "1px solid #cbd5e1" }} value={editingUser.refStatus} onChange={e => setEditingUser({ ...editingUser, refStatus: e.target.value })} required>
-                    <option>Cleared</option>
-                    <option>Pending</option>
-                    <option>Expired</option>
-                  </select>
-                </div>
-              </div>
+
             </div>
           </div>
 
@@ -176,7 +140,7 @@ export default function SSModals({
                 {editingUser.role} Operational Setup
               </h4>
               <div style={{ height: '1px', backgroundColor: '#a7f3d0', marginBottom: '16px' }}></div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: "16px" }}>
                 <div className="sdom-modal-field">
                   <label>Operational Station *</label>
                   <select 
@@ -187,75 +151,11 @@ export default function SSModals({
                     {myStations.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
                   </select>
                 </div>
-                <div className="sdom-modal-field">
-                  <label>Operational Zone *</label>
-                  <select 
-                    value={editingUser.smZone || editingUser.zone || "Central Railway"} 
-                    onChange={e => setEditingUser({ ...editingUser, smZone: e.target.value, zone: e.target.value })}
-                  >
-                    <option value="">Select Zone</option>
-                    {["Central Railway", "Western Railway", "Northern Railway", "Southern Railway", "Eastern Railway"].map(z => <option key={z} value={z}>{z}</option>)}
-                  </select>
-                </div>
-                <div className="sdom-modal-field">
-                  <label>Operational Division *</label>
-                  <select 
-                    value={editingUser.smDivision || editingUser.division || "Nagpur"} 
-                    onChange={e => setEditingUser({ ...editingUser, smDivision: e.target.value, division: e.target.value })}
-                  >
-                    <option value="">Select Division</option>
-                    {["Nagpur", "Pune", "Mumbai", "Solapur", "Bhusawal"].map(d => <option key={d} value={d}>{d}</option>)}
-                  </select>
-                </div>
               </div>
             </div>
           )}
 
-          {editingUser.role === "Pointsman" && (
-            <div style={{ padding: 18, background: "#f0f7ff", border: "1px solid #c2e0ff", borderRadius: 10 }}>
-              <h4 style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#0d2c4d', margin: '0 0 10px', fontSize: '14px', fontWeight: '800' }}>
-                Pointsman Operational Setup
-              </h4>
-              <div style={{ height: '1px', backgroundColor: '#c2e0ff', marginBottom: '16px' }}></div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
-                <div className="sdom-modal-field">
-                  <label>Reporting Station Master *</label>
-                  <input 
-                    value={editingUser.reportingSm || ""} 
-                    onChange={e => setEditingUser({ ...editingUser, reportingSm: e.target.value })} 
-                    placeholder="Station Master Name"
-                  />
-                </div>
-                <div className="sdom-modal-field">
-                  <label>Work Location Setup *</label>
-                  <select 
-                    value={editingUser.workLocation || ""} 
-                    onChange={e => setEditingUser({ ...editingUser, workLocation: e.target.value })}
-                  >
-                    <option value="">Select Location</option>
-                    <option value="Yard">Yard Area</option>
-                    <option value="Cabin A">Cabin A</option>
-                    <option value="Cabin B">Cabin B</option>
-                    <option value="Platform Area">Platform Area</option>
-                    <option value="Level Crossing Gate">Level Crossing Gate</option>
-                  </select>
-                </div>
-                <div className="sdom-modal-field">
-                  <label>Assigned Shift *</label>
-                  <select 
-                    value={editingUser.shift || ""} 
-                    onChange={e => setEditingUser({ ...editingUser, shift: e.target.value })}
-                  >
-                    <option value="">Select Shift</option>
-                    <option value="Morning Shift (06:00 - 14:00)">Morning Shift (06:00 - 14:00)</option>
-                    <option value="Evening Shift (14:00 - 22:00)">Evening Shift (14:00 - 22:00)</option>
-                    <option value="Night Shift (22:00 - 06:00)">Night Shift (22:00 - 06:00)</option>
-                    <option value="General Shift (09:00 - 18:00)">General Shift (09:00 - 18:00)</option>
-                  </select>
-                </div>
-              </div>
-            </div>
-          )}
+
 
           {editingUser.role === "Train Manager" && (
             <div style={{ padding: 18, background: "#faf5ff", border: "1px solid #e9d5ff", borderRadius: 10 }}>
@@ -410,6 +310,15 @@ export default function SSModals({
                   required
                 />
               </div>
+              <div className="sdom-modal-field">
+                <label>PF Number *</label>
+                <input 
+                  value={newUserData.pfNumber || ""} 
+                  onChange={e => setNewUserData({ ...newUserData, pfNumber: e.target.value })} 
+                  placeholder="Enter PF Number" 
+                  required
+                />
+              </div>
             </div>
           </div>
 
@@ -439,24 +348,6 @@ export default function SSModals({
                 </select>
               </div>
               <div className="sdom-modal-field">
-                <label>Division *</label>
-                <select 
-                  value={newUserData.division || "Nagpur"} 
-                  onChange={e => setNewUserData({ ...newUserData, division: e.target.value })}
-                >
-                  {["Nagpur", "Pune", "Mumbai", "Solapur", "Bhusawal"].map(d => <option key={d} value={d}>{d}</option>)}
-                </select>
-              </div>
-              <div className="sdom-modal-field">
-                <label>Railway Zone *</label>
-                <select 
-                  value={newUserData.zone || "Central Railway"} 
-                  onChange={e => setNewUserData({ ...newUserData, zone: e.target.value })}
-                >
-                  {["Central Railway", "Western Railway", "Northern Railway", "Southern Railway", "Eastern Railway"].map(z => <option key={z} value={z}>{z}</option>)}
-                </select>
-              </div>
-              <div className="sdom-modal-field">
                 <label>Station Name *</label>
                 <select 
                   value={newUserData.station} 
@@ -466,34 +357,7 @@ export default function SSModals({
                   {myStations.map(s => <option key={s.id} value={s.name}>{s.name} ({s.code})</option>)}
                 </select>
               </div>
-              <div className="sdom-modal-field">
-                <label>Category *</label>
-                <select 
-                  value={newUserData.cat || "A"} 
-                  onChange={e => setNewUserData({ ...newUserData, cat: e.target.value })}
-                >
-                  <option>A</option><option>B</option><option>C</option><option>D</option>
-                </select>
-              </div>
-              <div className="sdom-modal-field" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
-                <div style={{ display: "flex", flexDirection: "column", gap: "5px" }}>
-                  <label style={{ fontSize: "0.7rem", color: "#64748b", textTransform: "uppercase", fontWeight: 700 }}>PME Status</label>
-                  <select style={{ padding: "9px 12px", borderRadius: "6px", border: "1px solid #cbd5e1" }} value={newUserData.pmeStatus} onChange={e => setNewUserData({ ...newUserData, pmeStatus: e.target.value })} required>
-                    <option>Fit</option>
-                    <option>Unfit</option>
-                    <option>Overdue</option>
-                    <option>Pending</option>
-                  </select>
-                </div>
-                <div style={{ display: "flex", flexDirection: "column", gap: "5px" }}>
-                  <label style={{ fontSize: "0.7rem", color: "#64748b", textTransform: "uppercase", fontWeight: 700 }}>REF Status</label>
-                  <select style={{ padding: "9px 12px", borderRadius: "6px", border: "1px solid #cbd5e1" }} value={newUserData.refStatus} onChange={e => setNewUserData({ ...newUserData, refStatus: e.target.value })} required>
-                    <option>Cleared</option>
-                    <option>Pending</option>
-                    <option>Expired</option>
-                  </select>
-                </div>
-              </div>
+
               <div className="sdom-modal-field">
                 <label>Joining Date *</label>
                 <input 
@@ -513,7 +377,7 @@ export default function SSModals({
                 {newUserData.role} Operational Setup
               </h4>
               <div style={{ height: '1px', backgroundColor: '#a7f3d0', marginBottom: '16px' }}></div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: "16px" }}>
                 <div className="sdom-modal-field">
                   <label>Operational Station *</label>
                   <select 
@@ -524,75 +388,11 @@ export default function SSModals({
                     {myStations.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
                   </select>
                 </div>
-                <div className="sdom-modal-field">
-                  <label>Operational Zone *</label>
-                  <select 
-                    value={newUserData.smZone || newUserData.zone || "Central Railway"} 
-                    onChange={e => setNewUserData({ ...newUserData, smZone: e.target.value, zone: e.target.value })}
-                  >
-                    <option value="">Select Zone</option>
-                    {["Central Railway", "Western Railway", "Northern Railway", "Southern Railway", "Eastern Railway"].map(z => <option key={z} value={z}>{z}</option>)}
-                  </select>
-                </div>
-                <div className="sdom-modal-field">
-                  <label>Operational Division *</label>
-                  <select 
-                    value={newUserData.smDivision || newUserData.division || "Nagpur"} 
-                    onChange={e => setNewUserData({ ...newUserData, smDivision: e.target.value, division: e.target.value })}
-                  >
-                    <option value="">Select Division</option>
-                    {["Nagpur", "Pune", "Mumbai", "Solapur", "Bhusawal"].map(d => <option key={d} value={d}>{d}</option>)}
-                  </select>
-                </div>
               </div>
             </div>
           )}
 
-          {newUserData.role === "Pointsman" && (
-            <div style={{ padding: 18, background: "#f0f7ff", border: "1px solid #c2e0ff", borderRadius: 10 }}>
-              <h4 style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#0d2c4d', margin: '0 0 10px', fontSize: '14px', fontWeight: '800' }}>
-                Pointsman Operational Setup
-              </h4>
-              <div style={{ height: '1px', backgroundColor: '#c2e0ff', marginBottom: '16px' }}></div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
-                <div className="sdom-modal-field">
-                  <label>Reporting Station Master *</label>
-                  <input 
-                    value={newUserData.reportingSm || ""} 
-                    onChange={e => setNewUserData({ ...newUserData, reportingSm: e.target.value })} 
-                    placeholder="Station Master Name"
-                  />
-                </div>
-                <div className="sdom-modal-field">
-                  <label>Work Location Setup *</label>
-                  <select 
-                    value={newUserData.workLocation || ""} 
-                    onChange={e => setNewUserData({ ...newUserData, workLocation: e.target.value })}
-                  >
-                    <option value="">Select Location</option>
-                    <option value="Yard">Yard Area</option>
-                    <option value="Cabin A">Cabin A</option>
-                    <option value="Cabin B">Cabin B</option>
-                    <option value="Platform Area">Platform Area</option>
-                    <option value="Level Crossing Gate">Level Crossing Gate</option>
-                  </select>
-                </div>
-                <div className="sdom-modal-field">
-                  <label>Assigned Shift *</label>
-                  <select 
-                    value={newUserData.shift || ""} 
-                    onChange={e => setNewUserData({ ...newUserData, shift: e.target.value })}
-                  >
-                    <option value="">Select Shift</option>
-                    <option value="Morning Shift (06:00 - 14:00)">Morning Shift (06:00 - 14:00)</option>
-                    <option value="Evening Shift (14:00 - 22:00)">Evening Shift (14:00 - 22:00)</option>
-                    <option value="Night Shift (22:00 - 06:00)">Night Shift (22:00 - 06:00)</option>
-                    <option value="General Shift (09:00 - 18:00)">General Shift (09:00 - 18:00)</option>
-                  </select>
-                </div>
-              </div>
-            </div>
-          )}
+
 
           {newUserData.role === "Train Manager" && (
             <div style={{ padding: 18, background: "#faf5ff", border: "1px solid #e9d5ff", borderRadius: 10 }}>

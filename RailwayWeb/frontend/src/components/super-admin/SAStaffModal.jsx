@@ -20,7 +20,7 @@ export function SAStaffModal({ modal, setModal, stations, staff, saveModal }) {
 
   const assignedTiStations = staff?.filter(s => (s.role === 'ti' || s.role === 'Traffic Inspector') && (modal.mode === 'add' || s.id !== modal.data.id)).reduce((acc, s) => {
     if (s.linkedStations) {
-       acc.push(...s.linkedStations.split(",").map(x => x.trim()).filter(Boolean));
+      acc.push(...s.linkedStations.split(",").map(x => x.trim()).filter(Boolean));
     }
     return acc;
   }, []);
@@ -36,7 +36,7 @@ export function SAStaffModal({ modal, setModal, stations, staff, saveModal }) {
   return (
     <div className="sdom-modal-overlay" onClick={e => e.target === e.currentTarget && setModal(null)}>
       <div className="sdom-modal" style={!isShift ? { width: "900px", maxWidth: "95vw" } : undefined}>
-        
+
         {!isShift ? (
           <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
             <div style={{ display: "flex", alignItems: "center", gap: "16px", marginBottom: "8px" }}>
@@ -81,12 +81,21 @@ export function SAStaffModal({ modal, setModal, stations, staff, saveModal }) {
                   <label>Email ID *</label>
                   <input type="email" value={modal.data.email || ""} onChange={e => setModal(p => ({ ...p, data: { ...p.data, email: e.target.value } }))} placeholder="Enter email address" />
                 </div>
+                <div className="sdom-modal-field">
+                  <label>Joining Date *</label>
+                  <input type="date" value={modal.data.joiningDate || ""} onChange={e => setModal(p => ({ ...p, data: { ...p.data, joiningDate: e.target.value } }))} />
+                </div>
+                <div className="sdom-modal-field">
+                  <label>PF Number *</label>
+                  <input value={modal.data.pfNumber || ""} onChange={e => setModal(p => ({ ...p, data: { ...p.data, pfNumber: e.target.value } }))} placeholder="Enter PF Number" />
+                </div>
                 {modal.mode === "add" && (
                   <div className="sdom-modal-field">
                     <label>Account Password *</label>
                     <input type="password" value={modal.data.password || ""} onChange={e => setModal(p => ({ ...p, data: { ...p.data, password: e.target.value } }))} placeholder="Enter initial password" />
                   </div>
                 )}
+
               </div>
             </div>
 
@@ -100,68 +109,37 @@ export function SAStaffModal({ modal, setModal, stations, staff, saveModal }) {
                 <div className="sdom-modal-field">
                   <label>Role / Designation *</label>
                   <select value={modal.role} onChange={e => setModal(p => ({ ...p, role: e.target.value }))}>
-                    {Object.entries(ROLE_MAP).map(([k,v]) => <option key={k} value={k}>{v}</option>)}
-                  </select>
-                </div>
-                <div className="sdom-modal-field">
-                  <label>Division *</label>
-                  <select value={modal.data.division || "Nagpur"} onChange={e => setModal(p => ({ ...p, data: { ...p.data, division: e.target.value, smDivision: e.target.value } }))}>
-                    {["Nagpur", "Pune", "Mumbai", "Solapur", "Bhusawal"].map(d => <option key={d} value={d}>{d}</option>)}
-                  </select>
-                </div>
-                <div className="sdom-modal-field">
-                  <label>Railway Zone *</label>
-                  <select value={modal.data.zone || "Central Railway"} onChange={e => setModal(p => ({ ...p, data: { ...p.data, zone: e.target.value, smZone: e.target.value } }))}>
-                    {["Central Railway", "Western Railway", "Northern Railway", "Southern Railway", "Eastern Railway"].map(z => <option key={z} value={z}>{z}</option>)}
+                    {Object.entries(ROLE_MAP).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
                   </select>
                 </div>
                 {modal.role !== "ti" && (
                   <div className="sdom-modal-field">
                     <label>Station Name *</label>
-                    <select value={modal.data.station || ""} onChange={e => setModal(p => ({ ...p, data: { ...p.data, station: e.target.value, smStation: e.target.value } }))}>
+                    <select
+                      value={modal.data.station || ""}
+                      onChange={e => {
+                        const selectedSt = e.target.value;
+                        const smForStation = staff?.find(s => (s.role === 'sm' || s.role === 'Station Master') && s.station === selectedSt);
+                        const repSm = smForStation ? smForStation.name : "";
+                        setModal(p => ({
+                          ...p,
+                          data: {
+                            ...p.data,
+                            station: selectedSt,
+                            smStation: selectedSt,
+                            reportingSm: repSm
+                          }
+                        }));
+                      }}
+                    >
                       <option value="">Select Station</option>
                       {stations.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
                     </select>
                   </div>
                 )}
-                <div className="sdom-modal-field">
-                  <label>Category *</label>
-                  <select value={modal.data.cat || "A"} onChange={e => setModal(p => ({ ...p, data: { ...p.data, cat: e.target.value } }))}>
-                    <option>A</option><option>B</option><option>C</option><option>D</option>
-                  </select>
-                </div>
               </div>
             </div>
 
-            {/* Role-Specific Operational Setups */}
-            {modal.role === "pointsmen" && (
-              <div style={{ padding: 18, background: "#f0f7ff", border: "1px solid #c2e0ff", borderRadius: 10 }}>
-                <h4 style={{ margin: '0 0 10px', fontSize: '14px', fontWeight: '800' }}>Pointsman Operational Setup</h4>
-                <div style={{ height: '1px', backgroundColor: '#c2e0ff', marginBottom: '16px' }}></div>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
-                  <div className="sdom-modal-field">
-                    <label>Reporting Station Master *</label>
-                    <select value={modal.data.reportingSm || ""} onChange={e => setModal(p => ({ ...p, data: { ...p.data, reportingSm: e.target.value } }))}>
-                      <option value="">Select Station Master</option>
-                      {staff?.filter(s => s.role === 'sm' || s.role === 'Station Master').map(sm => (
-                        <option key={sm.id} value={sm.name}>{sm.name} ({sm.id})</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="sdom-modal-field">
-                    <label>Work Location Setup *</label>
-                    <select value={modal.data.workLocation || ""} onChange={e => setModal(p => ({ ...p, data: { ...p.data, workLocation: e.target.value } }))}>
-                      <option value="">Select Location</option>
-                      <option value="Yard">Yard Area</option>
-                      <option value="Cabin A">Cabin A</option>
-                      <option value="Cabin B">Cabin B</option>
-                      <option value="Platform Area">Platform Area</option>
-                      <option value="Level Crossing Gate">Level Crossing Gate</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-            )}
 
             {(modal.role === "sm" || modal.role === "ss") && (
               <div style={{ padding: 18, background: "#ecfdf5", border: "1px solid #a7f3d0", borderRadius: 10 }}>
@@ -173,9 +151,9 @@ export function SAStaffModal({ modal, setModal, stations, staff, saveModal }) {
                     <select value={modal.data.smStation || ""} onChange={e => setModal(p => ({ ...p, data: { ...p.data, smStation: e.target.value, station: e.target.value } }))}>
                       <option value="">Select Operational Station</option>
                       {stations.map(s => (
-                        <option 
-                          key={s.id} 
-                          value={s.name} 
+                        <option
+                          key={s.id}
+                          value={s.name}
                           disabled={isStationDisabled(s.name)}
                           style={isStationDisabled(s.name) ? { color: '#94a3b8', fontStyle: 'italic', backgroundColor: '#f1f5f9' } : {}}
                         >
@@ -187,7 +165,7 @@ export function SAStaffModal({ modal, setModal, stations, staff, saveModal }) {
                 </div>
               </div>
             )}
-            
+
             {modal.role === "ti" && (
               <div style={{ padding: 18, background: "#fffbeb", border: "1px solid #fde68a", borderRadius: 10 }}>
                 <h4 style={{ margin: '0 0 10px', fontSize: '14px', fontWeight: '800' }}>Traffic Inspector Operational Setup</h4>
@@ -199,7 +177,7 @@ export function SAStaffModal({ modal, setModal, stations, staff, saveModal }) {
                   </div>
                   <div className="sdom-modal-field" style={{ position: "relative" }}>
                     <label>Linked Stations under supervision *</label>
-                    <div 
+                    <div
                       onClick={() => setIsTiDropdownOpen(!isTiDropdownOpen)}
                       style={{ padding: "8px 12px", border: "1px solid #cbd5e1", borderRadius: "6px", background: "#ffffff", cursor: "pointer", fontSize: "14px", display: "flex", justifyContent: "space-between", alignItems: "center" }}
                     >
@@ -213,17 +191,18 @@ export function SAStaffModal({ modal, setModal, stations, staff, saveModal }) {
                         {stations.map(s => {
                           const isOccupied = assignedTiStations.includes(s.name);
                           return (
-                          <label key={s.id} style={{ display: "flex", alignItems: "center", gap: "8px", padding: "6px", cursor: isOccupied ? "not-allowed" : "pointer", fontSize: "13px", borderRadius: "4px", transition: "background 0.2s", opacity: isOccupied ? 0.5 : 1 }} onMouseEnter={e => !isOccupied && (e.currentTarget.style.background="#f1f5f9")} onMouseLeave={e => !isOccupied && (e.currentTarget.style.background="transparent")}>
-                            <input 
-                              type="checkbox" 
-                              checked={selectedTiStations.includes(s.name)}
-                              onChange={() => !isOccupied && toggleTiStation(s.name)}
-                              disabled={isOccupied}
-                              style={{ width: "14px", height: "14px", cursor: isOccupied ? "not-allowed" : "pointer" }}
-                            />
-                            {s.name} {isOccupied && <span style={{fontSize: "10px", color: "#dc2626"}}>(Assigned)</span>}
-                          </label>
-                        )})}
+                            <label key={s.id} style={{ display: "flex", alignItems: "center", gap: "8px", padding: "6px", cursor: isOccupied ? "not-allowed" : "pointer", fontSize: "13px", borderRadius: "4px", transition: "background 0.2s", opacity: isOccupied ? 0.5 : 1 }} onMouseEnter={e => !isOccupied && (e.currentTarget.style.background = "#f1f5f9")} onMouseLeave={e => !isOccupied && (e.currentTarget.style.background = "transparent")}>
+                              <input
+                                type="checkbox"
+                                checked={selectedTiStations.includes(s.name)}
+                                onChange={() => !isOccupied && toggleTiStation(s.name)}
+                                disabled={isOccupied}
+                                style={{ width: "14px", height: "14px", cursor: isOccupied ? "not-allowed" : "pointer" }}
+                              />
+                              {s.name} {isOccupied && <span style={{ fontSize: "10px", color: "#dc2626" }}>(Assigned)</span>}
+                            </label>
+                          )
+                        })}
                       </div>
                     )}
                   </div>
@@ -253,7 +232,7 @@ export function SAStaffModal({ modal, setModal, stations, staff, saveModal }) {
             <div className="sdom-modal-field">
               <label>Role (Shift to)</label>
               <select value={modal.role} onChange={e => setModal(p => ({ ...p, role: e.target.value }))}>
-                {Object.entries(ROLE_MAP).map(([k,v]) => <option key={k} value={k}>{v}</option>)}
+                {Object.entries(ROLE_MAP).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
               </select>
             </div>
           </>

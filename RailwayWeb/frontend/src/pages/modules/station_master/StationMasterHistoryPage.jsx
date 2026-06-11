@@ -14,7 +14,8 @@ export function StationMasterHistoryPage(props) {
     repF,
     setRepF,
     pointsmen,
-    smProfile
+    smProfile,
+    allDbAssessments
   } = props;
 
   const ROLE_MAP = { 
@@ -34,14 +35,13 @@ export function StationMasterHistoryPage(props) {
     const u = pointsmen.find(x => x.hrmsId === selectedReportUserId);
     if (!u) return null;
 
-    const getCat = s => s >= 80 ? "A" : s >= 50 ? "B" : s >= 26 ? "C" : "D";
-    const cat = getCat(u.lastScore || 0);
+    const cat = u.cat || "Untested";
     
-    const CAT_C  = { A: "#16a34a", B: "#2563eb", C: "#d97706", D: "#dc2626" };
-    const CAT_B  = { A: "#dcfce7", B: "#dbeafe", C: "#fef3c7", D: "#fee2e2" };
-    const RISK_C = { High: "#dc2626", Medium: "#d97706", Low: "#16a34a" };
+    const CAT_C  = { A: "#16a34a", B: "#2563eb", C: "#d97706", D: "#dc2626", Untested: "#64748b" };
+    const CAT_B  = { A: "#dcfce7", B: "#dbeafe", C: "#fef3c7", D: "#fee2e2", Untested: "#f1f5f9" };
+    const RISK_C = { High: "#dc2626", Medium: "#d97706", Low: "#16a34a", Untested: "#64748b" };
     
-    const risk = riskLevel(u);
+    const risk = cat === "Untested" ? "Untested" : riskLevel(u);
     const isHighRisk = risk === "High";
     const pmeVal = u.pmeStatus === "Fit" ? "FIT" : u.pmeStatus === "Pending" ? "PENDING" : u.pmeStatus === "Overdue" ? "OVERDUE" : "UNFIT";
     const refVal = u.refStatus === "Cleared" ? "CLEARED" : "EXPIRED";
@@ -66,13 +66,13 @@ export function StationMasterHistoryPage(props) {
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "16px", marginBottom: "24px" }}>
           <div style={{ background: "#f8fafc", border: "1px solid #e2edf8", padding: "14px", borderRadius: "12px", textAlign: "center" }}>
             <span style={{ fontSize: "11px", fontWeight: "800", color: "#64748b", textTransform: "uppercase", letterSpacing: "0.5px" }}>{t("Grand Total Score")}</span>
-            <strong style={{ display: "block", fontSize: "24px", color: CAT_C[cat] || "#2563eb", marginTop: "4px", fontWeight: "900" }}>{u.lastScore}/100</strong>
+            <strong style={{ display: "block", fontSize: "24px", color: CAT_C[cat] || "#2563eb", marginTop: "4px", fontWeight: "900" }}>{cat === "Untested" ? t("Not Given Test") : `${u.lastScore}/100`}</strong>
           </div>
           <div style={{ background: "#f8fafc", border: "1px solid #e2edf8", padding: "14px", borderRadius: "12px", textAlign: "center" }}>
             <span style={{ fontSize: "11px", fontWeight: "800", color: "#64748b", textTransform: "uppercase", letterSpacing: "0.5px" }}>{t("Safety Grade")}</span>
             <div>
               <span className="ti2-badge" style={{ display: "inline-block", background: CAT_B[cat] || "#dbeafe", color: CAT_C[cat] || "#2563eb", fontSize: "13px", fontWeight: "800", padding: "4px 14px", borderRadius: "8px", marginTop: "8px" }}>
-                {t("Category")} {cat}
+                {cat === "Untested" ? t("Untested") : `${t("Category")} ${cat}`}
               </span>
             </div>
           </div>
@@ -106,7 +106,7 @@ export function StationMasterHistoryPage(props) {
                 <div style={{ display: "flex", justifyContent: "space-between" }}><dt style={{ color: "#64748b", fontSize: "12px", fontWeight: "700" }}>{t("Contact Number")}</dt><dd style={{ margin: 0, fontSize: "13px", fontWeight: "800", color: "#1e293b" }}>{u.mobileNo || "+91 98765 11001"}</dd></div>
                 <div style={{ display: "flex", justifyContent: "space-between" }}><dt style={{ color: "#64748b", fontSize: "12px", fontWeight: "700" }}>{t("Date of Appointment")}</dt><dd style={{ margin: 0, fontSize: "13px", fontWeight: "800", color: "#1e293b" }}>{u.doj || "2018-02-12"}</dd></div>
                 <div style={{ display: "flex", justifyContent: "space-between" }}><dt style={{ color: "#64748b", fontSize: "12px", fontWeight: "700" }}>{t("Alcoholic Status")}</dt><dd style={{ margin: 0, fontSize: "13px", fontWeight: "800", color: "#16a34a" }}>{t("Non-Alcoholic")}</dd></div>
-                <div style={{ display: "flex", justifyContent: "space-between" }}><dt style={{ color: "#64748b", fontSize: "12px", fontWeight: "700" }}>{t("Assigned Division Risk")}</dt><dd style={{ margin: 0, fontSize: "13px", fontWeight: "800", color: RISK_C[risk] }}>{t(risk)} {t("Risk")}</dd></div>
+                <div style={{ display: "flex", justifyContent: "space-between" }}><dt style={{ color: "#64748b", fontSize: "12px", fontWeight: "700" }}>{t("Assigned Division Risk")}</dt><dd style={{ margin: 0, fontSize: "13px", fontWeight: "800", color: RISK_C[risk] || "#64748b" }}>{risk === "Untested" ? t("Untested") : `${t(risk)} ${t("Risk")}`}</dd></div>
               </dl>
             </div>
 
@@ -123,13 +123,60 @@ export function StationMasterHistoryPage(props) {
             {/* Pointsman sections competency progress bars */}
             <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
               {(() => {
+                // Find latest approved assessment for selected pointsman
+                const pmAssessments = (allDbAssessments || []).filter(a => a.employee?.hrms_id === u.hrmsId);
+                const sortedAssessments = [...pmAssessments].sort((a, b) => new Date(b.assessment_date || b.created_at) - new Date(a.assessment_date || a.created_at));
+                const latestAssess = sortedAssessments.find(a => ["Approved", "Submitted", "Completed", "EVALUATED"].includes(a.status));
+                
+                let secScores = {
+                  knowledge: null,
+                  alertness: null,
+                  safety: null,
+                  leadership: null,
+                  discipline: null,
+                  appearance: null
+                };
+
+                if (latestAssess) {
+                  const ta = latestAssess.TEST_ATTEMPT?.[0];
+                  const answers = ta?.answers;
+                  if (answers) {
+                    if (answers.knowledgeMarks !== undefined && answers.knowledgeMarks !== "") {
+                      secScores.knowledge = parseFloat(answers.knowledgeMarks) || 0;
+                    }
+                    if (Array.isArray(answers.sections)) {
+                      answers.sections.forEach(sec => {
+                        const title = (sec.title || "").toLowerCase();
+                        if (title.includes("alertness")) secScores.alertness = sec.marks;
+                        else if (title.includes("safety")) secScores.safety = sec.marks;
+                        else if (title.includes("leadership")) secScores.leadership = sec.marks;
+                        else if (title.includes("discipline")) secScores.discipline = sec.marks;
+                        else if (title.includes("appearance")) secScores.appearance = sec.marks;
+                      });
+                    }
+                    const YN_WEIGHTS = { alertness: 5, safety: 3, leadership: 3, discipline: 2, appearance: 2 };
+                    Object.keys(YN_WEIGHTS).forEach(key => {
+                      if (secScores[key] === null && Array.isArray(answers[key])) {
+                        secScores[key] = answers[key].filter(x => x === "Yes").length * YN_WEIGHTS[key];
+                      }
+                    });
+                  }
+                }
+
+                const dbKnowledge = secScores.knowledge !== null ? secScores.knowledge : Math.round((u.lastScore || 0) * 0.25);
+                const dbAlertness = secScores.alertness !== null ? secScores.alertness : Math.round((u.lastScore || 0) * 0.25);
+                const dbSafety = secScores.safety !== null ? secScores.safety : Math.round((u.lastScore || 0) * 0.15);
+                const dbLeadership = secScores.leadership !== null ? secScores.leadership : Math.round((u.lastScore || 0) * 0.15);
+                const dbDiscipline = secScores.discipline !== null ? secScores.discipline : Math.round((u.lastScore || 0) * 0.10);
+                const dbAppearance = secScores.appearance !== null ? secScores.appearance : Math.round((u.lastScore || 0) * 0.10);
+
                 const secs = [
-                  { title: "Knowledge of Rules", score: Math.round((u.lastScore || 0) * 0.25), max: 25 },
-                  { title: "Alertness and Observation of Rules", score: Math.round((u.lastScore || 0) * 0.25), max: 25 },
-                  { title: "Safety Record", score: Math.round((u.lastScore || 0) * 0.15), max: 15 },
-                  { title: "Leadership and Management", score: Math.round((u.lastScore || 0) * 0.15), max: 15 },
-                  { title: "Discipline", score: Math.round((u.lastScore || 0) * 0.10), max: 10 },
-                  { title: "Appearance and Neatness", score: Math.round((u.lastScore || 0) * 0.10), max: 10 },
+                  { title: "Knowledge of Rules", score: dbKnowledge, max: 25 },
+                  { title: "Alertness and Observation of Rules", score: dbAlertness, max: 25 },
+                  { title: "Safety Record", score: dbSafety, max: 15 },
+                  { title: "Leadership and Management", score: dbLeadership, max: 15 },
+                  { title: "Discipline", score: dbDiscipline, max: 10 },
+                  { title: "Appearance and Neatness", score: dbAppearance, max: 10 },
                 ];
                 return secs.map(s => {
                   const pct = Math.round((s.score / s.max) * 100);
@@ -137,7 +184,7 @@ export function StationMasterHistoryPage(props) {
                     <div key={s.title}>
                       <div style={{ display: "flex", justifyContent: "space-between", fontSize: "12px", fontWeight: "700", color: "#475569", marginBottom: "4px" }}>
                         <span>{t(s.title)}</span>
-                        <strong>{s.score} / {s.max} ({pct}%)</strong>
+                        <strong>{s.score} / {s.max}</strong>
                       </div>
                       <div style={{ height: "8px", background: "#f1f5f9", borderRadius: "999px", overflow: "hidden" }}>
                         <div style={{ height: "100%", width: `${pct}%`, background: pct >= 80 ? "#16a34a" : pct >= 50 ? "#2563eb" : "#dc2626", borderRadius: "999px" }}/>
@@ -153,14 +200,16 @@ export function StationMasterHistoryPage(props) {
     );
   }
 
-  const avgScore = pointsmen.length ? Math.round(pointsmen.reduce((s, p) => s + (p.lastScore || 0), 0) / pointsmen.length) : 0;
-  const safetyPct = pointsmen.length ? Math.round(pointsmen.reduce((s, p) => s + (p.safetyScore || 0), 0) / pointsmen.length) : 0;
+  const testedPointsmen = pointsmen.filter(p => p.cat && p.cat !== "Untested" && p.lastScore > 0);
+  const avgScore = testedPointsmen.length ? Math.round(testedPointsmen.reduce((s, p) => s + (p.lastScore || 0), 0) / testedPointsmen.length) : 0;
+  const testedForSafety = pointsmen.filter(p => p.cat && p.cat !== "Untested" && p.safetyScore !== null && p.safetyScore !== undefined);
+  const safetyPct = testedForSafety.length ? Math.round(testedForSafety.reduce((s, p) => s + (p.safetyScore || 0), 0) / testedForSafety.length) : 0;
   const highRisk = pointsmen.filter(p => riskLevel(p) === "High").length;
   const pending = pointsmen.filter(p => p.approvalStatus === "Pending").length;
 
   const divSummary = [
     { label: t("Average Station Score"),  val: avgScore > 0 ? avgScore : "—" },
-    { label: t("Safety Compliance %"),     val: safetyPct > 0 ? `${safetyPct}%` : "—" },
+    { label: t("Safety Compliance"),     val: safetyPct > 0 ? `${safetyPct}/100` : "—" },
     { label: t("High-Risk Staff"),         val: highRisk },
     { label: t("Pending Approvals"),       val: pending },
     { label: t("Total Reports Generated"), val: pointsmen.length },
@@ -170,19 +219,17 @@ export function StationMasterHistoryPage(props) {
   const STATION_OPTS = ["All", smProfile?.station || smProfile?.stationName || "Nagpur Junction"];
   const TI_OPTS      = ["All", "Nagpur Division"];
 
-  const getCat = s => s >= 80 ? "A" : s >= 50 ? "B" : s >= 26 ? "C" : "D";
-
   const repFiltered = pointsmen.filter(s => {
     const matchesSearch = !repF.search || 
       (s.name || "").toLowerCase().includes(repF.search.toLowerCase()) || 
       (s.hrmsId || "").toLowerCase().includes(repF.search.toLowerCase());
-    const matchesCat = repF.cat === "All" || getCat(s.lastScore) === repF.cat;
-    const risk = riskLevel(s);
+    const matchesCat = repF.cat === "All" || (s.cat || "Untested") === repF.cat;
+    const risk = s.cat === "Untested" ? "Untested" : riskLevel(s);
     const matchesRisk = repF.risk === "All" || risk === repF.risk;
     return matchesSearch && matchesCat && matchesRisk;
   });
 
-  const catBadge = c => <span className="sdom-badge" style={{ background: { A: "#dcfce7", B: "#dbeafe", C: "#fef3c7", D: "#fee2e2" }[c] || "#f3f4f6", color: { A: "#16a34a", B: "#2563eb", C: "#d97706", D: "#dc2626" }[c] || "#6b7280" }}>{c ? `${t("Cat.")} ${c}` : "—"}</span>;
+  const catBadge = c => <span className="sdom-badge" style={{ background: { A: "#dcfce7", B: "#dbeafe", C: "#fef3c7", D: "#fee2e2" }[c] || "#f3f4f6", color: { A: "#16a34a", B: "#2563eb", C: "#d97706", D: "#dc2626" }[c] || "#6b7280" }}>{c === "Untested" ? t("Untested") : (c ? `${t("Cat.")} ${c}` : "—")}</span>;
   const riskBadge = r => <span className="sdom-badge" style={{ background: { Low: "#dcfce7", Medium: "#fef3c7", High: "#fee2e2" }[r] || "#f3f4f6", color: { Low: "#16a34a", Medium: "#d97706", High: "#dc2626" }[r] || "#6b7280" }}>{t(r)}</span>;
   const statusBadge = s => <span className="sdom-badge" style={{ background: { Approved: "#dcfce7", Pending: "#fef3c7", Rejected: "#fee2e2", Completed: "#dcfce7", Fit: "#dcfce7" }[s] || "#f3f4f6", color: { Approved: "#16a34a", Pending: "#d97706", Rejected: "#dc2626", Completed: "#16a34a", Fit: "#16a34a" }[s] || "#6b7280" }}>{t(s)}</span>;
 
@@ -224,6 +271,7 @@ export function StationMasterHistoryPage(props) {
             <option>B</option>
             <option>C</option>
             <option>D</option>
+            <option value="Untested">{t("Untested")}</option>
           </select>
         </div>
         <div className="sdom-filter-field" style={{ display: "flex", flexDirection: "column", gap: "6px", flex: 1, minWidth: "120px" }}>
@@ -233,6 +281,7 @@ export function StationMasterHistoryPage(props) {
             <option value="Low">{t("Low")}</option>
             <option value="Medium">{t("Medium")}</option>
             <option value="High">{t("High")}</option>
+            <option value="Untested">{t("Untested")}</option>
           </select>
         </div>
         <div>
@@ -261,15 +310,15 @@ export function StationMasterHistoryPage(props) {
             <tbody>
               {repFiltered.length === 0 && <tr><td colSpan={8} style={{ textAlign: "center", color: "#94a3b8", padding: 32 }}>{t("No staff match the selected filters")}</td></tr>}
               {repFiltered.map(s => {
-                const sCat = getCat(s.lastScore);
-                const risk = riskLevel(s);
+                const sCat = s.cat || "Untested";
+                const risk = sCat === "Untested" ? "Untested" : riskLevel(s);
                 return (
                   <tr key={s.id} style={{ cursor: "pointer", borderBottom: "1px solid #f1f5f9" }} onClick={() => setSelectedReportUserId(s.hrmsId)}>
                     <td style={{ padding: "12px 16px", fontWeight: 700, color: "#2563eb" }}>{s.name}</td>
                     <td style={{ padding: "12px 16px", color: "#334155", fontWeight: "500" }}>{ROLE_MAP[s.role] || s.role}</td>
                     <td style={{ padding: "12px 16px", color: "#334155", fontWeight: "500" }}>{t(s.stationName)}</td>
-                    <td style={{ padding: "12px 16px", color: "#334155", fontWeight: "500" }}>{t("TI PAR")}</td>
-                    <td style={{ padding: "12px 16px", fontWeight: 700, color: "#0f172a" }}>{s.lastScore}</td>
+                    <td style={{ padding: "12px 16px", color: "#334155", fontWeight: "500" }}>{s.ti || "—"}</td>
+                    <td style={{ padding: "12px 16px", fontWeight: 700, color: "#0f172a" }}>{sCat === "Untested" ? t("Not Given Test") : (s.lastScore > 0 ? `${s.lastScore}/100` : "—")}</td>
                     <td style={{ padding: "12px 16px" }}>{catBadge(sCat)}</td>
                     <td style={{ padding: "12px 16px" }}>{riskBadge(risk)}</td>
                     <td style={{ padding: "12px 16px" }}>{statusBadge(s.approvalStatus)}</td>

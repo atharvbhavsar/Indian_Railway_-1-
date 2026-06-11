@@ -44,7 +44,7 @@ export default function SSMyAssessment({
   handleSelectOption,
   logActivity
 }) {
-const renderMyAssessment = () => {
+  const renderMyAssessment = () => {
     /* Scorecard detail view */
     if (myAssessSelected) {
       const sc = myAssessSelected;
@@ -56,7 +56,7 @@ const renderMyAssessment = () => {
       return (
         <div className="ti2-card animate-fade-in" style={{ padding: "24px", maxHeight: "calc(100vh - 120px)", overflowY: "auto" }}>
           <div className="ti2-card-hdr" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #e2e8f0", paddingBottom: "14px", marginBottom: "20px" }}>
-            <h2 style={{ display: "flex", alignItems: "center", gap: "8px", margin: 0 }}><ShieldCheck size={22} color={isApproved ? "#16a34a" : "#2563eb"}/> Detailed Evaluation Scorecard</h2>
+            <h2 style={{ display: "flex", alignItems: "center", gap: "8px", margin: 0 }}><ShieldCheck size={22} color={isApproved ? "#16a34a" : "#2563eb"} /> Detailed Evaluation Scorecard</h2>
             <button className="ti2-primary-btn" onClick={() => setMyAssessSelected(null)}>← Return to History</button>
           </div>
 
@@ -103,7 +103,7 @@ const renderMyAssessment = () => {
           {/* Complete MCQ Question Review */}
           <div className="pm-mcq-review-panel" style={{ borderTop: "1px solid #e2e8f0", paddingTop: "24px" }}>
             <div className="pm-chart-header" style={{ marginBottom: "16px", display: "flex", alignItems: "center", gap: "6px" }}>
-              <Clock size={16} color="#475569"/>
+              <Clock size={16} color="#475569" />
               <h3 style={{ margin: 0, fontSize: "15px", color: "#0f172a", fontWeight: "700" }}>Complete Assessment Question Review</h3>
             </div>
             <p className="pm-subtitle" style={{ fontSize: "12px", color: "#64748b", marginTop: "-10px", marginBottom: "20px" }}>
@@ -133,7 +133,7 @@ const renderMyAssessment = () => {
                         else if (isOptCorrect) optClass = "opt-correct-unselected";
                         return (
                           <div key={oIdx} className={`pm-rq-option-item ${optClass}`}>
-                            <span className="font-mono opt-prefix">{["A","B","C","D"][oIdx]}</span>
+                            <span className="font-mono opt-prefix">{["A", "B", "C", "D"][oIdx]}</span>
                             <span className="opt-label-text">{opt}</span>
                             {wasSelected && <span className="opt-user-tag">{isCorrect ? "✓ Selected" : "✗ Selected"}</span>}
                             {!wasSelected && isOptCorrect && <span className="opt-correct-tag">✓ Correct Key</span>}
@@ -171,7 +171,7 @@ const renderMyAssessment = () => {
             marginBottom: 24,
             boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)"
           }}>
-            <div style={{display: "flex", gap: 16, alignItems: "start"}}>
+            <div style={{ display: "flex", gap: 16, alignItems: "start" }}>
               <div style={{
                 background: "#e2e8f0",
                 borderRadius: 50,
@@ -182,13 +182,13 @@ const renderMyAssessment = () => {
                 justifyContent: "center",
                 flexShrink: 0
               }}>
-                <Lock size={22} color="#64748b"/>
+                <Lock size={22} color="#64748b" />
               </div>
-              <div style={{flex: 1}}>
-                <h3 style={{margin: "0 0 6px", fontSize: 16, fontWeight: 700, color: "#334155"}}>
+              <div style={{ flex: 1 }}>
+                <h3 style={{ margin: "0 0 6px", fontSize: 16, fontWeight: 700, color: "#334155" }}>
                   🔒 Competency Assessment Locked
                 </h3>
-                <p style={{margin: "0 0 14px", fontSize: 13, color: "#475569", lineHeight: 1.4}}>
+                <p style={{ margin: "0 0 14px", fontSize: 13, color: "#475569", lineHeight: 1.4 }}>
                   Your periodic evaluation is currently locked. Please request your Area Operations Manager (AOM) to activate the assessment.
                 </p>
                 <div style={{
@@ -207,48 +207,48 @@ const renderMyAssessment = () => {
           </div>
         ) : testActive ? (
           <div style={{
-            background:"linear-gradient(135deg, #fffbeb 0%, #fff7ed 100%)",
-            border:"1.5px solid #fed7aa",
-            borderRadius:12,
-            padding:20,
-            marginBottom:24,
-            boxShadow:"0 4px 6px -1px rgba(0,0,0,0.05)"
+            background: "linear-gradient(135deg, #fffbeb 0%, #fff7ed 100%)",
+            border: "1.5px solid #fed7aa",
+            borderRadius: 12,
+            padding: 20,
+            marginBottom: 24,
+            boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)"
           }}>
-            <div style={{display:"flex", gap:16, alignItems:"start"}}>
+            <div style={{ display: "flex", gap: 16, alignItems: "start" }}>
               <div style={{
-                background:"#ffedd5",
-                borderRadius:50,
-                width:42,
-                height:42,
-                display:"flex",
-                alignItems:"center",
-                justifyContent:"center",
-                flexShrink:0
+                background: "#ffedd5",
+                borderRadius: 50,
+                width: 42,
+                height: 42,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                flexShrink: 0
               }}>
-                <ShieldCheck size={22} color="#ea580c"/>
+                <ShieldCheck size={22} color="#ea580c" />
               </div>
-              <div style={{flex:1}}>
-                <h3 style={{margin:"0 0 6px", fontSize:16, fontWeight:700, color:"#c2410c"}}>
+              <div style={{ flex: 1 }}>
+                <h3 style={{ margin: "0 0 6px", fontSize: 16, fontWeight: 700, color: "#c2410c" }}>
                   ⚠️ Pending Competency Assessment
                 </h3>
-                <p style={{margin:"0 0 14px", fontSize:13, color:"#9a3412", lineHeight:1.4}}>
+                <p style={{ margin: "0 0 14px", fontSize: 13, color: "#9a3412", lineHeight: 1.4 }}>
                   Your supervisor has scheduled a periodic safety &amp; competency assessment for you. You must complete the 25-question MCQ exam.
                 </p>
                 <button
                   onClick={startTestAttempt}
                   style={{
-                    background:"#ea580c",
-                    color:"#ffffff",
-                    border:"none",
-                    padding:"10px 20px",
-                    borderRadius:8,
-                    fontSize:13.5,
-                    fontWeight:700,
-                    cursor:"pointer",
-                    boxShadow:"0 4px 6px rgba(234, 88, 12, 0.2)",
-                    display:"flex",
-                    alignItems:"center",
-                    gap:8
+                    background: "#ea580c",
+                    color: "#ffffff",
+                    border: "none",
+                    padding: "10px 20px",
+                    borderRadius: 8,
+                    fontSize: 13.5,
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    boxShadow: "0 4px 6px rgba(234, 88, 12, 0.2)",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8
                   }}
                 >
                   Start 25 MCQ Online Assessment
@@ -258,38 +258,38 @@ const renderMyAssessment = () => {
           </div>
         ) : (
           <div style={{
-            background:"#f0fdf4",
-            border:"1.5px solid #bbf7d0",
-            borderRadius:12,
-            padding:18,
-            marginBottom:24,
-            display:"flex",
-            alignItems:"center",
-            gap:14
+            background: "#f0fdf4",
+            border: "1.5px solid #bbf7d0",
+            borderRadius: 12,
+            padding: 18,
+            marginBottom: 24,
+            display: "flex",
+            alignItems: "center",
+            gap: 14
           }}>
-            <ShieldCheck size={24} color="#16a34a"/>
-            <div style={{flex:1}}>
-              <h3 style={{margin:"0 0 2px", fontSize:14.5, fontWeight:700, color:"#14532d"}}>
+            <ShieldCheck size={24} color="#16a34a" />
+            <div style={{ flex: 1 }}>
+              <h3 style={{ margin: "0 0 2px", fontSize: 14.5, fontWeight: 700, color: "#14532d" }}>
                 All assessments are up to date. No pending test available.
               </h3>
-              <p style={{margin:0, fontSize:12, color:"#166534"}}>
+              <p style={{ margin: 0, fontSize: 12, color: "#166534" }}>
                 Your periodic safety and competency evaluation is currently active and compliant.
               </p>
             </div>
-            <div style={{display:"flex", gap:16, fontSize:12, textAlign:"right"}}>
+            <div style={{ display: "flex", gap: 16, fontSize: 12, textAlign: "right" }}>
               <div>
-                <span style={{color:"#166534", display:"block"}}>Last Exam Score</span>
-                <strong style={{color:"#14532d", fontSize:13}}>
-                  {history.length > 0 
-                    ? (history[0]?.approvalStatus === "Approved" 
-                        ? `${history[0]?.totalScore}/100 (${history[0]?.totalScore}%)` 
-                        : `${history[0]?.totalScore}/25 (${Math.round((history[0]?.totalScore / 25) * 100)}%)`) 
+                <span style={{ color: "#166534", display: "block" }}>Last Exam Score</span>
+                <strong style={{ color: "#14532d", fontSize: 13 }}>
+                  {history.length > 0
+                    ? (history[0]?.approvalStatus === "Approved"
+                      ? `${history[0]?.totalScore}/100 (${history[0]?.totalScore}%)`
+                      : `${history[0]?.totalScore}/25 (${Math.round((history[0]?.totalScore / 25) * 100)}%)`)
                     : "—"}
                 </strong>
               </div>
-              <div style={{borderLeft:"1px solid #bbf7d0", paddingLeft:16}}>
-                <span style={{color:"#166534", display:"block"}}>Next Due Date</span>
-                <strong style={{color:"#14532d", fontSize:13}}>25 Sep 2026</strong>
+              <div style={{ borderLeft: "1px solid #bbf7d0", paddingLeft: 16 }}>
+                <span style={{ color: "#166534", display: "block" }}>Next Due Date</span>
+                <strong style={{ color: "#14532d", fontSize: 13 }}>25 Sep 2026</strong>
               </div>
             </div>
           </div>
@@ -300,7 +300,7 @@ const renderMyAssessment = () => {
 
         {history.length === 0 ? (
           <div style={{ padding: "40px 20px", background: "#f8fafc", borderRadius: "12px", border: "1px dashed #cbd5e1", textAlign: "center", color: "#64748b", marginTop: "20px" }}>
-            <FileBarChart2 size={40} style={{ margin: "0 auto 12px", color: "#94a3b8" }}/>
+            <FileBarChart2 size={40} style={{ margin: "0 auto 12px", color: "#94a3b8" }} />
             <h3 style={{ margin: "0 0 6px", color: "#1e293b", fontSize: "15px", fontWeight: 700 }}>No Assessment Records Available</h3>
             <p style={{ margin: 0, fontSize: "13px" }}>You have not completed any evaluations or tests yet.</p>
           </div>
@@ -327,7 +327,7 @@ const renderMyAssessment = () => {
               </div>
               <div className="sm2-report-mini">
                 <label>Latest Assessment</label>
-                <strong style={{color: history[0]?.approvalStatus === "Approved" ? getCategoryColor(getCategory(history[0]?.totalScore || 0)) : "#64748b"}}>
+                <strong style={{ color: history[0]?.approvalStatus === "Approved" ? getCategoryColor(getCategory(history[0]?.totalScore || 0)) : "#64748b" }}>
                   {history[0] ? (history[0].approvalStatus === "Approved" ? `Category ${getCategory(history[0].totalScore)}` : "Awaiting Grading") : "—"}
                 </strong>
               </div>
@@ -336,7 +336,7 @@ const renderMyAssessment = () => {
             {/* List */}
             <div className="sm2-myassess-list">
               <div className="sm2-myassess-head">
-                {["Period","Date","Score Scale","Category","Assessed By","Status",""].map(h =>
+                {["Period", "Date", "Score Scale", "Category", "Assessed By", "Status", ""].map(h =>
                   <span key={h}>{h}</span>)}
               </div>
               {history.map(sc => {
@@ -350,15 +350,15 @@ const renderMyAssessment = () => {
                     <span>{sc.date}</span>
                     <span><strong>{isApproved ? `${sc.totalScore}/100` : (sc.isOnlineExam ? `${sc.totalScore}/25` : "—")}</strong></span>
                     <span>
-                      <span className="sm2-badge" style={{background: isApproved ? getCategoryBg(cat) : "#f1f5f9", color: isApproved ? getCategoryColor(cat) : "#64748b"}}>
+                      <span className="sm2-badge" style={{ background: isApproved ? getCategoryBg(cat) : "#f1f5f9", color: isApproved ? getCategoryColor(cat) : "#64748b" }}>
                         {isApproved ? `Cat. ${cat}` : "—"}
                       </span>
                     </span>
-                    <span style={{fontSize:11,color:"#64748b"}}>{sc.assessedBy || "S. Deshmukh (TI)"}</span>
+                    <span style={{ fontSize: 11, color: "#64748b" }}>{sc.assessedBy || "S. Deshmukh (TI)"}</span>
                     <span>
                       <span className={`sm2-status-pill sm2-status-${(sc.approvalStatus || "approved").toLowerCase()}`}>{sc.approvalStatus || "Approved"}</span>
                     </span>
-                    <span style={{color:"#2563eb",fontSize:12,fontWeight:600}}>View Form</span>
+                    <span style={{ color: "#2563eb", fontSize: 12, fontWeight: 600 }}>View Form</span>
                   </button>
                 );
               })}
@@ -370,7 +370,7 @@ const renderMyAssessment = () => {
   };
 
 
-const renderHistoryPage = () => {
+  const renderHistoryPage = () => {
     // Top summary statistics calculated reactively:
     const approvedHistory = history.filter(h => h.approvalStatus === "Approved");
     const totalAssessments = history.length;
@@ -453,8 +453,8 @@ const renderHistoryPage = () => {
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: "8px", background: "#ffffff", border: "1px solid #cbd5e1", borderRadius: "8px", padding: "6px 12px" }}>
             <ArrowUpDown size={14} color="#64748b" />
-            <select 
-              value={historySortOrder} 
+            <select
+              value={historySortOrder}
               onChange={e => { setHistorySortOrder(e.target.value); setHistoryPage(1); }}
               style={{ border: "none", outline: "none", fontSize: "13px", color: "#334155", fontWeight: "600", cursor: "pointer" }}
             >
@@ -502,15 +502,15 @@ const renderHistoryPage = () => {
                         {isApproved ? `${record.totalScore} / 100` : (record.isOnlineExam ? `${record.totalScore} / 25` : "Awaiting Grading")}
                       </td>
                       <td style={{ padding: "14px 18px" }}>
-                        <span 
-                          style={{ 
-                            background: isApproved ? getCategoryBg(cat) : "#f1f5f9", 
-                            color: isApproved ? getCategoryColor(cat) : "#64748b", 
-                            fontWeight: "800", 
-                            fontSize: "12px", 
-                            padding: "4px 10px", 
+                        <span
+                          style={{
+                            background: isApproved ? getCategoryBg(cat) : "#f1f5f9",
+                            color: isApproved ? getCategoryColor(cat) : "#64748b",
+                            fontWeight: "800",
+                            fontSize: "12px",
+                            padding: "4px 10px",
                             borderRadius: "6px",
-                            textTransform: "uppercase" 
+                            textTransform: "uppercase"
                           }}
                         >
                           {isApproved ? `Cat. ${cat}` : "—"}
@@ -518,12 +518,12 @@ const renderHistoryPage = () => {
                       </td>
                       <td style={{ padding: "14px 18px", color: "#334155", fontWeight: "500" }}>{record.assessedBy || "AOM"}</td>
                       <td style={{ padding: "14px 18px" }}>
-                        <span style={{ 
-                          background: isApproved ? "#dcfce7" : "#fffbeb", 
-                          color: isApproved ? "#15803d" : "#b45309", 
-                          fontWeight: "700", 
-                          fontSize: "11.5px", 
-                          padding: "4px 10px", 
+                        <span style={{
+                          background: isApproved ? "#dcfce7" : "#fffbeb",
+                          color: isApproved ? "#15803d" : "#b45309",
+                          fontWeight: "700",
+                          fontSize: "11.5px",
+                          padding: "4px 10px",
                           borderRadius: "20px",
                           border: isApproved ? "1px solid #bbf7d0" : "1px solid #fef3c7"
                         }}>
@@ -531,18 +531,18 @@ const renderHistoryPage = () => {
                         </span>
                       </td>
                       <td style={{ padding: "14px 18px", textAlign: "right" }}>
-                        <button 
+                        <button
                           onClick={() => openScorecard(record)}
-                          style={{ 
-                            background: "#eff6ff", 
-                            color: "#2563eb", 
-                            border: "none", 
-                            fontWeight: "700", 
-                            padding: "6px 14px", 
-                            borderRadius: "6px", 
-                            cursor: "pointer", 
+                          style={{
+                            background: "#eff6ff",
+                            color: "#2563eb",
+                            border: "none",
+                            fontWeight: "700",
+                            padding: "6px 14px",
+                            borderRadius: "6px",
+                            cursor: "pointer",
                             fontSize: "12.5px",
-                            transition: "all 0.15s ease" 
+                            transition: "all 0.15s ease"
                           }}
                         >
                           View Form
@@ -584,7 +584,7 @@ const renderHistoryPage = () => {
     );
   };
 
-const renderScorecardPage = () => {
+  const renderScorecardPage = () => {
     if (!selectedRecord) return (
       <section className="pm-page-card">
         <p className="pm-empty-state">Select a record from History to review.</p>
@@ -600,7 +600,7 @@ const renderScorecardPage = () => {
     return (
       <div className="ti2-card animate-fade-in" style={{ padding: "24px", maxHeight: "calc(100vh - 120px)", overflowY: "auto" }}>
         <div className="ti2-card-hdr" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #e2e8f0", paddingBottom: "14px", marginBottom: "20px" }}>
-          <h2 style={{ display: "flex", alignItems: "center", gap: "8px", margin: 0 }}><ShieldCheck size={22} color={isApproved ? "#16a34a" : "#2563eb"}/> Detailed Evaluation Scorecard</h2>
+          <h2 style={{ display: "flex", alignItems: "center", gap: "8px", margin: 0 }}><ShieldCheck size={22} color={isApproved ? "#16a34a" : "#2563eb"} /> Detailed Evaluation Scorecard</h2>
           <button className="ti2-primary-btn" onClick={() => setScreenMode("default")}>← Return to History</button>
         </div>
 
@@ -647,7 +647,7 @@ const renderScorecardPage = () => {
         {/* Complete MCQ Question Review */}
         <div className="pm-mcq-review-panel" style={{ borderTop: "1px solid #e2e8f0", paddingTop: "24px" }}>
           <div className="pm-chart-header" style={{ marginBottom: "16px", display: "flex", alignItems: "center", gap: "6px" }}>
-            <Clock size={16} color="#475569"/>
+            <Clock size={16} color="#475569" />
             <h3 style={{ margin: 0, fontSize: "15px", color: "#0f172a", fontWeight: "700" }}>Complete Assessment Question Review</h3>
           </div>
           <p className="pm-subtitle" style={{ fontSize: "12px", color: "#64748b", marginTop: "-10px", marginBottom: "20px" }}>
@@ -675,7 +675,7 @@ const renderScorecardPage = () => {
                     {q.options.map((opt, oIdx) => {
                       const wasSelected = selectedOpt === oIdx;
                       const isOptCorrect = q.answer === oIdx;
-                      
+
                       let optClass = "";
                       if (wasSelected) {
                         optClass = isCorrect ? "opt-selected-correct" : "opt-selected-wrong";
@@ -713,7 +713,7 @@ const renderScorecardPage = () => {
     );
   };
 
-const renderCurrentTestsPage = () => {
+  const renderCurrentTestsPage = () => {
     const isTestActivated = localStorage.getItem("ss_test_activated_" + employeeId) === "true";
     return (
       <section className="pm-page-card">
@@ -734,13 +734,13 @@ const renderCurrentTestsPage = () => {
               <CheckCircle2 size={40} color="#16a34a" />
               <h3>All caught up!</h3>
               <p>Your periodic evaluation for April 2026 is fully completed. Grade successfully filed to Station Supervisor records.</p>
-              
-              <button 
+
+              <button
                 onClick={handleReattempt}
-                className="pm-start-btn" 
-                style={{ 
-                  marginTop: "18px", 
-                  background: "#f97316", 
+                className="pm-start-btn"
+                style={{
+                  marginTop: "18px",
+                  background: "#f97316",
                   border: "none",
                   fontWeight: "800",
                   padding: "10px 24px",
@@ -781,7 +781,7 @@ const renderCurrentTestsPage = () => {
     );
   };
 
-const renderAttemptPage = () => {
+  const renderAttemptPage = () => {
     if (!activeTest) return renderCurrentTestsPage();
     const question = testQuestions[currentQuestion];
     const answeredCount = responses.filter(r => r !== null && r !== undefined).length;
@@ -816,19 +816,19 @@ const renderAttemptPage = () => {
           height: "70px",
           flexShrink: 0
         }}>
-          <div style={{display: "flex", alignItems: "center", gap: 12}}>
-            <ShieldCheck size={28} color="#f97316"/>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <ShieldCheck size={28} color="#f97316" />
             <div>
-              <h1 style={{fontSize: 18, fontWeight: 800, margin: 0, color: "#ffffff", letterSpacing: "0.5px"}}>
+              <h1 style={{ fontSize: 18, fontWeight: 800, margin: 0, color: "#ffffff", letterSpacing: "0.5px" }}>
                 STATION SUPERINTENDENT CBT COMPETENCY EVALUATION
               </h1>
-              <p style={{margin: 0, fontSize: 11, color: "#94a3b8", fontWeight: 500}}>
+              <p style={{ margin: 0, fontSize: 11, color: "#94a3b8", fontWeight: 500 }}>
                 Official Railway Safety &amp; Operational Assessment
               </p>
             </div>
           </div>
-          
-          <div style={{display: "flex", alignItems: "center", gap: 16}}>
+
+          <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
             <div style={{
               background: "#334155",
               padding: "6px 16px",
@@ -838,25 +838,25 @@ const renderAttemptPage = () => {
               color: "#cbd5e1",
               border: "1px solid #475569"
             }}>
-              ⚙️ STATUS: <span style={{color: "#f97316"}}>Active Exam Session</span>
+              ⚙️ STATUS: <span style={{ color: "#f97316" }}>Active Exam Session</span>
             </div>
-            
-            <button 
+
+            <button
               onClick={() => {
                 if (window.confirm("Are you sure you want to abort the exam? Your progress will not be saved.")) {
                   setActiveTest(null);
                   setScreenMode("default");
                   logActivity("Assessment", "Periodic assessment aborted by user.");
                 }
-              }} 
+              }}
               style={{
-                padding: "8px 18px", 
-                borderRadius: 8, 
-                fontSize: 13, 
-                background: "#ef4444", 
-                color: "#ffffff", 
-                border: "none", 
-                fontWeight: 700, 
+                padding: "8px 18px",
+                borderRadius: 8,
+                fontSize: 13,
+                background: "#ef4444",
+                color: "#ffffff",
+                border: "none",
+                fontWeight: 700,
                 cursor: "pointer",
                 boxShadow: "0 2px 4px rgba(239, 68, 68, 0.2)",
                 transition: "all 0.2s ease"
@@ -881,28 +881,28 @@ const renderAttemptPage = () => {
           color: "#334155"
         }}>
           <div>
-            Candidate Name: <strong style={{color: "#1e3a8a"}}>{fullName}</strong> &nbsp;|&nbsp; HRMS ID: <strong style={{color: "#1e3a8a"}}>{employeeId}</strong> &nbsp;|&nbsp; Station: <strong>{user?.station || stationSuperintendentProfile?.stationName || "—"}</strong>
+            Candidate Name: <strong style={{ color: "#1e3a8a" }}>{fullName}</strong> &nbsp;|&nbsp; HRMS ID: <strong style={{ color: "#1e3a8a" }}>{employeeId}</strong> &nbsp;|&nbsp; Station: <strong>{user?.station || stationSuperintendentProfile?.stationName || "—"}</strong>
           </div>
-          <div style={{display: "flex", alignItems: "center", gap: 12}}>
-            <span style={{fontWeight: 600}}>Progress: <strong style={{color: "#f97316"}}>{answeredCount} / 25 Answered</strong> ({completionRate}%)</span>
-            <div style={{width: 140, height: 8, background: "#e2e8f0", borderRadius: 4, overflow: "hidden"}}>
-              <div style={{width: `${completionRate}%`, height: "100%", background: "#f97316", borderRadius: 4}}/>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <span style={{ fontWeight: 600 }}>Progress: <strong style={{ color: "#f97316" }}>{answeredCount} / 25 Answered</strong> ({completionRate}%)</span>
+            <div style={{ width: 140, height: 8, background: "#e2e8f0", borderRadius: 4, overflow: "hidden" }}>
+              <div style={{ width: `${completionRate}%`, height: "100%", background: "#f97316", borderRadius: 4 }} />
             </div>
           </div>
         </div>
 
         {/* Main Split Body */}
         <div style={{
-          display: "grid", 
-          gridTemplateColumns: "1fr 340px", 
-          flex: 1, 
+          display: "grid",
+          gridTemplateColumns: "1fr 340px",
+          flex: 1,
           overflow: "hidden"
         }}>
           {/* Left Column: Spacious Question Pane */}
           <div style={{
-            padding: "32px 40px", 
-            display: "flex", 
-            flexDirection: "column", 
+            padding: "32px 40px",
+            display: "flex",
+            flexDirection: "column",
             background: "#f8fafc",
             overflowY: "auto",
             height: "100%"
@@ -933,19 +933,19 @@ const renderAttemptPage = () => {
                 }}>
                   Compulsory Question {currentQuestion + 1} of 25
                 </span>
-                
+
                 <h2 style={{
-                  fontSize: 22, 
-                  fontWeight: 700, 
-                  color: "#0f172a", 
-                  marginTop: 24, 
-                  marginBottom: 28, 
+                  fontSize: 22,
+                  fontWeight: 700,
+                  color: "#0f172a",
+                  marginTop: 24,
+                  marginBottom: 28,
                   lineHeight: 1.5
                 }}>
                   {question.text}
                 </h2>
 
-                <div style={{display: "flex", flexDirection: "column", gap: 14}}>
+                <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
                   {question.options.map((opt, oi) => {
                     const isSelected = responses[currentQuestion] === oi;
                     return (
@@ -966,7 +966,7 @@ const renderAttemptPage = () => {
                           name={`pm-q-${question.id}`}
                           checked={isSelected}
                           onChange={() => handleSelectOption(oi)}
-                          style={{width: 20, height: 20, accentColor: "#f97316"}}
+                          style={{ width: 20, height: 20, accentColor: "#f97316" }}
                         />
                         <span style={{
                           fontSize: 15,
@@ -975,8 +975,8 @@ const renderAttemptPage = () => {
                           width: 24
                         }}>{["A", "B", "C", "D"][oi]}</span>
                         <span style={{
-                          fontSize: 15, 
-                          color: "#1e293b", 
+                          fontSize: 15,
+                          color: "#1e293b",
                           fontWeight: isSelected ? 700 : 500
                         }}>{opt}</span>
                       </label>
@@ -988,8 +988,8 @@ const renderAttemptPage = () => {
 
             {/* Immersive Control Footer Bar */}
             <div style={{
-              display: "flex", 
-              justifyContent: "space-between", 
+              display: "flex",
+              justifyContent: "space-between",
               alignItems: "center",
               background: "#ffffff",
               border: "1px solid #e2e8f0",
@@ -1015,13 +1015,13 @@ const renderAttemptPage = () => {
                 ← Previous Question
               </button>
 
-              <div style={{fontSize: 14, color: "#64748b"}}>
+              <div style={{ fontSize: 14, color: "#64748b" }}>
                 {unansweredCount > 0 ? (
-                  <span style={{color: "#b45309", fontWeight: 800, display: "flex", alignItems: "center", gap: 6}}>
+                  <span style={{ color: "#b45309", fontWeight: 800, display: "flex", alignItems: "center", gap: 6 }}>
                     ⚠️ {unansweredCount} question{unansweredCount > 1 ? "s" : ""} remaining to unlock submission
                   </span>
                 ) : (
-                  <span style={{color: "#16a34a", fontWeight: 800, display: "flex", alignItems: "center", gap: 6}}>
+                  <span style={{ color: "#16a34a", fontWeight: 800, display: "flex", alignItems: "center", gap: 6 }}>
                     ✓ All 25 questions attempted! You can now submit.
                   </span>
                 )}
@@ -1058,7 +1058,7 @@ const renderAttemptPage = () => {
             overflowY: "auto",
             height: "100%"
           }}>
-            <div style={{textAlign: "center", paddingBottom: 16, borderBottom: "1.5px solid #f1f5f9"}}>
+            <div style={{ textAlign: "center", paddingBottom: 16, borderBottom: "1.5px solid #f1f5f9" }}>
               <div style={{
                 width: 60,
                 height: 60,
@@ -1074,16 +1074,16 @@ const renderAttemptPage = () => {
               }}>
                 {fullName.charAt(0)}
               </div>
-              <h3 style={{fontSize: 15, fontWeight: 700, color: "#1e293b", margin: 0}}>{fullName}</h3>
-              <span style={{fontSize: 12, color: "#64748b", fontWeight: 500}}>HRMS ID: {employeeId}</span>
+              <h3 style={{ fontSize: 15, fontWeight: 700, color: "#1e293b", margin: 0 }}>{fullName}</h3>
+              <span style={{ fontSize: 12, color: "#64748b", fontWeight: 500 }}>HRMS ID: {employeeId}</span>
             </div>
 
             <h4 style={{
-              fontSize: 12, 
-              fontWeight: 800, 
-              color: "#475569", 
-              textTransform: "uppercase", 
-              letterSpacing: "0.6px", 
+              fontSize: 12,
+              fontWeight: 800,
+              color: "#475569",
+              textTransform: "uppercase",
+              letterSpacing: "0.6px",
               margin: 0
             }}>
               Question Palette
@@ -1101,7 +1101,7 @@ const renderAttemptPage = () => {
               {testQuestions.map((q, idx) => {
                 const isCurrent = idx === currentQuestion;
                 const isAnswered = responses[idx] !== null && responses[idx] !== undefined;
-                
+
                 let btnBg = "#ffffff";
                 let btnBorder = "1.5px solid #cbd5e1";
                 let btnColor = "#475569";
@@ -1157,25 +1157,25 @@ const renderAttemptPage = () => {
               flexDirection: "column",
               gap: 8
             }}>
-              <div style={{display: "flex", alignItems: "center", gap: 10}}>
-                <span style={{width: 16, height: 16, background: "#dcfce7", border: "1.5px solid #86efac", borderRadius: 4}}/>
-                <span style={{fontWeight: 500}}>Attempted</span>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <span style={{ width: 16, height: 16, background: "#dcfce7", border: "1.5px solid #86efac", borderRadius: 4 }} />
+                <span style={{ fontWeight: 500 }}>Attempted</span>
               </div>
-              <div style={{display: "flex", alignItems: "center", gap: 10}}>
-                <span style={{width: 16, height: 16, background: "#fef3c7", border: "1.5px solid #fde047", borderRadius: 4}}/>
-                <span style={{fontWeight: 600, color: "#a16207"}}>Unattempted</span>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <span style={{ width: 16, height: 16, background: "#fef3c7", border: "1.5px solid #fde047", borderRadius: 4 }} />
+                <span style={{ fontWeight: 600, color: "#a16207" }}>Unattempted</span>
               </div>
-              <div style={{display: "flex", alignItems: "center", gap: 10}}>
-                <span style={{width: 16, height: 16, background: "#ffedd5", border: "2px solid #f97316", borderRadius: 4}}/>
-                <span style={{fontWeight: 500}}>Current Focus</span>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <span style={{ width: 16, height: 16, background: "#ffedd5", border: "2px solid #f97316", borderRadius: 4 }} />
+                <span style={{ fontWeight: 500 }}>Current Focus</span>
               </div>
             </div>
 
             {/* Submission Section at Bottom */}
             <div style={{
-              marginTop: "auto", 
-              paddingTop: 20, 
-              borderTop: "1.5px solid #f1f5f9"  
+              marginTop: "auto",
+              paddingTop: 20,
+              borderTop: "1.5px solid #f1f5f9"
             }}>
               <button
                 disabled={unansweredCount > 0}

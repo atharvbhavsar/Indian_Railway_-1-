@@ -68,6 +68,7 @@ export function SAStaffDetail({
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '15px', paddingBottom: '20px' }}>
             {[
               ["Employee ID / HRMS ID", s.id],
+              ["PF Number", s.pfNumber || "—"],
               ["Designation", ROLE_MAP[s.role] || s.role],
               ["Mobile Number", s.contact || "N/A"],
               ["Email ID", s.email || `${s.id?.toLowerCase()}@rail.in`],

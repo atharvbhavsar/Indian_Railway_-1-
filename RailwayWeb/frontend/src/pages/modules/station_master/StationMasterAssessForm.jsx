@@ -246,7 +246,7 @@ export function StationMasterAssessForm(props) {
                       <span>/ 25</span>
                     </div>
                     <div className="sm2-mcq-percentage-badge">
-                      {mcqData.percentage}% {t("Score")}
+                      {mcqData.correctCount}/25 {t("Score")}
                     </div>
                   </div>
 
